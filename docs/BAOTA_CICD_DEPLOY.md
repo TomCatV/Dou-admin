@@ -137,7 +137,40 @@ git remote set-url origin https://github.com/TomCatV/Dou-admin.git
 npm install -g pnpm@10.8.1
 ```
 
-### 3. 构建成功但页面还是旧的
+### 3. 构建时报 `dist/.user.ini`
+
+宝塔可能会在站点目录生成 `.user.ini`。如果旧构建目录里存在 `dist/.user.ini`，直接删除 `dist` 可能报：
+
+```text
+ENOTDIR: not a directory, scandir '/www/wwwroot/Dou-admin/dist/.user.ini'
+```
+
+当前仓库的 `pnpm build` 已改为先执行：
+
+```bash
+node scripts/clean-dist.mjs
+```
+
+它会在 Linux 上尝试解除 `.user.ini` 的不可变属性，再删除旧 `dist`。
+
+如果线上已经卡住，先拉取最新代码后重跑：
+
+```bash
+cd /www/wwwroot/Dou-admin
+git pull origin main
+pnpm build
+```
+
+如仍失败，可手动处理一次：
+
+```bash
+cd /www/wwwroot/Dou-admin
+chattr -i dist/.user.ini 2>/dev/null || true
+rm -rf dist
+pnpm build
+```
+
+### 4. 构建成功但页面还是旧的
 
 检查 Nginx 站点根目录是否仍是：
 
@@ -147,7 +180,7 @@ npm install -g pnpm@10.8.1
 
 并清理浏览器缓存或强制刷新。
 
-### 4. API 请求失败
+### 5. API 请求失败
 
 确认 Nginx 反代仍包含：
 

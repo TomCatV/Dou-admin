@@ -42,6 +42,36 @@ export default {
       }
     },
     {
+      path: "/users",
+      name: "ManagedUsers",
+      component: () => import("@/views/users/index.vue"),
+      meta: {
+        title: "用户管理",
+        icon: "ep/user",
+        roles: ["super_admin", "operator", "viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/circles",
+      name: "ManagedCircles",
+      component: () => import("@/views/circles/index.vue"),
+      meta: {
+        title: "圈子管理",
+        icon: "ep/connection",
+        roles: ["super_admin", "operator", "viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/resource-cards",
+      name: "ManagedResourceCards",
+      component: () => import("@/views/resource-cards/index.vue"),
+      meta: {
+        title: "资源卡管理",
+        icon: "ep/goods",
+        roles: ["super_admin", "operator", "viewer", "circle_admin"]
+      }
+    },
+    {
       path: "/admin-users",
       name: "AdminUsers",
       component: () => import("@/views/admin-users/index.vue"),

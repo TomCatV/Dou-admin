@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-21 18:57 (Asia/Shanghai)
+最后更新时间：2026-05-21 20:30 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -10,11 +10,6 @@
 
 - 主分支：`main`
 - 远程：`origin/main`
-- 最近提交：
-  - `47f1fd0 fix: 兼容宝塔构建目录清理`
-  - `40de8eb chore: 增加后台前端自动部署脚本`
-  - `f5ffc7e feat: 增加后台账号权限页面`
-  - `4624202 feat: 初始化 Dou 管理后台`
 - 已完成页面：
   - 登录页
   - 工作台
@@ -22,22 +17,34 @@
   - 操作日志
   - 账号与权限
   - 修改密码
+  - 用户管理
+  - 圈子管理
+  - 资源卡管理
 - 部署脚本：
   - `scripts/deploy-baota.sh`
   - `scripts/clean-dist.mjs`
 - 部署说明：
   - `docs/BAOTA_CICD_DEPLOY.md`
 
+## 本阶段已推进
+
+1. 新增 `用户管理` 页面：列表筛选、详情抽屉、封禁/解封、审核状态维护。
+2. 新增 `圈子管理` 页面：列表筛选、详情抽屉、广场展示/隐藏、审核状态维护。
+3. 新增 `资源卡管理` 页面：列表筛选、详情抽屉、下架、禁用、恢复发布、审核状态维护。
+4. 新增对应 API 类型与请求封装。
+5. 菜单已接入 pure-admin 路由。
+
 ## 续航规则
 
-- 以后涉及本仓后台前端改动时，优先读取并更新本文件。
+- 后续涉及本仓后台前端改动时，优先读取并更新本文档。
 - 阶段性完成后同步更新 `docs/CODEX_TASK_LEDGER.md`。
 - 续航文档放在本仓 `docs/` 内，并随本仓代码一起提交推送。
 - 不再只写外层 `Dou-Circle/docs` 作为唯一续航来源。
 
 ## 下一步
 
-1. 服务器执行 `git pull origin main && pnpm build`，确认 `.user.ini` 清理修复生效。
-2. 配置宝塔 WebHook：`cd /www/wwwroot/Dou-admin && bash scripts/deploy-baota.sh`。
-3. 在 GitHub `TomCatV/Dou-admin` 配置 push webhook。
-4. 回归 `admin.doucatapp.top` 登录、账号权限、改密、举报列表和操作日志。
+1. 做人工复核队列页面。
+2. 做售后退款审核页面。
+3. 做钱包提现审核页面。
+4. 根据业务补充参数，将治理原因改为下拉枚举和必填规则。
+5. 增加登录安全能力对应页面，例如 2FA 或 IP 白名单提示。

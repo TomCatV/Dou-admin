@@ -56,3 +56,33 @@ export const adminScopeLabels: Record<string, string> = {
   global: "平台全局",
   circle: "指定圈子"
 };
+
+export const userStatusMap = {
+  active: { label: "正常", type: "success" },
+  banned: { label: "已封禁", type: "danger" }
+} as const;
+
+export const circleStatusMap = {
+  active: { label: "正常", type: "success" },
+  dismissed: { label: "已解散", type: "info" }
+} as const;
+
+export const auditStatusMap = {
+  pending: { label: "待审核", type: "warning" },
+  pass: { label: "通过", type: "success" },
+  reject: { label: "拒绝", type: "danger" },
+  manual_review: { label: "人工复核", type: "warning" }
+} as const;
+
+export const resourceCardStatusMap = {
+  draft: { label: "草稿", type: "info" },
+  published: { label: "已发布", type: "success" },
+  offline: { label: "已下架", type: "warning" },
+  disabled: { label: "已禁用", type: "danger" },
+  deleted: { label: "已删除", type: "info" }
+} as const;
+
+export const deliveryTypeLabels: Record<string, string> = {
+  resource: "资源交付",
+  code: "卡密交付"
+};

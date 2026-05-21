@@ -237,3 +237,160 @@ export const accountApi = {
       )
     )
 };
+
+export type ManagedUser = {
+  id: string;
+  dxq_id: string;
+  nickname: string;
+  avatar: string;
+  phone: string;
+  intro: string;
+  gender: string;
+  birthday: string;
+  location: string;
+  email: string;
+  wechat_bound: boolean;
+  verified: boolean;
+  status: "active" | "banned";
+  audit_status: string;
+  audit_reason: string;
+  circle_count: number;
+  owned_circle_count: number;
+  resource_card_count: number;
+  report_count: number;
+  scoped_circle_role?: string;
+  scoped_joined_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ManagedCircle = {
+  id: string;
+  owner_user_id: string;
+  owner_dxq_id: string;
+  owner_nickname: string;
+  owner_avatar: string;
+  name: string;
+  description: string;
+  cover_image: string;
+  is_private: boolean;
+  is_public_square: boolean;
+  max_members: number;
+  is_paid_entry: boolean;
+  circle_code: string;
+  member_count: number;
+  room_count: number;
+  resource_count: number;
+  report_count: number;
+  status: "active" | "dismissed";
+  audit_status: string;
+  audit_reason: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ManagedResourceCard = {
+  id: string;
+  circle_id: string;
+  circle_name: string;
+  creator_id: string;
+  creator_dxq_id: string;
+  creator_nickname: string;
+  title: string;
+  summary: string;
+  cover_url: string;
+  delivery_type: string;
+  price: number;
+  currency: string;
+  resource_type: string;
+  sales_count: number;
+  comment_count: number;
+  is_pinned: boolean;
+  status: "draft" | "published" | "offline" | "disabled" | "deleted";
+  audit_status: string;
+  purchase_count: number;
+  refund_count: number;
+  code_stock_total: number;
+  code_stock_available: number;
+  created_at: string;
+  updated_at: string;
+  published_at?: string | null;
+};
+
+export const managedUsersApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ManagedUser>>>("get", "/users", {
+        params
+      })
+    ),
+  detail: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          user: ManagedUser;
+          circles: Array<Record<string, any>>;
+        }>
+      >("get", `/users/${id}`)
+    ),
+  update: (id: string, data: Record<string, any>) =>
+    unwrap(http.request<ApiResult<ManagedUser>>("patch", `/users/${id}`, { data }))
+};
+
+export const managedCirclesApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ManagedCircle>>>("get", "/circles", {
+        params
+      })
+    ),
+  detail: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          circle: ManagedCircle;
+          rooms: Array<Record<string, any>>;
+        }>
+      >("get", `/circles/${id}`)
+    ),
+  update: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<ManagedCircle>>("patch", `/circles/${id}`, { data })
+    ),
+  members: (id: string, params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<Record<string, any>>>>(
+        "get",
+        `/circles/${id}/members`,
+        { params }
+      )
+    )
+};
+
+export const managedResourceCardsApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ManagedResourceCard>>>(
+        "get",
+        "/resource-cards",
+        { params }
+      )
+    ),
+  detail: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          resource_card: ManagedResourceCard;
+          recent_purchases: Array<Record<string, any>>;
+        }>
+      >("get", `/resource-cards/${id}`)
+    ),
+  update: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<ManagedResourceCard>>(
+        "patch",
+        `/resource-cards/${id}`,
+        { data }
+      )
+    )
+};

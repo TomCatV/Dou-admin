@@ -34,3 +34,25 @@ export const targetActionLabels: Record<string, string> = {
   unpublish_resource_card: "下架资源卡",
   disable_resource_card: "禁用资源卡"
 };
+
+export const adminRoleLabels: Record<string, string> = {
+  super_admin: "超级管理员",
+  operator: "运营管理员",
+  viewer: "只读管理员"
+};
+
+export const adminRoleTagTypes: Record<string, string> = {
+  super_admin: "danger",
+  operator: "warning",
+  viewer: "info"
+};
+
+export const adminStatusMap = {
+  active: { label: "启用", type: "success" },
+  disabled: { label: "停用", type: "info" }
+} as const;
+
+export const adminScopeLabels: Record<string, string> = {
+  global: "平台全局",
+  circle: "指定圈子"
+};

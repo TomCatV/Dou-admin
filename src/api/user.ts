@@ -45,6 +45,8 @@ type DouAdminLoginResult = {
       display_name: string;
       role: string;
       status: string;
+      scope_type?: string;
+      permissions?: string[];
     };
   };
 };
@@ -63,8 +65,15 @@ export const getLogin = (data?: object) => {
           avatar: "",
           username: admin?.username || "",
           nickname: admin?.display_name || admin?.username || "",
-          roles: [admin?.role || "viewer"],
-          permissions: admin?.role === "viewer" ? ["report:view"] : ["*:*:*"],
+          roles:
+            admin?.scope_type === "circle"
+              ? ["circle_admin"]
+              : [admin?.role || "viewer"],
+          permissions: admin?.permissions?.length
+            ? admin.permissions
+            : admin?.role === "super_admin"
+              ? ["*:*:*"]
+              : [],
           accessToken: token || "",
           refreshToken: token || "",
           expires

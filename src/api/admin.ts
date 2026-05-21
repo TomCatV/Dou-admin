@@ -69,7 +69,12 @@ export type DashboardSummary = {
 };
 
 export function unwrap<T>(promise: Promise<ApiResult<T>>) {
-  return promise.then(res => res.data);
+  return promise.then(res => {
+    if (res?.code !== 0) {
+      throw new Error(res?.message || "请求失败");
+    }
+    return res.data;
+  });
 }
 
 export const dashboardApi = {
@@ -104,6 +109,131 @@ export const auditLogsApi = {
         "get",
         "/audit-logs",
         { params }
+      )
+    )
+};
+
+export type AdminRole = "super_admin" | "operator" | "viewer";
+export type AdminScopeType = "global" | "circle";
+export type AdminStatus = "active" | "disabled";
+
+export type AdminUser = {
+  id: string;
+  username: string;
+  display_name: string;
+  role: AdminRole;
+  status: AdminStatus;
+  scope_type: AdminScopeType;
+  scope_circle_id: string;
+  scope_circle_name: string;
+  bound_user_id: string;
+  bound_user_nickname: string;
+  permissions: string[];
+  permissions_json?: string[];
+  created_by_admin_id?: string;
+  last_login_at?: string | null;
+  password_changed_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type PermissionCatalog = {
+  permissions: Array<{
+    code: string;
+    label: string;
+    description: string;
+    group: string;
+  }>;
+  role_options: Array<{
+    value: AdminRole;
+    label: string;
+    description: string;
+    permissions: string[];
+  }>;
+  scope_options: Array<{
+    value: AdminScopeType;
+    label: string;
+    description: string;
+    default_permissions?: string[];
+  }>;
+};
+
+export type AdminCircleOption = {
+  id: string;
+  name: string;
+  owner_user_id: string;
+  owner_nickname: string;
+  owner_dxq_id: string;
+  status: string;
+  member_count: number;
+};
+
+export type AdminUserOption = {
+  id: string;
+  dxq_id: string;
+  nickname: string;
+  avatar: string;
+  status: string;
+};
+
+export const adminUsersApi = {
+  permissions: () =>
+    unwrap(
+      http.request<ApiResult<PermissionCatalog>>(
+        "get",
+        "/admin-users/permissions"
+      )
+    ),
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<AdminUser>>>("get", "/admin-users", {
+        params
+      })
+    ),
+  circles: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ items: AdminCircleOption[] }>>(
+        "get",
+        "/admin-users/circles",
+        { params }
+      )
+    ),
+  users: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ items: AdminUserOption[] }>>(
+        "get",
+        "/admin-users/users",
+        { params }
+      )
+    ),
+  create: (data: Record<string, any>) =>
+    unwrap(http.request<ApiResult<AdminUser>>("post", "/admin-users", { data })),
+  update: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<AdminUser>>("patch", `/admin-users/${id}`, {
+        data
+      })
+    ),
+  resetPassword: (id: string, data: { password?: string }) =>
+    unwrap(
+      http.request<ApiResult<{ id: string; username: string; password: string }>>(
+        "post",
+        `/admin-users/${id}/reset-password`,
+        { data }
+      )
+    )
+};
+
+export const accountApi = {
+  changePassword: (data: {
+    old_password: string;
+    new_password: string;
+  }) =>
+    unwrap(
+      http.request<ApiResult<{ changed: boolean }>>(
+        "post",
+        "/auth/change-password",
+        { data }
       )
     )
 };

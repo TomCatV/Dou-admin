@@ -12,6 +12,7 @@ import {
   targetActionLabels,
   targetTypeLabels
 } from "@/utils/labels";
+import { hasPerms } from "@/utils/auth";
 
 defineOptions({
   name: "Reports"
@@ -37,6 +38,7 @@ const actionForm = reactive({
   target_action: "none",
   note: ""
 });
+const canProcessReport = computed(() => hasPerms("report:process"));
 
 const targetActions = computed(() => {
   const type = detail.value?.report?.target_type || "";
@@ -243,7 +245,7 @@ onMounted(loadList);
           </el-descriptions-item>
         </el-descriptions>
 
-        <div v-if="detail.report.status === 'pending'" class="action-box">
+        <div v-if="detail.report.status === 'pending' && canProcessReport" class="action-box">
           <h3>处理动作</h3>
           <el-radio-group v-model="actionForm.action">
             <el-radio-button label="process">处理通过</el-radio-button>

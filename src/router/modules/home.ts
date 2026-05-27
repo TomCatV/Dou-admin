@@ -112,6 +112,16 @@ export default {
       }
     },
     {
+      path: "/account-groups",
+      name: "AccountGroups",
+      component: () => import("@/views/account-groups/index.vue"),
+      meta: {
+        title: "账号分组",
+        icon: "ep/collection",
+        roles: ["super_admin"]
+      }
+    },
+    {
       path: "/account/security",
       name: "AccountSecurity",
       component: () => import("@/views/account/security.vue"),

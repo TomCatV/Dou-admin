@@ -180,6 +180,51 @@ export type AdminUserOption = {
   status: string;
 };
 
+export type AdminAccountGroup = {
+  id: string;
+  name: string;
+  description: string;
+  status: "active" | "disabled";
+  can_view_main_room_messages: boolean;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminAccountGroupMember = {
+  id: string;
+  group_id: string;
+  admin_user_id: string;
+  username: string;
+  display_name: string;
+  role: string;
+  status: string;
+  scope_type: AdminScopeType;
+  scope_circle_id: string;
+  scope_circle_name: string;
+  bound_user_id: string;
+  bound_user_nickname: string;
+  created_at: string;
+};
+
+export type MainRoomMessage = {
+  id: string;
+  circle_id: string;
+  room_id: string;
+  sender_id: string;
+  sender_nickname: string;
+  sender_avatar: string;
+  sender_dxq_id: string;
+  sender_circle_role: string;
+  type: string;
+  content: string;
+  status: string;
+  audit_status: string;
+  audit_reason: string;
+  reply_to_message_id: string;
+  created_at: string;
+};
+
 export const adminUsersApi = {
   permissions: () =>
     unwrap(
@@ -224,6 +269,72 @@ export const adminUsersApi = {
         "post",
         `/admin-users/${id}/reset-password`,
         { data }
+      )
+    )
+};
+
+export const adminAccountGroupsApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<AdminAccountGroup>>>(
+        "get",
+        "/account-groups",
+        { params }
+      )
+    ),
+  detail: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          group: AdminAccountGroup;
+          members: AdminAccountGroupMember[];
+        }>
+      >("get", `/account-groups/${id}`)
+    ),
+  adminUsers: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ items: AdminAccountGroupMember[] }>>(
+        "get",
+        "/account-groups/admin-users",
+        { params }
+      )
+    ),
+  create: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ group: AdminAccountGroup }>>(
+        "post",
+        "/account-groups",
+        { data }
+      )
+    ),
+  update: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ group: AdminAccountGroup }>>(
+        "patch",
+        `/account-groups/${id}`,
+        { data }
+      )
+    ),
+  remove: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ deleted: boolean }>>(
+        "delete",
+        `/account-groups/${id}`
+      )
+    ),
+  addMembers: (id: string, data: { admin_user_ids: string[] }) =>
+    unwrap(
+      http.request<ApiResult<{ added: number; skipped: string[] }>>(
+        "post",
+        `/account-groups/${id}/members`,
+        { data }
+      )
+    ),
+  removeMember: (id: string, adminUserId: string) =>
+    unwrap(
+      http.request<ApiResult<{ removed: boolean }>>(
+        "delete",
+        `/account-groups/${id}/members/${adminUserId}`
       )
     )
 };
@@ -529,6 +640,17 @@ export const managedCirclesApi = {
         `/circles/${id}/members`,
         { params }
       )
+    ),
+  mainRoomMessages: (id: string, params: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<
+          PageResult<MainRoomMessage> & {
+            circle: ManagedCircle;
+            room: Record<string, any>;
+          }
+        >
+      >("get", `/circles/${id}/main-room/messages`, { params })
     )
 };
 

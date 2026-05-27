@@ -134,3 +134,36 @@
   - Dou-Admin `git diff --check` 通过。
   - Dou-Admin 完整 `vue-tsc` 仍因本机 `node_modules` 顶层类型链接缺失失败，错误为 `@pureadmin/*/volar`、`element-plus/global`、`node`、`vite/client`、`unplugin-icons/types/vue` 类型入口缺失。
 - 风险与回滚：后端 JWT 新增 `pwdv` 密码版本校验，线上部署后旧后台 token 会被判为无效，管理员需要重新登录，这是预期安全行为。
+
+### 账号分组与主房间聊天授权
+
+- 时间：2026-05-28 00:30 (Asia/Shanghai)
+- 任务目标：补充超级管理员账号分组能力，通过分组授权圈主查看自己绑定圈子的主房间聊天记录。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/views/account-groups/index.vue`
+  - `docs/COMMERCIAL_MULTI_TENANT_ADMIN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- Dou-Server 改动文件：
+  - `src/db/migrations/028_admin_account_groups.sql`
+  - `src/lib/adminAccountGroups.js`
+  - `src/lib/adminPermissions.js`
+  - `src/routes/admin/accountGroups.routes.js`
+  - `src/routes/admin/circles.routes.js`
+  - `src/routes/admin/index.js`
+- 验证：
+  - Dou-Server `node --check src/routes/admin/accountGroups.routes.js`
+  - Dou-Server `node --check src/routes/admin/circles.routes.js`
+  - Dou-Server `node --check src/routes/admin/index.js`
+  - Dou-Server `node --check src/lib/adminAccountGroups.js`
+  - Dou-Server `node --check src/lib/adminPermissions.js`
+  - Dou-Server 临时库全量迁移通过，包含 `028_admin_account_groups.sql`。
+  - Dou-Server 账号组授权 smoke test 通过：未授权圈主访问主房间消息返回 `40305`，加入已授权分组后可查看自己圈子主房间消息，访问其他圈子仍被拒绝。
+  - Dou-Admin `src/views/account-groups/index.vue` SFC 解析与模板编译通过。
+  - Dou-Admin `src/api/admin.ts`、`src/router/modules/home.ts` TypeScript 转译检查通过。
+  - Dou-Admin `git diff --check` 通过。
+  - Dou-Admin 完整 `vue-tsc` 仍因本机 `node_modules` 顶层类型链接缺失失败，错误为 `@pureadmin/*/volar`、`element-plus/global`、`node`、`vite/client`、`unplugin-icons/types/vue` 类型入口缺失。
+- 风险与回滚：主房间聊天记录属于隐私敏感能力，默认不授权；只有超级管理员维护的启用分组且开启授权后，组内圈主账号才能访问自己绑定圈子的主房间记录。

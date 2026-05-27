@@ -59,12 +59,24 @@ export const targetActionLabels: Record<string, string> = {
 
 export const adminRoleLabels: Record<string, string> = {
   super_admin: "超级管理员",
+  admin_l1: "1 级管理员",
+  admin_l2: "2 级管理员",
+  admin_l3: "3 级管理员",
+  tenant_owner: "圈主账号",
+  tenant_staff: "圈主子账号",
+  tenant_viewer: "圈主只读账号",
   operator: "运营管理员",
   viewer: "只读管理员"
 };
 
 export const adminRoleTagTypes: Record<string, string> = {
   super_admin: "danger",
+  admin_l1: "warning",
+  admin_l2: "primary",
+  admin_l3: "info",
+  tenant_owner: "success",
+  tenant_staff: "success",
+  tenant_viewer: "info",
   operator: "warning",
   viewer: "info"
 };

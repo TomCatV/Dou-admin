@@ -117,7 +117,14 @@ export const auditLogsApi = {
     )
 };
 
-export type AdminRole = "super_admin" | "operator" | "viewer";
+export type AdminRole =
+  | "super_admin"
+  | "admin_l1"
+  | "admin_l2"
+  | "admin_l3"
+  | "tenant_owner"
+  | "tenant_staff"
+  | "tenant_viewer";
 export type AdminScopeType = "global" | "circle";
 export type AdminStatus = "active" | "disabled";
 
@@ -126,6 +133,8 @@ export type AdminUser = {
   username: string;
   display_name: string;
   role: AdminRole;
+  legacy_role?: string;
+  account_type: AdminRole;
   status: AdminStatus;
   scope_type: AdminScopeType;
   scope_circle_id: string;
@@ -205,6 +214,9 @@ export type AdminAccountGroupMember = {
   scope_circle_name: string;
   bound_user_id: string;
   bound_user_nickname: string;
+  tenant_bind_type?: string;
+  wechat_openid_snapshot?: string;
+  dxq_id_snapshot?: string;
   created_at: string;
 };
 

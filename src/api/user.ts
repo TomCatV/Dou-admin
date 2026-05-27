@@ -40,12 +40,13 @@ type DouAdminLoginResult = {
   message: string;
   data: {
     token: string;
-    admin: {
-      id: string;
-      username: string;
-      display_name: string;
-      role: string;
-      status: string;
+      admin: {
+        id: string;
+        username: string;
+        display_name: string;
+        role: string;
+        account_type?: string;
+        status: string;
       scope_type?: string;
       permissions?: string[];
       must_change_password?: boolean;
@@ -69,8 +70,8 @@ export const getLogin = (data?: object) => {
           nickname: admin?.display_name || admin?.username || "",
           roles:
             admin?.scope_type === "circle"
-              ? ["circle_admin"]
-              : [admin?.role || "viewer"],
+              ? [admin?.account_type || admin?.role || "tenant_owner"]
+              : [admin?.account_type || admin?.role || "admin_l3"],
           permissions: admin?.permissions?.length
             ? admin.permissions
             : admin?.role === "super_admin"

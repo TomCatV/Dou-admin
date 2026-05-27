@@ -68,7 +68,7 @@ const form = reactive<AccountForm>({
   id: "",
   username: "",
   display_name: "",
-  role: "viewer",
+  role: "admin_l3",
   status: "active",
   scope_type: "global",
   scope_circle_id: "",
@@ -76,6 +76,8 @@ const form = reactive<AccountForm>({
   permissions: [],
   password: ""
 });
+
+const isSuperAdmin = computed(() => userStore.roles?.includes("super_admin"));
 
 const rules = computed<FormRules>(() => ({
   username: [
@@ -143,6 +145,18 @@ function roleDefaults(role: string, scopeType: string) {
   return option?.permissions || [];
 }
 
+function isTenantRole(role: string) {
+  return role.startsWith("tenant_");
+}
+
+function isPlatformRole(role: string) {
+  return ["super_admin", "admin_l1", "admin_l2", "admin_l3"].includes(role);
+}
+
+function accountRole(row: AdminUser) {
+  return row.account_type || row.role;
+}
+
 function effectivePermissions(row: AdminUser) {
   return row.permissions || [];
 }
@@ -172,16 +186,16 @@ function resetSearch() {
 }
 
 function resetForm() {
-  Object.assign(form, {
+    Object.assign(form, {
     id: "",
     username: "",
     display_name: "",
-    role: "viewer",
+    role: "admin_l3",
     status: "active",
     scope_type: "global",
     scope_circle_id: "",
     bound_user_id: "",
-    permissions: roleDefaults("viewer", "global"),
+    permissions: roleDefaults("admin_l3", "global"),
     password: ""
   });
 }
@@ -198,7 +212,7 @@ function openEdit(row: AdminUser) {
     id: row.id,
     username: row.username,
     display_name: row.display_name,
-    role: row.role,
+    role: row.account_type || row.role,
     status: row.status,
     scope_type: row.scope_type,
     scope_circle_id: row.scope_circle_id || "",
@@ -257,20 +271,42 @@ function applyRoleDefault() {
   form.permissions = roleDefaults(form.role, form.scope_type);
 }
 
+const availableRoleOptions = computed(() => {
+  const options = catalog.value?.role_options || [];
+  if (isSuperAdmin.value) return options;
+  return options.filter(item => isTenantRole(item.value));
+});
+
+let syncingRoleScope = false;
+
 watch(
   () => form.scope_type,
   value => {
+    if (syncingRoleScope) return;
+    syncingRoleScope = true;
+    if (value === "global" && isTenantRole(form.role)) {
+      form.role = "admin_l3";
+    }
     if (value === "global") {
       form.scope_circle_id = "";
       form.bound_user_id = "";
+    } else if (value === "circle" && isPlatformRole(form.role)) {
+      form.role = "tenant_owner";
     }
     applyRoleDefault();
+    syncingRoleScope = false;
   }
 );
 
 watch(
   () => form.role,
-  () => applyRoleDefault()
+  value => {
+    if (syncingRoleScope) return;
+    syncingRoleScope = true;
+    form.scope_type = isTenantRole(value) ? "circle" : "global";
+    applyRoleDefault();
+    syncingRoleScope = false;
+  }
 );
 
 watch(
@@ -300,6 +336,7 @@ async function submit() {
       username: form.username,
       display_name: form.display_name,
       role: form.role,
+      account_type: form.role,
       status: form.status,
       scope_type: form.scope_type,
       scope_circle_id: form.scope_type === "circle" ? form.scope_circle_id : "",
@@ -342,7 +379,8 @@ async function toggleStatus(row: AdminUser) {
   );
   await adminUsersApi.update(row.id, {
     display_name: row.display_name,
-    role: row.role,
+    role: accountRole(row),
+    account_type: accountRole(row),
     status: nextStatus,
     scope_type: row.scope_type,
     scope_circle_id: row.scope_circle_id,
@@ -377,7 +415,7 @@ onMounted(async () => {
       />
       <el-select v-model="filters.role" class="filter-item" placeholder="角色" clearable>
         <el-option
-          v-for="item in catalog?.role_options || []"
+          v-for="item in availableRoleOptions"
           :key="item.value"
           :label="item.label"
           :value="item.value"
@@ -405,8 +443,8 @@ onMounted(async () => {
       </el-table-column>
       <el-table-column label="角色" width="130">
         <template #default="{ row }">
-          <el-tag :type="roleType(row.role)">
-            {{ adminRoleLabels[row.role] || row.role }}
+          <el-tag :type="roleType(accountRole(row))">
+            {{ adminRoleLabels[accountRole(row)] || accountRole(row) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -508,7 +546,7 @@ onMounted(async () => {
         <el-form-item label="角色" prop="role">
           <el-select v-model="form.role" class="full">
             <el-option
-              v-for="item in catalog?.role_options || []"
+              v-for="item in availableRoleOptions"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -522,7 +560,7 @@ onMounted(async () => {
           </el-radio-group>
         </el-form-item>
         <el-form-item label="账号范围" prop="scope_type">
-          <el-radio-group v-model="form.scope_type">
+          <el-radio-group v-model="form.scope_type" disabled>
             <el-radio-button label="global">平台全局</el-radio-button>
             <el-radio-button label="circle">指定圈子</el-radio-button>
           </el-radio-group>

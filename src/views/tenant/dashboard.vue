@@ -11,6 +11,25 @@ function yuan(value?: number) {
   return `¥${((Number(value) || 0) / 100).toFixed(2)}`;
 }
 
+function statusLabel(status?: string) {
+  return (
+    {
+      none: "未开通",
+      trial: "试用中",
+      active: "已开通",
+      expired: "已到期",
+      suspended: "已暂停"
+    }[String(status || "none")] || status
+  );
+}
+
+function statusType(status?: string) {
+  if (status === "active") return "success";
+  if (status === "trial") return "warning";
+  if (status === "expired" || status === "suspended") return "danger";
+  return "info";
+}
+
 async function loadData() {
   loading.value = true;
   try {
@@ -56,6 +75,54 @@ onMounted(loadData);
         <div class="metric income">
           <span>成交金额</span>
           <strong>{{ yuan(data?.metrics.revenue_amount) }}</strong>
+        </div>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="16" class="mt">
+      <el-col :xs="24" :lg="12">
+        <div class="panel">
+          <div class="panel-title">
+            <h2>套餐订阅</h2>
+            <el-tag :type="statusType(data?.subscription_status?.status)">
+              {{ statusLabel(data?.subscription_status?.status) }}
+            </el-tag>
+          </div>
+          <div class="line">
+            <span>当前套餐</span>
+            <strong>{{ data?.subscription?.plan_name || "未开通套餐" }}</strong>
+          </div>
+          <div class="line">
+            <span>服务到期</span>
+            <strong>{{ data?.subscription_status?.paid_until || "-" }}</strong>
+          </div>
+          <div class="line">
+            <span>租户状态</span>
+            <strong>{{ statusLabel(data?.subscription?.status) }}</strong>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="24" :lg="12">
+        <div class="panel">
+          <h2>当前用量</h2>
+          <div class="usage-grid">
+            <div>
+              <span>成员</span>
+              <strong>{{ data?.usage?.members || 0 }}</strong>
+            </div>
+            <div>
+              <span>子账号</span>
+              <strong>{{ data?.usage?.staff_accounts || 0 }}</strong>
+            </div>
+            <div>
+              <span>资源卡</span>
+              <strong>{{ data?.usage?.resource_cards || 0 }}</strong>
+            </div>
+            <div>
+              <span>线索</span>
+              <strong>{{ data?.usage?.leads || 0 }}</strong>
+            </div>
+          </div>
         </div>
       </el-col>
     </el-row>
@@ -134,6 +201,17 @@ onMounted(loadData);
   font-size: 16px;
 }
 
+.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-title h2 {
+  margin: 0 0 12px;
+}
+
 .line {
   display: flex;
   justify-content: space-between;
@@ -141,7 +219,39 @@ onMounted(loadData);
   border-top: 1px solid #efe6db;
 }
 
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.usage-grid div {
+  min-height: 74px;
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #efe6db;
+  border-radius: 8px;
+}
+
+.usage-grid span {
+  display: block;
+  color: #766b61;
+}
+
+.usage-grid strong {
+  display: block;
+  margin-top: 8px;
+  color: #221a14;
+  font-size: 20px;
+}
+
 .mt {
   margin-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .usage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

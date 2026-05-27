@@ -78,6 +78,9 @@ export type TenantDashboard = {
   metrics: Record<string, number>;
   wallet: Record<string, number>;
   settlement: Record<string, any>;
+  subscription?: Record<string, any> | null;
+  subscription_status?: Record<string, any>;
+  usage?: Record<string, number>;
 };
 
 export type TenantMember = {
@@ -340,6 +343,72 @@ export const tenantConversionApi = {
         "post",
         "/tenant/conversion/campaigns",
         { data }
+      )
+    )
+};
+
+export const saasApi = {
+  plans: () =>
+    unwrap(
+      http.request<ApiResult<{ items: Array<Record<string, any>> }>>(
+        "get",
+        "/saas/plans"
+      )
+    ),
+  createPlan: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ plan: Record<string, any> }>>(
+        "post",
+        "/saas/plans",
+        { data }
+      )
+    ),
+  updatePlan: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ plan: Record<string, any> }>>(
+        "patch",
+        `/saas/plans/${id}`,
+        { data }
+      )
+    ),
+  tenants: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<Record<string, any>>>>(
+        "get",
+        "/saas/tenants",
+        { params }
+      )
+    ),
+  createTenant: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ tenant: Record<string, any> }>>(
+        "post",
+        "/saas/tenants",
+        { data }
+      )
+    ),
+  updateTenant: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ tenant: Record<string, any> }>>(
+        "patch",
+        `/saas/tenants/${id}`,
+        { data }
+      )
+    ),
+  createOrder: (tenantId: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ order: Record<string, any> }>>(
+        "post",
+        `/saas/tenants/${tenantId}/orders`,
+        { data }
+      )
+    ),
+  orders: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<Record<string, any>>>>(
+        "get",
+        "/saas/orders",
+        { params }
       )
     )
 };

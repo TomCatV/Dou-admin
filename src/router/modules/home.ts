@@ -179,6 +179,16 @@ export default {
       }
     },
     {
+      path: "/saas",
+      name: "SaasBilling",
+      component: () => import("@/views/saas/index.vue"),
+      meta: {
+        title: "SaaS套餐",
+        icon: "ep/coin",
+        roles: ["super_admin", "admin_l1", "admin_l2", "admin_l3"]
+      }
+    },
+    {
       path: "/admin-users",
       name: "AdminUsers",
       component: () => import("@/views/admin-users/index.vue"),

@@ -19,6 +19,7 @@ export type UserResult = {
     refreshToken: string;
     /** `accessToken`的过期时间（格式'xxxx/xx/xx xx:xx:xx'） */
     expires: Date;
+    mustChangePassword?: boolean;
   };
 };
 
@@ -47,6 +48,7 @@ type DouAdminLoginResult = {
       status: string;
       scope_type?: string;
       permissions?: string[];
+      must_change_password?: boolean;
     };
   };
 };
@@ -76,7 +78,8 @@ export const getLogin = (data?: object) => {
               : [],
           accessToken: token || "",
           refreshToken: token || "",
-          expires
+          expires,
+          mustChangePassword: !!admin?.must_change_password
         }
       } satisfies UserResult;
     });

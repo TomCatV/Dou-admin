@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { accountApi } from "@/api/admin";
@@ -13,7 +13,13 @@ defineOptions({
 
 const formRef = ref<FormInstance>();
 const loading = ref(false);
+const logLoading = ref(false);
 const userStore = useUserStoreHook();
+const loginLogs = ref<Array<Record<string, any>>>([]);
+const securityPolicy = ref({
+  max_failed_attempts: 5,
+  lock_minutes: 15
+});
 const form = reactive({
   old_password: "",
   new_password: "",
@@ -62,11 +68,25 @@ async function submit() {
     userStore.SET_NICKNAME("");
     userStore.SET_ROLES([]);
     userStore.SET_PERMS([]);
+    userStore.SET_MUST_CHANGE_PASSWORD(false);
     await router.replace("/login");
   } finally {
     loading.value = false;
   }
 }
+
+async function loadLoginLogs() {
+  logLoading.value = true;
+  try {
+    const data = await accountApi.loginLogs({ page: 1, page_size: 8 });
+    loginLogs.value = data.items;
+    securityPolicy.value = data.policy;
+  } finally {
+    logLoading.value = false;
+  }
+}
+
+onMounted(loadLoginLogs);
 </script>
 
 <template>
@@ -75,7 +95,12 @@ async function submit() {
       <template #header>
         <div class="card-title">
           <span>修改登录密码</span>
-          <span class="sub">当前账号：{{ userStore.username }}</span>
+          <span class="sub">
+            当前账号：{{ userStore.username }}
+            <el-tag v-if="userStore.mustChangePassword" size="small" type="danger">
+              需先改密
+            </el-tag>
+          </span>
         </div>
       </template>
 
@@ -122,33 +147,63 @@ async function submit() {
       <template #header>
         <div class="card-title">
           <span>登录安全策略</span>
-          <span class="sub">当前为提示态，后续接入管理端安全配置</span>
+          <span class="sub">
+            连续失败 {{ securityPolicy.max_failed_attempts }} 次锁定
+            {{ securityPolicy.lock_minutes }} 分钟
+          </span>
         </div>
       </template>
 
       <div class="security-list">
         <div class="security-item">
           <div>
-            <div class="item-title">双因素验证</div>
-            <div class="item-sub">建议超级管理员开启短信或验证器二次确认。</div>
+            <div class="item-title">首次登录改密</div>
+            <div class="item-sub">新建账号和重置密码后的账号必须先修改密码。</div>
           </div>
-          <el-tag type="warning">待接入</el-tag>
+          <el-tag type="success">已启用</el-tag>
         </div>
         <div class="security-item">
           <div>
-            <div class="item-title">IP 白名单</div>
-            <div class="item-sub">生产环境建议限制后台登录来源，降低撞库风险。</div>
+            <div class="item-title">失败锁定</div>
+            <div class="item-sub">超过策略阈值后临时锁定账号登录入口。</div>
           </div>
-          <el-tag type="info">未启用</el-tag>
+          <el-tag type="success">已启用</el-tag>
         </div>
         <div class="security-item">
           <div>
-            <div class="item-title">会话有效期</div>
-            <div class="item-sub">当前令牌由后端统一签发，默认随 JWT 过期策略生效。</div>
+            <div class="item-title">密码变更失效旧会话</div>
+            <div class="item-sub">修改或重置密码后，旧登录令牌立即不可用。</div>
           </div>
           <el-tag type="success">已启用</el-tag>
         </div>
       </div>
+    </el-card>
+
+    <el-card shadow="never" class="security-card">
+      <template #header>
+        <div class="card-title">
+          <span>最近登录记录</span>
+          <el-button link type="primary" :loading="logLoading" @click="loadLoginLogs">
+            刷新
+          </el-button>
+        </div>
+      </template>
+      <el-table v-loading="logLoading" :data="loginLogs" border>
+        <el-table-column label="结果" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.success ? 'success' : 'danger'">
+              {{ row.success ? "成功" : "失败" }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="ip" label="IP" min-width="140" />
+        <el-table-column label="原因" min-width="120">
+          <template #default="{ row }">
+            {{ row.failure_reason || "-" }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="时间" width="170" />
+      </el-table>
     </el-card>
   </div>
 </template>

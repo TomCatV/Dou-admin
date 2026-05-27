@@ -134,6 +134,7 @@ export type AdminUser = {
   bound_user_nickname: string;
   permissions: string[];
   permissions_json?: string[];
+  must_change_password?: boolean;
   created_by_admin_id?: string;
   last_login_at?: string | null;
   password_changed_at?: string | null;
@@ -350,6 +351,27 @@ export const accountApi = {
         "/auth/change-password",
         { data }
       )
+    ),
+  loginLogs: (params: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<
+          PageResult<{
+            id: string;
+            username: string;
+            success: boolean;
+            failure_reason: string;
+            ip: string;
+            user_agent: string;
+            created_at: string;
+          }> & {
+            policy: {
+              max_failed_attempts: number;
+              lock_minutes: number;
+            };
+          }
+        >
+      >("get", "/auth/login-logs", { params })
     )
 };
 

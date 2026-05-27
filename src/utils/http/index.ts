@@ -133,6 +133,13 @@ class PureHttp {
       (error: PureHttpError) => {
         const $error = error;
         $error.isCancelRequest = Axios.isCancel($error);
+        const status = $error?.response?.status;
+        const code = ($error?.response?.data as any)?.code;
+        if (status === 401) {
+          useUserStoreHook().logOut();
+        } else if (status === 403 && code === 40306) {
+          window.location.hash = "#/account/security";
+        }
         // 所有的响应异常 区分来源为取消请求/非取消请求
         return Promise.reject($error);
       }

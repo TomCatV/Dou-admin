@@ -428,6 +428,14 @@ onMounted(async () => {
           <el-tag :type="statusMeta(row.status).type">
             {{ statusMeta(row.status).label }}
           </el-tag>
+          <el-tag
+            v-if="row.must_change_password"
+            class="password-tag"
+            size="small"
+            type="warning"
+          >
+            待改密
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="权限" min-width="220">
@@ -639,6 +647,10 @@ onMounted(async () => {
 
 .perm-tag {
   margin: 0 4px 4px 0;
+}
+
+.password-tag {
+  margin-top: 4px;
 }
 
 .pagination {

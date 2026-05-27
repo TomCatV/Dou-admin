@@ -19,6 +19,8 @@ export interface DataInfo<T> {
   roles?: Array<string>;
   /** 当前登录用户的按钮级别权限 */
   permissions?: Array<string>;
+  mustChangePassword?: boolean;
+  must_change_password?: boolean;
 }
 
 export const userKey = "user-info";
@@ -68,12 +70,20 @@ export function setToken(data: DataInfo<Date>) {
       : {}
   );
 
-  function setUserKey({ avatar, username, nickname, roles, permissions }) {
+  function setUserKey({
+    avatar,
+    username,
+    nickname,
+    roles,
+    permissions,
+    mustChangePassword
+  }) {
     useUserStoreHook().SET_AVATAR(avatar);
     useUserStoreHook().SET_USERNAME(username);
     useUserStoreHook().SET_NICKNAME(nickname);
     useUserStoreHook().SET_ROLES(roles);
     useUserStoreHook().SET_PERMS(permissions);
+    useUserStoreHook().SET_MUST_CHANGE_PASSWORD(!!mustChangePassword);
     storageLocal().setItem(userKey, {
       refreshToken,
       expires,
@@ -81,7 +91,8 @@ export function setToken(data: DataInfo<Date>) {
       username,
       nickname,
       roles,
-      permissions
+      permissions,
+      mustChangePassword: !!mustChangePassword
     });
   }
 
@@ -92,7 +103,9 @@ export function setToken(data: DataInfo<Date>) {
       username,
       nickname: data?.nickname ?? "",
       roles,
-      permissions: data?.permissions ?? []
+      permissions: data?.permissions ?? [],
+      mustChangePassword:
+        !!data?.mustChangePassword || !!(data as any)?.must_change_password
     });
   } else {
     const avatar =
@@ -105,12 +118,16 @@ export function setToken(data: DataInfo<Date>) {
       storageLocal().getItem<DataInfo<number>>(userKey)?.roles ?? [];
     const permissions =
       storageLocal().getItem<DataInfo<number>>(userKey)?.permissions ?? [];
+    const mustChangePassword =
+      storageLocal().getItem<DataInfo<number>>(userKey)?.mustChangePassword ??
+      false;
     setUserKey({
       avatar,
       username,
       nickname,
       roles,
-      permissions
+      permissions,
+      mustChangePassword
     });
   }
 }

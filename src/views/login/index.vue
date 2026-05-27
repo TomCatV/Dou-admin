@@ -40,8 +40,13 @@ async function onLogin(formEl: FormInstance | undefined) {
       return;
     }
     await initRouter();
-    await router.push("/dashboard");
-    ElMessage.success("登录成功");
+    if (res.data.mustChangePassword) {
+      await router.push("/account/security");
+      ElMessage.warning("请先修改初始密码");
+    } else {
+      await router.push("/dashboard");
+      ElMessage.success("登录成功");
+    }
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || e?.message || "登录失败");
   } finally {

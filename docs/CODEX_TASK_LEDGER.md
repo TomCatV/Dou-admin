@@ -109,3 +109,28 @@
 - 备注：本机 `pnpm install` 在 Dou-Admin 依赖链接阶段持续超时，前端 `vue-tsc` 因顶层类型依赖未链接完整未能完成。
 - 下一步：部署后端迁移，线上用真实管理员账号完成资金动作联调。
 - 风险与回滚：新增后端管理端路由独立挂载在 `/api/admin`，不改动小程序 `/api/v0.9` 路由；如管理后台异常，可回滚 Dou-Server 最新提交或临时移除 `/api/admin` 挂载。
+
+## 2026-05-28
+
+### 商用多租户规划与改密会话安全
+
+- 时间：2026-05-28 00:00 (Asia/Shanghai)
+- 任务目标：评估当前后台商用差距，规划多租户圈主后台和私域转化能力，并修复后台改密后旧 token 仍可访问的问题。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `docs/COMMERCIAL_MULTI_TENANT_ADMIN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+  - `src/views/account/security.vue`
+- Dou-Server 改动文件：
+  - `src/lib/adminAuth.js`
+  - `src/middleware/requireAdminAuth.js`
+- 验证：
+  - Dou-Server `node --check src/lib/adminAuth.js`
+  - Dou-Server `node --check src/middleware/requireAdminAuth.js`
+  - Dou-Server `node --check src/routes/admin/auth.routes.js`
+  - Dou-Server 临时库改密 smoke test 通过：旧 token 返回 `40105`，旧密码登录失败，新密码登录成功。
+  - Dou-Admin `src/views/account/security.vue` SFC 解析与模板编译通过。
+  - Dou-Admin `git diff --check` 通过。
+  - Dou-Admin 完整 `vue-tsc` 仍因本机 `node_modules` 顶层类型链接缺失失败，错误为 `@pureadmin/*/volar`、`element-plus/global`、`node`、`vite/client`、`unplugin-icons/types/vue` 类型入口缺失。
+- 风险与回滚：后端 JWT 新增 `pwdv` 密码版本校验，线上部署后旧后台 token 会被判为无效，管理员需要重新登录，这是预期安全行为。

@@ -3,7 +3,9 @@ import { reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { accountApi } from "@/api/admin";
+import { removeToken } from "@/utils/auth";
 import { useUserStoreHook } from "@/store/modules/user";
+import { router } from "@/router";
 
 defineOptions({
   name: "AccountSecurity"
@@ -55,7 +57,12 @@ async function submit() {
       new_password: form.new_password
     });
     ElMessage.success("密码已修改，请重新登录");
-    userStore.logOut();
+    removeToken();
+    userStore.SET_USERNAME("");
+    userStore.SET_NICKNAME("");
+    userStore.SET_ROLES([]);
+    userStore.SET_PERMS([]);
+    await router.replace("/login");
   } finally {
     loading.value = false;
   }

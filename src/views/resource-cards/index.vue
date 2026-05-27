@@ -8,6 +8,7 @@ import {
 import {
   auditStatusMap,
   deliveryTypeLabels,
+  governanceReasonOptions,
   resourceCardStatusMap
 } from "@/utils/labels";
 import { hasPerms } from "@/utils/auth";
@@ -40,6 +41,7 @@ const filters = reactive({
 const actionForm = reactive({
   status: "published",
   audit_status: "pass",
+  audit_reason: "人工复核通过",
   is_pinned: false
 });
 
@@ -89,6 +91,10 @@ async function openDetail(row: ManagedResourceCard) {
     purchases.value = data.recent_purchases;
     actionForm.status = data.resource_card.status;
     actionForm.audit_status = data.resource_card.audit_status || "pass";
+    actionForm.audit_reason =
+      data.resource_card.audit_status === "reject"
+        ? "人工复核拒绝"
+        : "人工复核通过";
     actionForm.is_pinned = data.resource_card.is_pinned;
   } finally {
     detailLoading.value = false;
@@ -97,6 +103,10 @@ async function openDetail(row: ManagedResourceCard) {
 
 async function submitAction() {
   if (!current.value) return;
+  if (!actionForm.audit_reason) {
+    ElMessage.warning("请选择处置原因");
+    return;
+  }
   await ElMessageBox.confirm("确认更新该资源卡的治理状态？", "资源卡处置确认", {
     type: "warning"
   });
@@ -105,6 +115,7 @@ async function submitAction() {
     const next = await managedResourceCardsApi.update(current.value.id, {
       status: actionForm.status,
       audit_status: actionForm.audit_status,
+      audit_reason: actionForm.audit_reason,
       is_pinned: actionForm.is_pinned
     });
     current.value = next;
@@ -121,7 +132,13 @@ async function setStatus(row: ManagedResourceCard, status: string) {
   });
   await managedResourceCardsApi.update(row.id, {
     status,
-    audit_status: status === "published" ? "pass" : row.audit_status || "pass"
+    audit_status: status === "published" ? "pass" : row.audit_status || "pass",
+    audit_reason:
+      status === "published"
+        ? "后台管理员恢复发布"
+        : status === "offline"
+          ? "后台管理员下架资源卡"
+          : "后台管理员禁用资源卡"
   });
   ElMessage.success("资源卡状态已更新");
   await loadList();
@@ -299,6 +316,18 @@ onMounted(loadList);
             <el-option label="通过" value="pass" />
             <el-option label="拒绝" value="reject" />
             <el-option label="人工复核" value="manual_review" />
+          </el-select>
+          <el-select
+            v-model="actionForm.audit_reason"
+            class="full"
+            placeholder="选择处置原因"
+          >
+            <el-option
+              v-for="item in governanceReasonOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
           </el-select>
           <el-button
             class="submit-btn"

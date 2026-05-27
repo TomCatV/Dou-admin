@@ -7,7 +7,8 @@ import {
 } from "@/api/admin";
 import {
   auditStatusMap,
-  circleStatusMap
+  circleStatusMap,
+  governanceReasonOptions
 } from "@/utils/labels";
 import { hasPerms } from "@/utils/auth";
 
@@ -38,7 +39,7 @@ const filters = reactive({
 const actionForm = reactive({
   status: "active",
   audit_status: "pass",
-  audit_reason: "",
+  audit_reason: "人工复核通过",
   is_public_square: true
 });
 
@@ -83,7 +84,7 @@ async function openDetail(row: ManagedCircle) {
     rooms.value = data.rooms;
     actionForm.status = data.circle.status;
     actionForm.audit_status = data.circle.audit_status || "pass";
-    actionForm.audit_reason = data.circle.audit_reason || "";
+    actionForm.audit_reason = data.circle.audit_reason || "人工复核通过";
     actionForm.is_public_square = data.circle.is_public_square;
   } finally {
     detailLoading.value = false;
@@ -92,6 +93,10 @@ async function openDetail(row: ManagedCircle) {
 
 async function submitAction() {
   if (!current.value) return;
+  if (!actionForm.audit_reason) {
+    ElMessage.warning("请选择处置原因");
+    return;
+  }
   await ElMessageBox.confirm("确认更新该圈子的治理状态？", "圈子处置确认", {
     type: "warning"
   });
@@ -283,14 +288,18 @@ onMounted(loadList);
             <el-option label="拒绝" value="reject" />
             <el-option label="人工复核" value="manual_review" />
           </el-select>
-          <el-input
+          <el-select
             v-model="actionForm.audit_reason"
-            type="textarea"
-            :rows="4"
-            maxlength="500"
-            show-word-limit
-            placeholder="填写处置原因，便于审计追溯"
-          />
+            class="full"
+            placeholder="选择处置原因"
+          >
+            <el-option
+              v-for="item in governanceReasonOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
           <el-button
             class="submit-btn"
             type="primary"

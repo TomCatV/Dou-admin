@@ -110,11 +110,46 @@ async function submit() {
         </el-form-item>
       </el-form>
     </el-card>
+
+    <el-card shadow="never" class="security-card">
+      <template #header>
+        <div class="card-title">
+          <span>登录安全策略</span>
+          <span class="sub">当前为提示态，后续接入管理端安全配置</span>
+        </div>
+      </template>
+
+      <div class="security-list">
+        <div class="security-item">
+          <div>
+            <div class="item-title">双因素验证</div>
+            <div class="item-sub">建议超级管理员开启短信或验证器二次确认。</div>
+          </div>
+          <el-tag type="warning">待接入</el-tag>
+        </div>
+        <div class="security-item">
+          <div>
+            <div class="item-title">IP 白名单</div>
+            <div class="item-sub">生产环境建议限制后台登录来源，降低撞库风险。</div>
+          </div>
+          <el-tag type="info">未启用</el-tag>
+        </div>
+        <div class="security-item">
+          <div>
+            <div class="item-title">会话有效期</div>
+            <div class="item-sub">当前令牌由后端统一签发，默认随 JWT 过期策略生效。</div>
+          </div>
+          <el-tag type="success">已启用</el-tag>
+        </div>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <style scoped>
 .security-page {
+  display: grid;
+  gap: 16px;
   padding: 16px;
 }
 
@@ -139,5 +174,31 @@ async function submit() {
 
 .password-form {
   max-width: 520px;
+}
+
+.security-list {
+  display: grid;
+  gap: 12px;
+}
+
+.security-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #efe6db;
+  border-radius: 8px;
+}
+
+.item-title {
+  font-weight: 700;
+  color: #221a14;
+}
+
+.item-sub {
+  margin-top: 4px;
+  color: #8f8276;
+  font-size: 12px;
 }
 </style>

@@ -24,6 +24,28 @@ export const reasonTypeLabels: Record<string, string> = {
   other: "其他问题"
 };
 
+export const governanceReasonOptions = [
+  "资料或内容存在违规风险",
+  "疑似营销、刷屏或低质内容",
+  "交易或资金行为存在风控风险",
+  "涉及侵权、隐私或骚扰问题",
+  "举报核实后执行治理",
+  "人工复核通过",
+  "人工复核拒绝",
+  "后台管理员手动封禁",
+  "后台管理员手动解封",
+  "后台管理员移出广场",
+  "后台管理员恢复广场",
+  "后台管理员下架资源卡",
+  "后台管理员禁用资源卡",
+  "后台管理员恢复发布",
+  "售后审核通过并退款",
+  "售后诉求不成立",
+  "提现审核通过",
+  "提现审核拒绝",
+  "其他平台治理原因"
+].map(label => ({ label, value: label }));
+
 export const targetActionLabels: Record<string, string> = {
   none: "仅标记处理",
   ban_user: "封禁相关用户",
@@ -86,3 +108,45 @@ export const deliveryTypeLabels: Record<string, string> = {
   resource: "资源交付",
   code: "卡密交付"
 };
+
+export const manualReviewTargetLabels: Record<string, string> = {
+  user: "用户",
+  circle: "圈子",
+  resource_card: "资源卡"
+};
+
+export const afterSaleStatusMap = {
+  open: { label: "处理中", type: "warning" },
+  buyer_withdrew: { label: "买家撤回", type: "info" },
+  refunded: { label: "已退款", type: "success" },
+  rejected: { label: "已拒绝", type: "danger" },
+  closed: { label: "已关闭", type: "info" }
+} as const;
+
+export const refundStatusMap = {
+  none: { label: "未退款", type: "info" },
+  local_refunded: { label: "本地已退", type: "success" },
+  wechat_pending: { label: "微信退款中", type: "warning" },
+  wechat_refunded: { label: "微信已退款", type: "success" },
+  failed: { label: "退款失败", type: "danger" }
+} as const;
+
+export const complaintTypeLabels: Record<string, string> = {
+  cannot_access: "无法访问资源",
+  resource_mismatch: "资源与描述不符",
+  code_invalid: "卡密不可用",
+  duplicate_purchase: "重复购买",
+  quality_issue: "质量问题",
+  other: "其他问题"
+};
+
+export const withdrawalStatusMap = {
+  requested: { label: "待审核", type: "warning" },
+  approved: { label: "已审核", type: "primary" },
+  wait_user_confirm: { label: "待用户确认", type: "warning" },
+  canceling: { label: "撤销中", type: "warning" },
+  success: { label: "已到账", type: "success" },
+  failed: { label: "转账失败", type: "danger" },
+  cancelled: { label: "已撤销", type: "info" },
+  rejected: { label: "已拒绝", type: "danger" }
+} as const;

@@ -15,6 +15,10 @@ const summary = ref<DashboardSummary>({
     active_circles: 0,
     hidden_messages: 0,
     published_resource_cards: 0
+  },
+  finance: {
+    open_after_sales: 0,
+    pending_withdrawals: 0
   }
 });
 
@@ -63,6 +67,18 @@ onMounted(loadSummary);
         <div class="metric">
           <span>注册用户</span>
           <strong>{{ summary.content.users }}</strong>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="12" :lg="6">
+        <div class="metric urgent">
+          <span>待处理售后</span>
+          <strong>{{ summary.finance?.open_after_sales || 0 }}</strong>
+        </div>
+      </el-col>
+      <el-col :xs="24" :sm="12" :lg="6">
+        <div class="metric urgent">
+          <span>待审核提现</span>
+          <strong>{{ summary.finance?.pending_withdrawals || 0 }}</strong>
         </div>
       </el-col>
     </el-row>

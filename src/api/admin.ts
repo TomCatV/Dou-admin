@@ -66,6 +66,10 @@ export type DashboardSummary = {
     hidden_messages: number;
     published_resource_cards: number;
   };
+  finance?: {
+    open_after_sales: number;
+    pending_withdrawals: number;
+  };
 };
 
 export function unwrap<T>(promise: Promise<ApiResult<T>>) {
@@ -317,6 +321,136 @@ export type ManagedResourceCard = {
   published_at?: string | null;
 };
 
+export type ManualReviewTargetType = "user" | "circle" | "resource_card";
+
+export type ManualReviewItem = {
+  id: string;
+  target_type: ManualReviewTargetType;
+  target_id: string;
+  title: string;
+  summary: string;
+  owner_name: string;
+  owner_id: string;
+  audit_status: string;
+  audit_reason: string;
+  source: string;
+  report_count: number;
+  created_at: string;
+  updated_at: string;
+  raw?: Record<string, any>;
+};
+
+export type ResourceAfterSaleStatus =
+  | "open"
+  | "buyer_withdrew"
+  | "refunded"
+  | "rejected"
+  | "closed";
+
+export type RefundStatus =
+  | "none"
+  | "local_refunded"
+  | "wechat_pending"
+  | "wechat_refunded"
+  | "failed";
+
+export type ResourceAfterSale = {
+  id: string;
+  order_id: string;
+  purchase_id: string;
+  resource_card_id: string;
+  circle_id: string;
+  buyer_user_id: string;
+  creator_user_id: string;
+  complaint_type: string;
+  description: string;
+  evidence_images: string[];
+  contact_email: string;
+  status: ResourceAfterSaleStatus;
+  refund_amount: number;
+  refund_status: RefundStatus;
+  out_refund_no: string;
+  wechat_refund_id: string;
+  wechat_refund_status: string;
+  refund_requested_at?: string | null;
+  refund_notified_at?: string | null;
+  refund_success_time?: string | null;
+  refund_error: string;
+  resolution_note: string;
+  closed_by: string;
+  order_amount: number;
+  order_status: string;
+  paid_at?: string | null;
+  purchase_status: string;
+  purchased_at?: string | null;
+  resource_title: string;
+  resource_summary: string;
+  resource_cover_url: string;
+  delivery_type: string;
+  circle_name: string;
+  buyer: {
+    id: string;
+    nickname: string;
+    avatar: string;
+    dxq_id?: string;
+  };
+  creator: {
+    id: string;
+    nickname: string;
+    avatar: string;
+    dxq_id?: string;
+  };
+  unread_count: number;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string | null;
+};
+
+export type AfterSaleMessage = {
+  id: string;
+  after_sale_id: string;
+  sender_user_id: string;
+  sender_role: string;
+  sender_name: string;
+  sender_avatar: string;
+  message_type: "text" | "image" | "system";
+  content: string;
+  image_url: string;
+  created_at: string;
+};
+
+export type WithdrawalStatus =
+  | "requested"
+  | "approved"
+  | "wait_user_confirm"
+  | "canceling"
+  | "success"
+  | "failed"
+  | "cancelled"
+  | "rejected";
+
+export type CreatorWithdrawal = {
+  id: string;
+  user_id: string;
+  user_dxq_id?: string;
+  user_nickname?: string;
+  user_avatar?: string;
+  circle_id?: string;
+  circle_name?: string;
+  amount: number;
+  status: WithdrawalStatus;
+  out_bill_no: string;
+  transfer_bill_no: string;
+  package_info: string;
+  failure_reason: string;
+  remark: string;
+  requested_at: string;
+  approved_at?: string | null;
+  submitted_at?: string | null;
+  completed_at?: string | null;
+  updated_at: string;
+};
+
 export const managedUsersApi = {
   list: (params: Record<string, any>) =>
     unwrap(
@@ -335,6 +469,37 @@ export const managedUsersApi = {
     ),
   update: (id: string, data: Record<string, any>) =>
     unwrap(http.request<ApiResult<ManagedUser>>("patch", `/users/${id}`, { data }))
+};
+
+export const manualReviewsApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ManualReviewItem>>>(
+        "get",
+        "/manual-reviews",
+        { params }
+      )
+    ),
+  detail: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          item: ManualReviewItem;
+          logs: Array<Record<string, any>>;
+        }>
+      >("get", `/manual-reviews/${id}`)
+    ),
+  action: (
+    id: string,
+    data: { audit_status: string; audit_reason: string; target_status?: string }
+  ) =>
+    unwrap(
+      http.request<ApiResult<{ item: ManualReviewItem }>>(
+        "post",
+        `/manual-reviews/${id}/actions`,
+        { data }
+      )
+    )
 };
 
 export const managedCirclesApi = {
@@ -390,6 +555,96 @@ export const managedResourceCardsApi = {
       http.request<ApiResult<ManagedResourceCard>>(
         "patch",
         `/resource-cards/${id}`,
+        { data }
+      )
+    )
+};
+
+export const afterSalesApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ResourceAfterSale>>>(
+        "get",
+        "/after-sales",
+        { params }
+      )
+    ),
+  detail: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          after_sale: ResourceAfterSale;
+          messages: AfterSaleMessage[];
+        }>
+      >("get", `/after-sales/${id}`)
+    ),
+  refund: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<
+        ApiResult<{ after_sale: ResourceAfterSale; ambiguous?: boolean }>
+      >("post", `/after-sales/${id}/refund`, { data })
+    ),
+  reject: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<ApiResult<{ after_sale: ResourceAfterSale }>>(
+        "post",
+        `/after-sales/${id}/reject`,
+        { data }
+      )
+    ),
+  syncRefund: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ after_sale: ResourceAfterSale }>>(
+        "post",
+        `/after-sales/${id}/refund/sync`
+      )
+    )
+};
+
+export const withdrawalsApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<CreatorWithdrawal>>>(
+        "get",
+        "/withdrawals",
+        { params }
+      )
+    ),
+  detail: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ withdrawal: CreatorWithdrawal }>>(
+        "get",
+        `/withdrawals/${id}`
+      )
+    ),
+  approve: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<ApiResult<{ withdrawal: CreatorWithdrawal }>>(
+        "post",
+        `/withdrawals/${id}/approve`,
+        { data }
+      )
+    ),
+  reject: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<ApiResult<{ withdrawal: CreatorWithdrawal }>>(
+        "post",
+        `/withdrawals/${id}/reject`,
+        { data }
+      )
+    ),
+  sync: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ withdrawal: CreatorWithdrawal }>>(
+        "post",
+        `/withdrawals/${id}/sync`
+      )
+    ),
+  cancel: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<ApiResult<{ withdrawal: CreatorWithdrawal }>>(
+        "post",
+        `/withdrawals/${id}/cancel`,
         { data }
       )
     )

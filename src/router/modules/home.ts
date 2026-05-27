@@ -72,6 +72,36 @@ export default {
       }
     },
     {
+      path: "/manual-reviews",
+      name: "ManualReviews",
+      component: () => import("@/views/manual-reviews/index.vue"),
+      meta: {
+        title: "人工复核",
+        icon: "ep/view",
+        roles: ["super_admin", "operator", "viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/after-sales",
+      name: "AfterSales",
+      component: () => import("@/views/after-sales/index.vue"),
+      meta: {
+        title: "售后退款",
+        icon: "ep/service",
+        roles: ["super_admin", "operator", "viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/withdrawals",
+      name: "Withdrawals",
+      component: () => import("@/views/withdrawals/index.vue"),
+      meta: {
+        title: "提现审核",
+        icon: "ep/wallet",
+        roles: ["super_admin", "operator", "viewer"]
+      }
+    },
+    {
       path: "/admin-users",
       name: "AdminUsers",
       component: () => import("@/views/admin-users/index.vue"),

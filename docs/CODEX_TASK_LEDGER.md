@@ -66,3 +66,46 @@
   - `pnpm build`
 - 下一步：继续开发人工复核、售后退款、提现审核页面。
 - 风险与回滚：页面依赖 Dou-Server 最新 `/api/admin/users`、`/api/admin/circles`、`/api/admin/resource-cards`，上线需先部署后端。
+
+## 2026-05-26
+
+### 管理端复核、售后、提现闭环
+
+- 时间：2026-05-26 23:05 (Asia/Shanghai)
+- 任务目标：前后端协同补齐 Dou 管理后台 `/api/admin` 能力，新增人工复核、售后退款、提现审核页面。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/utils/labels.ts`
+  - `src/views/manual-reviews/index.vue`
+  - `src/views/after-sales/index.vue`
+  - `src/views/withdrawals/index.vue`
+  - `src/views/users/index.vue`
+  - `src/views/circles/index.vue`
+  - `src/views/resource-cards/index.vue`
+  - `src/views/account/security.vue`
+  - `src/views/welcome/index.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- Dou-Server 改动文件：
+  - `src/db/migrations/027_admin_finance_reviews.sql`
+  - `src/lib/adminPermissions.js`
+  - `src/routes/admin/index.js`
+  - `src/routes/admin/dashboard.routes.js`
+  - `src/routes/admin/resourceCards.routes.js`
+  - `src/routes/admin/manualReviews.routes.js`
+  - `src/routes/admin/afterSales.routes.js`
+  - `src/routes/admin/withdrawals.routes.js`
+- 验证：
+  - Dou-Server `node --check src/routes/admin/manualReviews.routes.js`
+  - Dou-Server `node --check src/routes/admin/afterSales.routes.js`
+  - Dou-Server `node --check src/routes/admin/withdrawals.routes.js`
+  - Dou-Server `node --check src/routes/admin/index.js`
+  - Dou-Server `node --check src/app.js`
+  - Dou-Server 临时库迁移完整通过
+  - Dou-Server `/api/admin` 登录、工作台、用户、圈子、资源卡、人工复核、售后、提现列表 smoke test 通过
+- 后端提交：`b0ff65c feat: 增加管理后台接口`，已推送 `master`。
+- 备注：本机 `pnpm install` 在 Dou-Admin 依赖链接阶段持续超时，前端 `vue-tsc` 因顶层类型依赖未链接完整未能完成。
+- 下一步：部署后端迁移，线上用真实管理员账号完成资金动作联调。
+- 风险与回滚：新增后端管理端路由独立挂载在 `/api/admin`，不改动小程序 `/api/v0.9` 路由；如管理后台异常，可回滚 Dou-Server 最新提交或临时移除 `/api/admin` 挂载。

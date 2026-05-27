@@ -127,6 +127,28 @@ export type TenantAfterSale = {
   updated_at: string;
 };
 
+export type TenantLead = {
+  id: string;
+  circle_id: string;
+  user_id: string;
+  name: string;
+  phone: string;
+  wechat_id: string;
+  source: string;
+  intent_level: "low" | "medium" | "high";
+  status: "new" | "contacted" | "converted" | "lost";
+  tags: string[];
+  note: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TenantConversionSummary = {
+  leads: Record<string, number>;
+  tools: Record<string, number>;
+  funnel: Record<string, number>;
+};
+
 export function unwrap<T>(promise: Promise<ApiResult<T>>) {
   return promise.then(res => {
     if (res?.code !== 0) {
@@ -208,6 +230,115 @@ export const tenantApi = {
       http.request<ApiResult<Record<string, any>>>(
         "post",
         "/tenant/withdrawals",
+        { data }
+      )
+    )
+};
+
+export const tenantConversionApi = {
+  summary: () =>
+    unwrap(
+      http.request<ApiResult<TenantConversionSummary>>(
+        "get",
+        "/tenant/conversion/summary"
+      )
+    ),
+  leads: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<TenantLead>>>(
+        "get",
+        "/tenant/conversion/leads",
+        { params }
+      )
+    ),
+  createLead: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ lead: TenantLead }>>(
+        "post",
+        "/tenant/conversion/leads",
+        { data }
+      )
+    ),
+  updateLead: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ lead: TenantLead }>>(
+        "patch",
+        `/tenant/conversion/leads/${id}`,
+        { data }
+      )
+    ),
+  tags: () =>
+    unwrap(
+      http.request<ApiResult<{ items: Array<Record<string, any>> }>>(
+        "get",
+        "/tenant/conversion/tags"
+      )
+    ),
+  createTag: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<Record<string, any>>>(
+        "post",
+        "/tenant/conversion/tags",
+        { data }
+      )
+    ),
+  welcome: () =>
+    unwrap(
+      http.request<ApiResult<{ automation: Record<string, any> }>>(
+        "get",
+        "/tenant/conversion/welcome-automation"
+      )
+    ),
+  saveWelcome: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ saved: boolean }>>(
+        "put",
+        "/tenant/conversion/welcome-automation",
+        { data }
+      )
+    ),
+  coupons: () =>
+    unwrap(
+      http.request<ApiResult<{ items: Array<Record<string, any>> }>>(
+        "get",
+        "/tenant/conversion/coupons"
+      )
+    ),
+  createCoupon: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<Record<string, any>>>(
+        "post",
+        "/tenant/conversion/coupons",
+        { data }
+      )
+    ),
+  inviteCodes: () =>
+    unwrap(
+      http.request<ApiResult<{ items: Array<Record<string, any>> }>>(
+        "get",
+        "/tenant/conversion/invite-codes"
+      )
+    ),
+  createInviteCode: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<Record<string, any>>>(
+        "post",
+        "/tenant/conversion/invite-codes",
+        { data }
+      )
+    ),
+  campaigns: () =>
+    unwrap(
+      http.request<ApiResult<{ items: Array<Record<string, any>> }>>(
+        "get",
+        "/tenant/conversion/campaigns"
+      )
+    ),
+  createCampaign: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<Record<string, any>>>(
+        "post",
+        "/tenant/conversion/campaigns",
         { data }
       )
     )

@@ -259,6 +259,36 @@ export default {
       }
     },
     {
+      path: "/tenant/conversion/leads",
+      name: "TenantConversionLeads",
+      component: () => import("@/views/tenant/conversion-leads.vue"),
+      meta: {
+        title: "私域线索",
+        icon: "ep/user-filled",
+        roles: ["tenant_owner", "tenant_staff", "circle_admin"]
+      }
+    },
+    {
+      path: "/tenant/conversion/tools",
+      name: "TenantConversionTools",
+      component: () => import("@/views/tenant/conversion-tools.vue"),
+      meta: {
+        title: "转化工具",
+        icon: "ep/promotion",
+        roles: ["tenant_owner", "tenant_staff", "circle_admin"]
+      }
+    },
+    {
+      path: "/tenant/conversion/funnel",
+      name: "TenantConversionFunnel",
+      component: () => import("@/views/tenant/conversion-funnel.vue"),
+      meta: {
+        title: "转化漏斗",
+        icon: "ep/data-analysis",
+        roles: ["tenant_owner", "tenant_staff", "tenant_viewer", "circle_admin"]
+      }
+    },
+    {
       path: "/account/security",
       name: "AccountSecurity",
       component: () => import("@/views/account/security.vue"),

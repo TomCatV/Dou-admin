@@ -9,11 +9,13 @@ import LaySidebarTopCollapse from "../lay-sidebar/components/SidebarTopCollapse.
 
 import LogoutCircleRLine from "~icons/ri/logout-circle-r-line";
 import Setting from "~icons/ri/settings-3-line";
+import Lock from "~icons/ep/lock";
 
 const {
   layout,
   device,
   logout,
+  goChangePassword,
   onPanel,
   pureApp,
   username,
@@ -54,6 +56,10 @@ const {
         </span>
         <template #dropdown>
           <el-dropdown-menu class="logout">
+            <el-dropdown-item @click="goChangePassword">
+              <IconifyIconOffline :icon="Lock" style="margin: 5px" />
+              修改密码
+            </el-dropdown-item>
             <el-dropdown-item @click="logout">
               <IconifyIconOffline
                 :icon="LogoutCircleRLine"
@@ -124,7 +130,7 @@ const {
 }
 
 .logout {
-  width: 120px;
+  width: 128px;
 
   ::v-deep(.el-dropdown-menu__item) {
     display: inline-flex;

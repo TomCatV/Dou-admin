@@ -84,6 +84,10 @@ export function useNav() {
     useUserStoreHook().logOut();
   }
 
+  function goChangePassword() {
+    router.push("/account/security");
+  }
+
   function backTopMenu() {
     router.push(getTopMenu()?.path);
   }
@@ -132,6 +136,7 @@ export function useNav() {
     device,
     layout,
     logout,
+    goChangePassword,
     routers,
     $storage,
     isFullscreen,

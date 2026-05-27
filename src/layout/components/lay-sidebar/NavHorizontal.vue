@@ -12,6 +12,7 @@ import LaySidebarFullScreen from "../lay-sidebar/components/SidebarFullScreen.vu
 
 import LogoutCircleRLine from "~icons/ri/logout-circle-r-line";
 import Setting from "~icons/ri/settings-3-line";
+import Lock from "~icons/ep/lock";
 
 const menuRef = ref();
 const showLogo = ref(
@@ -24,6 +25,7 @@ const {
   route,
   title,
   logout,
+  goChangePassword,
   onPanel,
   getLogo,
   username,
@@ -85,6 +87,10 @@ onMounted(() => {
         </span>
         <template #dropdown>
           <el-dropdown-menu class="logout">
+            <el-dropdown-item @click="goChangePassword">
+              <IconifyIconOffline :icon="Lock" style="margin: 5px" />
+              修改密码
+            </el-dropdown-item>
             <el-dropdown-item @click="logout">
               <IconifyIconOffline
                 :icon="LogoutCircleRLine"
@@ -112,7 +118,7 @@ onMounted(() => {
 }
 
 .logout {
-  width: 120px;
+  width: 128px;
 
   ::v-deep(.el-dropdown-menu__item) {
     display: inline-flex;

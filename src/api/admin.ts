@@ -72,6 +72,61 @@ export type DashboardSummary = {
   };
 };
 
+export type TenantDashboard = {
+  circle: ManagedCircle;
+  main_room: { id: string; name: string } | null;
+  metrics: Record<string, number>;
+  wallet: Record<string, number>;
+  settlement: Record<string, any>;
+};
+
+export type TenantMember = {
+  id: string;
+  user_id: string;
+  dxq_id: string;
+  nickname: string;
+  avatar: string;
+  user_status: string;
+  role: string;
+  mute_until?: string | null;
+  joined_at: string;
+};
+
+export type TenantOrder = {
+  id: string;
+  user_id: string;
+  buyer_nickname: string;
+  buyer_dxq_id: string;
+  order_type: string;
+  resource_card_id: string;
+  resource_title: string;
+  room_id: string;
+  room_name: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paid_at?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TenantAfterSale = {
+  id: string;
+  order_id: string;
+  resource_card_id: string;
+  resource_title: string;
+  buyer_user_id: string;
+  buyer_nickname: string;
+  complaint_type: string;
+  description: string;
+  status: string;
+  refund_amount: number;
+  refund_status: string;
+  resolution_note: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export function unwrap<T>(promise: Promise<ApiResult<T>>) {
   return promise.then(res => {
     if (res?.code !== 0) {
@@ -84,6 +139,78 @@ export function unwrap<T>(promise: Promise<ApiResult<T>>) {
 export const dashboardApi = {
   summary: () =>
     unwrap(http.request<ApiResult<DashboardSummary>>("get", "/dashboard/summary"))
+};
+
+export const tenantApi = {
+  dashboard: () =>
+    unwrap(http.request<ApiResult<TenantDashboard>>("get", "/tenant/dashboard")),
+  circle: () =>
+    unwrap(
+      http.request<
+        ApiResult<{ circle: ManagedCircle; rooms: Array<Record<string, any>> }>
+      >("get", "/tenant/circle")
+    ),
+  updateCircle: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ circle: ManagedCircle }>>(
+        "patch",
+        "/tenant/circle",
+        { data }
+      )
+    ),
+  members: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<TenantMember>>>(
+        "get",
+        "/tenant/members",
+        { params }
+      )
+    ),
+  resourceCards: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ManagedResourceCard>>>(
+        "get",
+        "/tenant/resource-cards",
+        { params }
+      )
+    ),
+  orders: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<TenantOrder>>>(
+        "get",
+        "/tenant/orders",
+        { params }
+      )
+    ),
+  afterSales: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<TenantAfterSale>>>(
+        "get",
+        "/tenant/after-sales",
+        { params }
+      )
+    ),
+  wallet: () =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          wallet: Record<string, number>;
+          payout_account: Record<string, any> | null;
+          settlement: Record<string, any>;
+          recent_ledger: Array<Record<string, any>>;
+          config: Record<string, any>;
+          withdrawals: Array<Record<string, any>>;
+        }>
+      >("get", "/tenant/wallet")
+    ),
+  createWithdrawal: (data: { amount: number; remark?: string }) =>
+    unwrap(
+      http.request<ApiResult<Record<string, any>>>(
+        "post",
+        "/tenant/withdrawals",
+        { data }
+      )
+    )
 };
 
 export const reportsApi = {

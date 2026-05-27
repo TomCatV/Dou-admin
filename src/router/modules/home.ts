@@ -199,6 +199,66 @@ export default {
       }
     },
     {
+      path: "/tenant/dashboard",
+      name: "TenantDashboard",
+      component: () => import("@/views/tenant/dashboard.vue"),
+      meta: {
+        title: "圈主工作台",
+        icon: "ep/monitor",
+        roles: ["tenant_owner", "tenant_staff", "tenant_viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/tenant/circle",
+      name: "TenantCircle",
+      component: () => import("@/views/tenant/circle.vue"),
+      meta: {
+        title: "我的圈子",
+        icon: "ep/connection",
+        roles: ["tenant_owner", "tenant_staff", "tenant_viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/tenant/members",
+      name: "TenantMembers",
+      component: () => import("@/views/tenant/members.vue"),
+      meta: {
+        title: "圈内成员",
+        icon: "ep/user",
+        roles: ["tenant_owner", "tenant_staff", "tenant_viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/tenant/resources",
+      name: "TenantResources",
+      component: () => import("@/views/tenant/resources.vue"),
+      meta: {
+        title: "圈内资源",
+        icon: "ep/goods",
+        roles: ["tenant_owner", "tenant_staff", "tenant_viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/tenant/orders",
+      name: "TenantOrders",
+      component: () => import("@/views/tenant/orders.vue"),
+      meta: {
+        title: "订单售后",
+        icon: "ep/tickets",
+        roles: ["tenant_owner", "tenant_staff", "tenant_viewer", "circle_admin"]
+      }
+    },
+    {
+      path: "/tenant/wallet",
+      name: "TenantWallet",
+      component: () => import("@/views/tenant/wallet.vue"),
+      meta: {
+        title: "钱包提现",
+        icon: "ep/wallet",
+        roles: ["tenant_owner", "tenant_staff", "circle_admin"]
+      }
+    },
+    {
       path: "/account/security",
       name: "AccountSecurity",
       component: () => import("@/views/account/security.vue"),

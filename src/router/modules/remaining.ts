@@ -10,6 +10,46 @@ export default [
       showLink: false
     }
   },
+  {
+    path: "/shop/store/:storeKey?",
+    name: "PublicShopStore",
+    component: () => import("@/views/shop/store.vue"),
+    meta: {
+      title: "店铺",
+      showLink: false,
+      public: true
+    }
+  },
+  {
+    path: "/shop/product/:productKey?",
+    name: "PublicShopProduct",
+    component: () => import("@/views/shop/product.vue"),
+    meta: {
+      title: "商品详情",
+      showLink: false,
+      public: true
+    }
+  },
+  {
+    path: "/shop/checkout/:draftId",
+    name: "PublicShopCheckout",
+    component: () => import("@/views/shop/checkout.vue"),
+    meta: {
+      title: "确认订单",
+      showLink: false,
+      public: true
+    }
+  },
+  {
+    path: "/shop/order/:orderId",
+    name: "PublicShopOrder",
+    component: () => import("@/views/shop/order.vue"),
+    meta: {
+      title: "订单状态",
+      showLink: false,
+      public: true
+    }
+  },
   // 全屏403（无权访问）页面
   {
     path: "/access-denied",

@@ -138,11 +138,12 @@ P1 可以不立即启用完整店铺表。如果启用，字段如下：
 | 订单草稿 | `/checkout/:draftId` | 待确认、过期、商品改价、库存不足 |
 | 取货页 | `/orders/:orderId` | 待支付、已关闭、已支付占位、售后入口占位 |
 
-首版 H5 承载建议：
+首版 H5 承载决策：
 
-1. 若已有 H5 构建策略，放在 Dou-uniapp H5 端。
-2. 若要独立部署，新增 `Dou-Shop-H5` 或仓内 `shop-h5` 子应用，域名建议 `shop.doucatapp.top`。
-3. P1 代码实现前必须确认承载方式；未确认时先完成后端公开接口和后台链接字段。
+1. H5 买家购买页放在 `Dou-Admin` 的同一套 Vite 构建产物内，使用 `/shop/*` 公开路由，不进入后台布局，不要求管理员登录。
+2. `Dou-Admin` 后台只负责商品管理、分类、H5 可见性和复制公开链接；公开购买页仍调用 `Dou-Server` 的 `/api/shop/*`。
+3. `Dou-uniapp` 不承载本阶段 H5 购买页，避免把小程序用户端与 PC 管理后台的公开商城入口混在一起。
+4. 域名建议继续使用 `shop.doucatapp.top` 或管理后台同域公开入口，并在 Nginx 中把 `/api/shop` 反代到 `Dou-Server`。
 
 ## 风控和内容安全
 
@@ -190,19 +191,19 @@ git diff --check
 
 | 参数 | 填写指导 |
 | --- | --- |
-| H5 承载方式 | 选择 Dou-uniapp H5、独立 Dou-Shop-H5 仓库、或 Dou-Admin 内子应用 |
-| H5 域名 | 建议 `shop.doucatapp.top`，需配置 HTTPS、CORS、微信/支付宝相关白名单 |
+| H5 承载方式 | 已定为 Dou-Admin 公开路由 `/shop/*`，不再放入 Dou-uniapp |
+| H5 域名 | 建议 `shop.doucatapp.top` 或 Admin 同域公开入口，需配置 HTTPS、CORS、微信/支付宝相关白名单 |
 | 店铺短链规则 | 可先用 `circle_id`，后续再允许用户自定义 slug |
 
 ## 2026-05-28 P1 实现修订
 
-本轮按“先兼容、再抽象”的方案落地首版 P1，承载方式先采用 `Dou-uniapp` 的 H5 页面：
+本轮按用户确认后的仓库边界修订 P1：H5 买家购买页由 `Dou-Admin` 公开构建入口承载，`Dou-uniapp` 的 H5 页面提交已撤回。
 
 1. 后端新增 `034_commerce_h5_foundation.sql`，包含 `product_categories`、`commerce_order_drafts`，并给 `resource_cards` 增加 `category_id`、`share_token`、`h5_status`。
 2. 后端新增 `/api/shop/*` 公共接口，支持店铺主页、公开商品详情、订单草稿创建、草稿查询和订单公开状态查询。
 3. 圈主后台新增商品分类接口和商品公开链接接口；商品中心支持按分类筛选、设置分类、设置 H5 可见性、复制 H5 商品链接。
-4. H5 页面新增 `pages/shop/store`、`pages/shop/product`、`pages/shop/checkout`、`pages/shop/order`，P1 只展示支付占位，不生成真实支付二维码。
-5. 实际 H5 链接首版使用 uniapp H5 hash 路由：`/#/pages/shop/product?id={productKey}` 与 `/#/pages/shop/store?store={storeKey}`。若后续服务器或 CDN 做短链重写，可再把 `/p/:productKey`、`/s/:storeKey` 映射到上述页面。
+4. `Dou-Admin` 新增公开路由 `/shop/store/:storeKey`、`/shop/product/:productKey`、`/shop/checkout/:draftId`、`/shop/order/:orderId`，P1 只展示支付占位，不生成真实支付二维码。
+5. 实际 H5 链接首版使用 Admin hash 路由：`/#/shop/product/{productKey}` 与 `/#/shop/store/{storeKey}`。若后续服务器或 CDN 做短链重写，可再把 `/p/:productKey`、`/s/:storeKey` 映射到上述页面。
 6. 敏感边界保持不变：公开接口不返回 `resource_url`、`resource_access_code`、`doc_content`、`doc_url`、卡密明文和后台审核原因。
 
 本轮验证：
@@ -219,9 +220,8 @@ npm run migrate # 使用临时 DATABASE_PATH 全量迁移
 H5 承载仓验证：
 
 ```powershell
-node --check api/v09/client.js
-node --check api/v09/index.js
-node -e "JSON.parse(require('fs').readFileSync('pages.json','utf8'))"
+pnpm typecheck
+pnpm build
 ```
 
-并用 Vue SFC 编译器验证新增 `pages/shop/*.vue` 的 template/script 均可编译。
+并用公开路由回归店铺页、商品详情页、确认订单页和订单状态页。

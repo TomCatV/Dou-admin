@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-28 19:10 (Asia/Shanghai)
+最后更新时间：2026-05-28 19:25 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -105,9 +105,9 @@
 ## 2026-05-28 P1 商品中心与 H5 商品页后台
 
 - 当前目标：按 P1 设计把商品中心扩展到 H5 独立商品页，后台侧补分类、H5 可见性和公开链接复制。
-- 已改文件：`src/api/admin.ts`、`src/views/tenant/resources.vue`、`docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`、`docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
-- 已完成前端能力：商品中心新增分类管理弹窗、分类筛选、商品编辑分类、H5 可见/隐藏设置；复制链接改为调用后端公开链接接口，优先使用 `VITE_SHOP_BASE_URL` 拼接 uniapp H5 hash 路由。
+- 已改文件：`src/api/admin.ts`、`src/api/shop.ts`、`src/router/index.ts`、`src/router/modules/remaining.ts`、`src/views/tenant/resources.vue`、`src/views/shop/*`、`types/router.d.ts`、`src/layout/types.ts`、`docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`、`docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：商品中心新增分类管理弹窗、分类筛选、商品编辑分类、H5 可见/隐藏设置；复制链接改为调用后端公开链接接口，优先使用 `VITE_SHOP_BASE_URL` 拼接 Admin 公开 hash 路由 `/#/shop/product/{productKey}`；公开购买页放在 Admin `/shop/*` 路由，不进入后台布局、不要求登录。
 - 协同后端能力：Dou-Server 已新增 `product_categories`、`commerce_order_drafts`、`/api/shop/*`、租户分类接口和公开链接接口。
-- 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；三仓 `git diff --check` 通过（仅 CRLF 转换提示）；本次改动文本经 Node UTF-8 扫描无 U+FFFD 或私用区乱码字符。
-- 下一步计划：P1 随本次三仓提交推送完成；P2 前确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。
+- 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server 公开路由和租户商品路由 `node --check` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示），Admin/Server 改动文本与外层续航文档经 Node UTF-8 扫描无 U+FFFD 或私用区乱码字符。
+- 下一步计划：提交推送后回归 Admin 公开店铺页、商品详情页、确认订单页和订单状态页；P2 前确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。
 - 风险与回滚：若分类或 H5 链接入口异常，可临时隐藏商品中心分类管理与复制 H5 链接按钮，后端接口和新增字段保留不影响既有资源卡管理。

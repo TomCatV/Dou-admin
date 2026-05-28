@@ -350,7 +350,7 @@ async function deleteResource(row: ManagedResourceCard) {
 async function copyLink(row: ManagedResourceCard) {
   const base = String(import.meta.env.VITE_SHOP_BASE_URL || window.location.origin).replace(/\/$/, "");
   const link = await tenantApi.resourceCardPublicLink(row.id).catch(() => null);
-  const path = link?.public_path || row.public_path || `/#/pages/shop/product?id=${row.id}`;
+  const path = link?.public_path || row.public_path || `/#/shop/product/${row.share_token || row.id}`;
   const url = link?.public_url && !import.meta.env.VITE_SHOP_BASE_URL
     ? link.public_url
     : /^https?:\/\//i.test(path)

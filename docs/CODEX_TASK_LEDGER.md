@@ -311,11 +311,11 @@
   - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
   - `docs/CODEX_CONTINUITY_STATE.md`
   - `docs/CODEX_TASK_LEDGER.md`
-- 协同改动：Dou-Server 新增 `/api/shop/*`、商品分类和公开链接接口；Dou-uniapp 新增 H5 店铺/商品/确认订单/订单状态页。
+- 协同改动：Dou-Server 新增 `/api/shop/*`、商品分类和公开链接接口；H5 买家页改由 Dou-Admin `/shop/*` 公开路由承载，Dou-uniapp 不参与本阶段 H5 购买页。
 - 验证：
   - Dou-Admin `pnpm typecheck` 通过。
   - Dou-Server 新增后端路由语法检查、临时库迁移和公开 API smoke 已通过。
-  - Dou-uniapp 新增 H5 页 SFC parse/template/script 编译通过。
+  - 原方案曾验证 Dou-uniapp H5 页 SFC 编译；现已按用户确认撤回，最终承载改为 Dou-Admin 公开路由。
 - 下一步：继续执行三仓提交推送；P2 前确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。
 - 风险与回滚：如分类管理或 H5 链接异常，可先隐藏后台分类管理和复制 H5 链接入口，商品基础管理仍可回退到 P0 能力。
 
@@ -336,3 +336,26 @@
   - 本次改动文本经 Node UTF-8 扫描无 U+FFFD 或私用区乱码字符。
 - 下一步：随三仓提交推送；线上回归商品分类管理、H5 可见性、公开链接复制和 H5 页面承接。
 - 风险与回滚：若后台分类或链接入口异常，可临时隐藏分类管理和复制 H5 链接按钮，保留 P0 商品基础管理能力。
+
+### P1 H5 承载纠偏
+- 时间：2026-05-28 19:25 (Asia/Shanghai)
+- 任务目标：按用户确认撤回 Dou-uniapp 的 H5 页面，改为由 Dou-Admin 公开构建入口承载买家购买页。
+- 改动仓库：Dou-Admin、Dou-Server、Dou-uniapp
+- Dou-Admin 改动文件：
+  - `src/api/shop.ts`
+  - `src/router/index.ts`
+  - `src/router/modules/remaining.ts`
+  - `src/views/shop/store.vue`
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `src/views/shop/order.vue`
+  - `src/views/shop/format.ts`
+  - `src/views/tenant/resources.vue`
+  - `types/router.d.ts`
+  - `src/layout/types.ts`
+  - `docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+- 协同改动：Dou-Server 公开链接路径改为 `/#/shop/product/{productKey}` 与 `/#/shop/store/{storeKey}`；Dou-uniapp 已用 revert 撤回 `feat: 增加 P1 H5 商品页`。
+- 验证：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server `node --check src/routes/shop/index.js`、`src/routes/admin/tenantProductCategories.routes.js`、`src/routes/admin/tenant.routes.js`、`src/lib/resourceCards.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示），Admin/Server 改动文本与外层续航文档 UTF-8 扫描通过。
+- 下一步：提交并推送 Dou-Admin、Dou-Server；Dou-uniapp 已推送撤回提交 `582735a`。
+- 风险与回滚：若 Admin 公开页异常，可临时隐藏后台复制链接入口或关闭 H5 域名；后端 `/api/shop` 公开接口保留，不影响小程序资源卡原购买链路。

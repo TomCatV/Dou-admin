@@ -272,3 +272,30 @@
 - 验证：`dou-commerce-production-workflow` skill 快速校验通过；Dou-Admin `git diff --check` 通过；方案文档、续航文档和本地 skill 文件 UTF-8 扫描无 U+FFFD。
 - 下一步：P0 店铺资料页、通知跳转筛选和全角色验收矩阵已补到实现级设计；接下来按文档开发 P0 剩余项和验收脚本。
 - 风险与回滚：本次只固化研发规则和文档门禁，不改业务运行逻辑；如后续阶段边界调整，可先改设计文档和技能规则，再进入代码。
+
+### 圈主商业后台 P0 店铺资料权限兜底
+- 时间：2026-05-28 14:54 (Asia/Shanghai)
+- 任务目标：修复店铺资料 PATCH 误用只读权限的 P0 安全缺口，并将圈主后台店铺页调整为“店铺资料”视角，展示套餐只读和权限提示。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/views/tenant/circle.vue`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/COMMERCIAL_MULTI_TENANT_ADMIN.md`
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `docs/CREATOR_COMMERCE_P0_FOUNDATION_IMPLEMENTATION_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- Dou-Server 改动文件：
+  - `src/lib/adminPermissions.js`
+  - `src/routes/admin/tenant.routes.js`
+- 验证：
+  - Dou-Server `node --check src/routes/admin/tenant.routes.js` 通过。
+  - Dou-Server `node --check src/lib/adminPermissions.js` 通过。
+  - Dou-Server 权限矩阵 smoke 通过：owner/staff 拥有 `tenant:store:manage`，viewer 不拥有。
+  - Dou-Server 管理租户路由与权限模块动态导入通过。
+  - Dou-Admin `pnpm typecheck`、`pnpm build` 通过。
+  - 双仓 `git diff --check` 通过。
+- 下一步：线上用 owner、staff、viewer 和到期租户回归店铺资料保存、前端只读提示、后端 403/402 拒绝和审计日志。
+- 风险与回滚：如店铺资料保存异常，可临时隐藏保存按钮或回滚本次店铺资料权限提交；后端独立 `tenant:store:manage` 不影响小程序资源卡购买链路。

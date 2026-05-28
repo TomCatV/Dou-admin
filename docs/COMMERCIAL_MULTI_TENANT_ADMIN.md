@@ -250,7 +250,7 @@ CREATE TABLE tenant_admin_bindings (
 ### 圈主后台
 
 - 圈主工作台
-- 我的圈子
+- 店铺资料
 - 成员管理
 - 内容与资源
 - 订单与售后

@@ -185,7 +185,7 @@ export default [
         name: "TenantCircle",
         component: () => import("@/views/tenant/circle.vue"),
         meta: {
-          title: "我的圈子",
+          title: "店铺资料",
           icon: "ep/connection",
           roles: tenantRoles
         }

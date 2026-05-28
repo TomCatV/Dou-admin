@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-28 13:47 (Asia/Shanghai)
+最后更新时间：2026-05-28 14:54 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -92,3 +92,12 @@
   - `C:\Users\Vincent\Desktop\Dou-Circle\docs\CODEX_TASK_LEDGER.md`
 - 当前判断：P0 商品中心写操作已完成一轮代码；P0 店铺资料页、通知跳转筛选和全角色验收矩阵已补到实现级设计，可继续按文档开发 P0 剩余项。P1-P5 仍是方向级规划，不允许直接写业务代码。
 - 下一步：按文档开发 P0 店铺资料页、通知跳转筛选和 P0 验收脚本；P0 验收后再补 P1 商品中心与 H5 商品页详细设计。
+
+## 2026-05-28 P0 店铺资料权限兜底
+
+- 当前目标：修复店铺资料 PATCH 曾复用只读查看权限的 P0 缺口，确保 viewer 即使绕过前端直调接口也不能保存。
+- 已改文件：`src/views/tenant/circle.vue`、`src/router/modules/home.ts`、`src/api/admin.ts`、`docs/ADMIN_USER_MANUAL.md`、`docs/COMMERCIAL_MULTI_TENANT_ADMIN.md`、`docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`、`docs/CREATOR_COMMERCE_P0_FOUNDATION_IMPLEMENTATION_DESIGN.md`，并协同 Dou-Server `src/lib/adminPermissions.js`、`src/routes/admin/tenant.routes.js`。
+- 已完成前端能力：`/tenant/circle` 菜单和页面切换为“店铺资料”视角，展示套餐、到期只读状态、店铺预览链接、权限提示；保存按钮按 `tenant:store:manage` 与套餐可写状态双重控制。
+- 后端兜底结论：Dou-Server 新增 `tenant:store:manage` 权限，owner/staff 默认拥有，viewer 默认没有；`PATCH /api/admin/tenant/circle` 改为强制 `tenant:store:manage`，继续执行圈子 scope、套餐只读、内容安全和审计。
+- 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server `node --check src/routes/admin/tenant.routes.js`、`node --check src/lib/adminPermissions.js`、动态导入和权限矩阵 smoke 通过；双仓 `git diff --check` 通过。
+- 下一步计划：提交推送后在线上用 owner、staff、viewer、到期租户回归店铺资料保存、只读提示、后端 403/402 拒绝和审计日志。

@@ -203,7 +203,16 @@ export const tenantApi = {
   circle: () =>
     unwrap(
       http.request<
-        ApiResult<{ circle: ManagedCircle; rooms: Array<Record<string, any>> }>
+        ApiResult<{
+          circle: ManagedCircle;
+          rooms: Array<Record<string, any>>;
+          subscription?: Record<string, any> | null;
+          subscription_status?: Record<string, any>;
+          usage?: Record<string, number>;
+          limits?: Record<string, number>;
+          features?: Record<string, boolean>;
+          writable?: boolean;
+        }>
       >("get", "/tenant/circle")
     ),
   updateCircle: (data: Record<string, any>) =>

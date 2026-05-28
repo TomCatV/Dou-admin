@@ -187,6 +187,7 @@
 - 风险与回滚：前端只展示后端商业控制状态，不单独决定权限；如提示不符合预期，可回滚本次前端展示变更，后端控制仍可独立生效。
 
 ### 右上角通知提醒与圈主商业后台能力整合方案
+
 - 时间：2026-05-28 10:45 (Asia/Shanghai)
 - 任务目标：补齐后台右上角通知提醒，覆盖投诉举报、资金相关、到期相关等待办；同时落地一份对标“链动小铺”的圈主商业后台能力整合方案。
 - 改动仓库：Dou-Admin、Dou-Server
@@ -213,6 +214,7 @@
 - 风险与回滚：通知下拉只读展示后端聚合结果，不改变业务状态；如跳转筛选异常，可先回滚通知组件和对应页面 query 初始化逻辑。方案文档不影响运行。
 
 ### GitHub Actions 发布 SSH 断连兜底
+
 - 时间：2026-05-28 11:30 (Asia/Shanghai)
 - 任务目标：修复 Dou-Admin 发布流水线在 `Switch release` 步骤偶发 `kex_exchange_identification: read: Connection reset by peer` 导致部署失败的问题。
 - 改动仓库：Dou-Admin
@@ -229,6 +231,7 @@
 - 风险与回滚：本次只调整发布 workflow，不影响业务代码；如 workflow 兼容性异常，可回滚本次提交，或手动在服务器执行 `mv dist-next dist` 前先确认 `dist-next/index.html` 存在。
 
 ### 圈主商业后台 P0 详细落地设计
+
 - 时间：2026-05-28 12:52 (Asia/Shanghai)
 - 任务目标：按用户要求继续在 `CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md` 中补齐 P0 设计，而不是直接进入 P1 代码实现。
 - 改动仓库：Dou-Admin
@@ -241,6 +244,7 @@
 - 风险与回滚：本次仅修改中文设计与续航文档，不影响运行；如 P0 边界调整，可直接修订方案文档后再开发。
 
 ### 圈主商业后台 P0 商品中心实装
+
 - 时间：2026-05-28 13:11 (Asia/Shanghai)
 - 任务目标：按生产级和商业级标准推进圈主后台 P0，把商品中心从只读列表升级为可创建、编辑、上下架和管理库存的经营页面。
 - 改动仓库：Dou-Admin、Dou-Server
@@ -258,6 +262,7 @@
 - 风险与回滚：本轮前端写操作依赖 Dou-Server 最新租户商品接口；如线上异常，可先隐藏写按钮或回滚本次 Dou-Admin 提交，后端接口和小程序资源卡购买链路仍可独立运行。
 
 ### 圈主商业后台 P0-P5 研发模式固化
+
 - 时间：2026-05-28 13:47 (Asia/Shanghai)
 - 任务目标：按用户要求把“先设计文档，再写代码；官方文档优先；GitHub 作为工程参考；生产级和商业级标准”固化到本地记忆库、技能和圈主商业后台方案文档。
 - 改动仓库：Dou-Admin
@@ -274,6 +279,7 @@
 - 风险与回滚：本次只固化研发规则和文档门禁，不改业务运行逻辑；如后续阶段边界调整，可先改设计文档和技能规则，再进入代码。
 
 ### 圈主商业后台 P0 店铺资料权限兜底
+
 - 时间：2026-05-28 14:54 (Asia/Shanghai)
 - 任务目标：修复店铺资料 PATCH 误用只读权限的 P0 安全缺口，并将圈主后台店铺页调整为“店铺资料”视角，展示套餐只读和权限提示。
 - 改动仓库：Dou-Admin、Dou-Server
@@ -301,6 +307,7 @@
 - 风险与回滚：如店铺资料保存异常，可临时隐藏保存按钮或回滚本次店铺资料权限提交；后端独立 `tenant:store:manage` 不影响小程序资源卡购买链路。
 
 ### 圈主商业后台 P1 商品中心与 H5 商品页后台
+
 - 时间：2026-05-28 18:43 (Asia/Shanghai)
 - 任务目标：把 P1 设计落实到管理后台商品中心，支持商品分类、H5 可见性和公开链接复制。
 - 改动仓库：Dou-Admin、Dou-Server、Dou-uniapp
@@ -320,6 +327,7 @@
 - 风险与回滚：如分类管理或 H5 链接异常，可先隐藏后台分类管理和复制 H5 链接入口，商品基础管理仍可回退到 P0 能力。
 
 ### 圈主商业后台 P1 前端收口
+
 - 时间：2026-05-28 19:10 (Asia/Shanghai)
 - 任务目标：完成 Dou-Admin 侧 P1 构建与提交前校验。
 - 改动仓库：Dou-Admin、Dou-Server、Dou-uniapp
@@ -338,6 +346,7 @@
 - 风险与回滚：若后台分类或链接入口异常，可临时隐藏分类管理和复制 H5 链接按钮，保留 P0 商品基础管理能力。
 
 ### P1 H5 承载纠偏
+
 - 时间：2026-05-28 19:25 (Asia/Shanghai)
 - 任务目标：按用户确认撤回 Dou-uniapp 的 H5 页面，改为由 Dou-Admin 公开构建入口承载买家购买页。
 - 改动仓库：Dou-Admin、Dou-Server、Dou-uniapp
@@ -359,3 +368,18 @@
 - 验证：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server `node --check src/routes/shop/index.js`、`src/routes/admin/tenantProductCategories.routes.js`、`src/routes/admin/tenant.routes.js`、`src/lib/resourceCards.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示），Admin/Server 改动文本与外层续航文档 UTF-8 扫描通过。
 - 下一步：提交并推送 Dou-Admin、Dou-Server；Dou-uniapp 已推送撤回提交 `582735a`。
 - 风险与回滚：若 Admin 公开页异常，可临时隐藏后台复制链接入口或关闭 H5 域名；后端 `/api/shop` 公开接口保留，不影响小程序资源卡原购买链路。
+
+### P1 订单状态页字段兼容修复
+
+- 时间：2026-05-29 01:15 (Asia/Shanghai)
+- 任务目标：继续回归 Dou-Admin 公开 H5 链路，修复订单状态页字段契约不一致导致的白屏风险。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/shop.ts`
+  - `src/views/shop/order.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `/api/shop/orders/:orderId` 补充 `product_summary`，并返回 `resource_*` 兼容别名，避免前后端非原子部署时订单状态页字段错配。
+- 验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/shop/index.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
+- 下一步：线上继续回归店铺页、商品详情页、确认订单页、订单状态页，以及 429 频控、订单不存在、店铺暂停等错误提示。
+- 风险与回滚：本次仅补公开订单字段兼容与前端展示兜底，不改变草稿、支付或交付状态机；如异常可回滚本次前端展示修复，后端别名保留不影响旧客户端。

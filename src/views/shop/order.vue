@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { shopApi, type PublicOrder } from "@/api/shop";
 import { shopImage, statusLabel, yuan } from "./format";
@@ -10,6 +10,18 @@ const route = useRoute();
 const loading = ref(true);
 const error = ref("");
 const order = ref<PublicOrder | null>(null);
+const orderTitle = computed(
+  () => order.value?.product_title || order.value?.resource_title || "商品"
+);
+const orderSummary = computed(
+  () =>
+    order.value?.product_summary ||
+    order.value?.resource_summary ||
+    "订单已创建，后续交付状态请以页面状态为准。"
+);
+const orderCoverUrl = computed(
+  () => order.value?.product_cover_url || order.value?.resource_cover_url || ""
+);
 
 async function loadOrder() {
   loading.value = true;
@@ -37,11 +49,11 @@ onMounted(loadOrder);
       <p class="eyebrow">订单状态</p>
       <h1>{{ statusLabel(order.status) }}</h1>
       <div class="product-row">
-        <img v-if="shopImage(order.resource_cover_url)" :src="order.resource_cover_url" alt="" />
-        <div v-else class="fallback">{{ order.resource_title.slice(0, 1) }}</div>
+        <img v-if="shopImage(orderCoverUrl)" :src="orderCoverUrl" alt="" />
+        <div v-else class="fallback">{{ orderTitle.slice(0, 1) }}</div>
         <div>
-          <strong>{{ order.resource_title }}</strong>
-          <p>{{ order.resource_summary }}</p>
+          <strong>{{ orderTitle }}</strong>
+          <p>{{ orderSummary }}</p>
         </div>
       </div>
       <dl>
@@ -62,7 +74,9 @@ onMounted(loadOrder);
           <dd>{{ order.updated_at }}</dd>
         </div>
       </dl>
-      <p class="notice">P1 阶段不展示购买后的私密交付内容；支付和交付闭环会在 P2/P3 接入。</p>
+      <p class="notice">
+        P1 阶段不展示购买后的私密交付内容；支付和交付闭环会在 P2/P3 接入。
+      </p>
     </section>
   </main>
 </template>
@@ -78,8 +92,8 @@ onMounted(loadOrder);
 .order-card,
 .state-panel {
   max-width: 760px;
-  margin: 28px auto;
   padding: 22px;
+  margin: 28px auto;
   background: #fff;
   border: 1px solid #e2eae6;
   border-radius: 8px;
@@ -87,8 +101,8 @@ onMounted(loadOrder);
 
 .eyebrow {
   margin: 0 0 8px;
-  color: #327060;
   font-weight: 800;
+  color: #327060;
 }
 
 h1 {
@@ -118,16 +132,16 @@ h1 {
 .fallback {
   display: grid;
   place-items: center;
-  color: #327060;
   font-size: 28px;
   font-weight: 800;
+  color: #327060;
   background: #eef6f2;
 }
 
 .product-row p,
 .notice {
-  color: #69736e;
   line-height: 1.7;
+  color: #69736e;
 }
 
 dl {
@@ -138,8 +152,8 @@ dl {
 
 dl div {
   display: flex;
-  justify-content: space-between;
   gap: 14px;
+  justify-content: space-between;
   padding: 10px 0;
   border-top: 1px solid #edf2ef;
 }
@@ -156,9 +170,9 @@ dd {
 }
 
 .price {
-  color: #b64826;
   font-size: 22px;
   font-weight: 800;
+  color: #b64826;
 }
 
 .state-panel {

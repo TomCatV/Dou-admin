@@ -94,9 +94,12 @@ export type PublicOrder = {
   currency: string;
   status: string;
   paid_at?: string | null;
-  resource_title: string;
-  resource_summary: string;
-  resource_cover_url: string;
+  product_title?: string;
+  product_summary?: string;
+  product_cover_url?: string;
+  resource_title?: string;
+  resource_summary?: string;
+  resource_cover_url?: string;
   created_at: string;
   updated_at: string;
 };
@@ -104,6 +107,7 @@ export type PublicOrder = {
 const shopHttp = Axios.create({
   baseURL: import.meta.env.VITE_SHOP_API_BASE_URL || "/api/shop",
   timeout: 10000,
+  validateStatus: status => status >= 200 && status < 500,
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json"
@@ -130,7 +134,10 @@ export const shopApi = {
     ),
   createOrderDraft: (productKey: string, data: Record<string, any>) =>
     unwrap<OrderDraftPayload>(
-      shopHttp.post(`/products/${encodeURIComponent(productKey)}/order-drafts`, data)
+      shopHttp.post(
+        `/products/${encodeURIComponent(productKey)}/order-drafts`,
+        data
+      )
     ),
   orderDraft: (draftId: string) =>
     unwrap<{ order_draft: OrderDraft }>(

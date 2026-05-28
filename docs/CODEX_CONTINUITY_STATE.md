@@ -111,3 +111,12 @@
 - 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server 公开路由和租户商品路由 `node --check` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示），Admin/Server 改动文本与外层续航文档经 Node UTF-8 扫描无 U+FFFD 或私用区乱码字符。
 - 下一步计划：提交推送后回归 Admin 公开店铺页、商品详情页、确认订单页和订单状态页；P2 前确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。
 - 风险与回滚：若分类或 H5 链接入口异常，可临时隐藏商品中心分类管理与复制 H5 链接按钮，后端接口和新增字段保留不影响既有资源卡管理。
+
+## 2026-05-29 P1 订单状态页字段兼容修复
+
+- 当前目标：继续回归 Admin 公开 H5 链路，修复订单状态页与 Dou-Server `/api/shop/orders/:orderId` 返回字段不一致导致的潜在白屏。
+- 已改文件：`src/api/shop.ts`、`src/views/shop/order.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/shop/index.js`。
+- 已完成前端能力：`PublicOrder` 同时兼容 `product_*` 与旧 `resource_*` 字段；订单状态页使用计算属性兜底商品标题、摘要和封面；公共 API 客户端允许解析 4xx 业务响应，避免频控等场景展示英文 Axios 报错。
+- 协同后端能力：Dou-Server 订单公开接口补充 `product_summary`，并返回 `resource_title/resource_summary/resource_cover_url` 兼容别名，支持前后端非原子部署。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/shop/index.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
+- 下一步计划：继续线上回归公开店铺页、商品详情页、确认订单页和订单状态页；P2 前仍需确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。

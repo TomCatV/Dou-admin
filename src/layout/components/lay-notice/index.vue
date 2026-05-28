@@ -1,23 +1,96 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { noticesData } from "./data";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import { notificationsApi, type AdminNotificationItem } from "@/api/admin";
+import { noticeTabs, type ListItem, type TabItem } from "./data";
 import NoticeList from "./components/NoticeList.vue";
 import BellIcon from "~icons/ep/bell";
 
-const noticesNum = ref(0);
-const notices = ref(noticesData);
-const activeKey = ref(noticesData[0]?.key);
+const router = useRouter();
+const loading = ref(false);
+const summaryTotal = ref(0);
+const rawItems = ref<AdminNotificationItem[]>([]);
+const activeKey = ref(noticeTabs[0]?.key || "todo");
+let refreshTimer: number | undefined;
 
-notices.value.map(v => (noticesNum.value += v.list.length));
+const notices = computed<TabItem[]>(() =>
+  noticeTabs.map(tab => ({
+    ...tab,
+    list: rawItems.value
+      .filter(item => item.category === tab.key)
+      .map(toNoticeItem)
+  }))
+);
+
+const noticesNum = computed(() => summaryTotal.value || rawItems.value.length);
 
 const getLabel = computed(
-  () => item =>
-    item.name + (item.list.length > 0 ? `(${item.list.length})` : "")
+  () => (item: TabItem) => {
+    const count = item.list.reduce(
+      (sum, notice) => sum + Number(notice.count || 1),
+      0
+    );
+    return item.name + (count > 0 ? `(${count})` : "");
+  }
 );
+
+function toNoticeItem(item: AdminNotificationItem): ListItem {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    datetime: item.latest_at || "",
+    type: item.category,
+    status: item.severity,
+    extra: `${item.count}`,
+    routePath: item.route_path,
+    count: item.count
+  };
+}
+
+async function loadNotifications(silent = false) {
+  if (!silent) loading.value = true;
+  try {
+    const data = await notificationsApi.summary();
+    rawItems.value = data.items || [];
+    summaryTotal.value = Number(data.unread_like_count || data.total || 0);
+    const firstNonEmpty = notices.value.find(item => item.list.length)?.key;
+    if (firstNonEmpty && !notices.value.some(item => item.key === activeKey.value && item.list.length)) {
+      activeKey.value = firstNonEmpty;
+    }
+  } catch (error: any) {
+    if (!silent) ElMessage.error(error?.message || "通知提醒加载失败");
+  } finally {
+    loading.value = false;
+  }
+}
+
+function handleVisibleChange(visible: boolean) {
+  if (visible) loadNotifications(false);
+}
+
+function handleNoticeClick(item: ListItem) {
+  if (!item.routePath) return;
+  router.push(item.routePath);
+}
+
+onMounted(() => {
+  loadNotifications(true);
+  refreshTimer = window.setInterval(() => loadNotifications(true), 60 * 1000);
+});
+
+onUnmounted(() => {
+  if (refreshTimer) window.clearInterval(refreshTimer);
+});
 </script>
 
 <template>
-  <el-dropdown trigger="click" placement="bottom-end">
+  <el-dropdown
+    trigger="click"
+    placement="bottom-end"
+    @visible-change="handleVisibleChange"
+  >
     <span
       :class="[
         'dropdown-badge',
@@ -36,26 +109,24 @@ const getLabel = computed(
       <el-dropdown-menu>
         <el-tabs
           v-model="activeKey"
+          v-loading="loading"
           :stretch="true"
           class="dropdown-tabs"
-          :style="{ width: notices.length === 0 ? '200px' : '330px' }"
+          :style="{ width: '360px' }"
         >
-          <el-empty
-            v-if="notices.length === 0"
-            description="暂无消息"
-            :image-size="60"
-          />
-          <span v-else>
-            <template v-for="item in notices" :key="item.key">
-              <el-tab-pane :label="getLabel(item)" :name="`${item.key}`">
-                <el-scrollbar max-height="330px">
-                  <div class="noticeList-container">
-                    <NoticeList :list="item.list" :emptyText="item.emptyText" />
-                  </div>
-                </el-scrollbar>
-              </el-tab-pane>
-            </template>
-          </span>
+          <template v-for="item in notices" :key="item.key">
+            <el-tab-pane :label="getLabel(item)" :name="`${item.key}`">
+              <el-scrollbar max-height="360px">
+                <div class="noticeList-container">
+                  <NoticeList
+                    :list="item.list"
+                    :emptyText="item.emptyText"
+                    @item-click="handleNoticeClick"
+                  />
+                </div>
+              </el-scrollbar>
+            </el-tab-pane>
+          </template>
         </el-tabs>
       </el-dropdown-menu>
     </template>
@@ -90,7 +161,11 @@ const getLabel = computed(
   }
 
   :deep(.el-tabs__nav-wrap) {
-    padding: 0 36px;
+    padding: 0 24px;
+  }
+
+  :deep(.el-empty) {
+    padding: 30px 0;
   }
 }
 </style>

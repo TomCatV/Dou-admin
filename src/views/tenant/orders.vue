@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 import { tenantApi, type TenantAfterSale, type TenantOrder } from "@/api/admin";
 
 defineOptions({ name: "TenantOrders" });
@@ -9,6 +10,7 @@ const loading = ref(false);
 const orders = ref<TenantOrder[]>([]);
 const afterSales = ref<TenantAfterSale[]>([]);
 const total = ref(0);
+const route = useRoute();
 const filters = reactive({ keyword: "", status: "", page: 1, page_size: 20 });
 
 function yuan(value: number) {
@@ -38,7 +40,13 @@ function switchTab() {
   loadList();
 }
 
-onMounted(loadList);
+onMounted(() => {
+  const tab = String(route.query.tab || "");
+  const status = String(route.query.status || "");
+  if (tab === "after-sales") activeTab.value = tab;
+  if (status) filters.status = status;
+  loadList();
+});
 </script>
 
 <template>

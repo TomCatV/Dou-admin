@@ -81,6 +81,27 @@ export type TenantDashboard = {
   subscription?: Record<string, any> | null;
   subscription_status?: Record<string, any>;
   usage?: Record<string, number>;
+  limits?: Record<string, number>;
+  features?: Record<string, boolean>;
+  writable?: boolean;
+};
+
+export type AdminNotificationItem = {
+  id: string;
+  category: "todo" | "finance" | "expiry" | string;
+  title: string;
+  description: string;
+  count: number;
+  severity: "primary" | "success" | "warning" | "info" | "danger";
+  route_path: string;
+  latest_at: string;
+};
+
+export type AdminNotificationSummary = {
+  items: AdminNotificationItem[];
+  total: number;
+  unread_like_count: number;
+  generated_at: string;
 };
 
 export type TenantMember = {
@@ -164,6 +185,16 @@ export function unwrap<T>(promise: Promise<ApiResult<T>>) {
 export const dashboardApi = {
   summary: () =>
     unwrap(http.request<ApiResult<DashboardSummary>>("get", "/dashboard/summary"))
+};
+
+export const notificationsApi = {
+  summary: () =>
+    unwrap(
+      http.request<ApiResult<AdminNotificationSummary>>(
+        "get",
+        "/notifications/summary"
+      )
+    )
 };
 
 export const tenantApi = {

@@ -167,3 +167,47 @@
   - Dou-Admin `git diff --check` 通过。
   - Dou-Admin 完整 `vue-tsc` 仍因本机 `node_modules` 顶层类型链接缺失失败，错误为 `@pureadmin/*/volar`、`element-plus/global`、`node`、`vite/client`、`unplugin-icons/types/vue` 类型入口缺失。
 - 风险与回滚：主房间聊天记录属于隐私敏感能力，默认不授权；只有超级管理员维护的启用分组且开启授权后，组内圈主账号才能访问自己绑定圈子的主房间记录。
+
+### 商业级后台控制体验
+
+- 时间：2026-05-28 10:15 (Asia/Shanghai)
+- 任务目标：配合 Dou-Server 商业控制，补齐圈主后台和 SaaS 页面中的套餐、用量、只读保护展示。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/utils/http/index.ts`
+  - `src/views/tenant/dashboard.vue`
+  - `src/views/saas/index.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 验证：
+  - `node --check scripts/clean-dist.mjs` 通过。
+  - 后端临时库全量迁移与商业控制 smoke 通过。
+- 下一步：线上用平台管理员和圈主账号回归 SaaS 租户状态、套餐功能开关、私域工具写入拦截和只读提示。
+- 风险与回滚：前端只展示后端商业控制状态，不单独决定权限；如提示不符合预期，可回滚本次前端展示变更，后端控制仍可独立生效。
+
+### 右上角通知提醒与圈主商业后台能力整合方案
+- 时间：2026-05-28 10:45 (Asia/Shanghai)
+- 任务目标：补齐后台右上角通知提醒，覆盖投诉举报、资金相关、到期相关等待办；同时落地一份对标“链动小铺”的圈主商业后台能力整合方案。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/layout/components/lay-notice/data.ts`
+  - `src/layout/components/lay-notice/index.vue`
+  - `src/layout/components/lay-notice/components/NoticeItem.vue`
+  - `src/layout/components/lay-notice/components/NoticeList.vue`
+  - `src/views/reports/index.vue`
+  - `src/views/manual-reviews/index.vue`
+  - `src/views/after-sales/index.vue`
+  - `src/views/withdrawals/index.vue`
+  - `src/views/tenant/orders.vue`
+  - `src/views/saas/index.vue`
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 验证：
+  - Dou-Admin `pnpm exec vue-tsc --noEmit --skipLibCheck` 通过。
+  - Dou-Admin `pnpm exec tsc --noEmit` 通过。
+  - 新增中文方案文档和通知相关 Vue/TS 文件已做 UTF-8 检查，无 U+FFFD。
+- 下一步：按方案进入圈主商业后台 P0，实现商品/卡密库存、H5 独立下单页、微信/支付宝扫码支付配置、订单交付和资金看板。
+- 风险与回滚：通知下拉只读展示后端聚合结果，不改变业务状态；如跳转筛选异常，可先回滚通知组件和对应页面 query 初始化逻辑。方案文档不影响运行。

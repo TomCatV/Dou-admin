@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { FormInstance, FormRules } from "element-plus";
 import {
@@ -24,6 +25,7 @@ const orderTotal = ref(0);
 const activeTab = ref("tenants");
 const circleOptions = ref<AdminCircleOption[]>([]);
 const circleLoading = ref(false);
+const route = useRoute();
 
 const tenantFilters = reactive({
   keyword: "",
@@ -148,6 +150,12 @@ function statusType(status: string): TagType {
     return "danger";
   }
   return "info";
+}
+
+function usageText(row: CircleTenant, key: string, limitKey: string) {
+  const current = Number(row.usage?.[key] || 0);
+  const limit = Number(row.limits?.[limitKey] || 0);
+  return limit ? `${current}/${limit}` : `${current}/不限`;
 }
 
 function cycleLabel(cycle: string) {
@@ -414,7 +422,11 @@ watch(
   () => fillOrderAmount()
 );
 
-onMounted(loadData);
+onMounted(() => {
+  const status = String(route.query.status || "");
+  if (status) tenantFilters.status = status;
+  loadData();
+});
 </script>
 
 <template>
@@ -459,6 +471,13 @@ onMounted(loadData);
 
     <el-tabs v-model="activeTab" class="tabs">
       <el-tab-pane label="租户订阅" name="tenants">
+        <el-alert
+          class="tenant-alert"
+          type="info"
+          show-icon
+          :closable="false"
+          title="到期、暂停或套餐停用的圈主后台会自动进入只读保护；子账号、私域线索和营销工具会按套餐上限与功能开关拦截。"
+        />
         <div class="filter-bar">
           <el-input
             v-model="tenantFilters.keyword"
@@ -505,10 +524,10 @@ onMounted(loadData);
           </el-table-column>
           <el-table-column label="用量" min-width="260">
             <template #default="{ row }">
-              <el-tag class="usage-tag" type="info">成员 {{ row.usage?.members || 0 }}</el-tag>
-              <el-tag class="usage-tag" type="info">子账号 {{ row.usage?.staff_accounts || 0 }}</el-tag>
-              <el-tag class="usage-tag" type="info">资源 {{ row.usage?.resource_cards || 0 }}</el-tag>
-              <el-tag class="usage-tag" type="info">线索 {{ row.usage?.leads || 0 }}</el-tag>
+              <el-tag class="usage-tag" type="info">成员 {{ usageText(row, "members", "max_members") }}</el-tag>
+              <el-tag class="usage-tag" type="info">子账号 {{ usageText(row, "staff_accounts", "max_staff") }}</el-tag>
+              <el-tag class="usage-tag" type="info">资源 {{ usageText(row, "resource_cards", "max_resource_cards") }}</el-tag>
+              <el-tag class="usage-tag" type="info">线索 {{ usageText(row, "leads", "max_leads") }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="操作" fixed="right" width="190">
@@ -879,6 +898,10 @@ onMounted(loadData);
 }
 
 .filter-bar {
+  margin-bottom: 12px;
+}
+
+.tenant-alert {
   margin-bottom: 12px;
 }
 

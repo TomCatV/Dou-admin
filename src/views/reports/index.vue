@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   reportsApi,
@@ -25,6 +26,7 @@ const rows = ref<ReportItem[]>([]);
 const total = ref(0);
 const detailVisible = ref(false);
 const detail = ref<ReportDetail | null>(null);
+const route = useRoute();
 const filters = reactive({
   status: "pending",
   target_type: "",
@@ -139,7 +141,11 @@ async function submitAction() {
   }
 }
 
-onMounted(loadList);
+onMounted(() => {
+  const status = String(route.query.status || "");
+  if (status) filters.status = status;
+  loadList();
+});
 </script>
 
 <template>

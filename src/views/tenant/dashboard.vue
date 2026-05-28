@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { tenantApi, type TenantDashboard } from "@/api/admin";
 
 defineOptions({ name: "TenantDashboard" });
 
 const loading = ref(false);
 const data = ref<TenantDashboard | null>(null);
+
+const usageRows = computed(() => [
+  { key: "members", label: "成员", value: data.value?.usage?.members || 0, limit: data.value?.limits?.max_members || 0 },
+  { key: "staff_accounts", label: "子账号", value: data.value?.usage?.staff_accounts || 0, limit: data.value?.limits?.max_staff || 0 },
+  { key: "resource_cards", label: "资源卡", value: data.value?.usage?.resource_cards || 0, limit: data.value?.limits?.max_resource_cards || 0 },
+  { key: "leads", label: "线索", value: data.value?.usage?.leads || 0, limit: data.value?.limits?.max_leads || 0 }
+]);
+
+const enabledFeatures = computed(() =>
+  Object.entries(data.value?.features || {})
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => key)
+);
 
 function yuan(value?: number) {
   return `¥${((Number(value) || 0) / 100).toFixed(2)}`;
@@ -51,6 +64,15 @@ onMounted(loadData);
       </div>
       <el-button type="primary" @click="loadData">刷新</el-button>
     </div>
+
+    <el-alert
+      v-if="data && !data.writable"
+      class="mb"
+      type="warning"
+      show-icon
+      :closable="false"
+      title="当前套餐已到期、暂停或未开通，后台写入操作将进入只读保护。"
+    />
 
     <el-row :gutter="16">
       <el-col :xs="24" :sm="12" :lg="6">
@@ -100,27 +122,22 @@ onMounted(loadData);
             <span>租户状态</span>
             <strong>{{ statusLabel(data?.subscription?.status) }}</strong>
           </div>
+          <div class="feature-tags">
+            <el-tag v-for="item in enabledFeatures" :key="item" type="success">
+              {{ item }}
+            </el-tag>
+            <span v-if="!enabledFeatures.length" class="empty-text">暂无开通功能</span>
+          </div>
         </div>
       </el-col>
       <el-col :xs="24" :lg="12">
         <div class="panel">
           <h2>当前用量</h2>
           <div class="usage-grid">
-            <div>
-              <span>成员</span>
-              <strong>{{ data?.usage?.members || 0 }}</strong>
-            </div>
-            <div>
-              <span>子账号</span>
-              <strong>{{ data?.usage?.staff_accounts || 0 }}</strong>
-            </div>
-            <div>
-              <span>资源卡</span>
-              <strong>{{ data?.usage?.resource_cards || 0 }}</strong>
-            </div>
-            <div>
-              <span>线索</span>
-              <strong>{{ data?.usage?.leads || 0 }}</strong>
+            <div v-for="item in usageRows" :key="item.key">
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <em>{{ item.limit ? `上限 ${item.limit}` : "不限" }}</em>
             </div>
           </div>
         </div>
@@ -247,6 +264,25 @@ onMounted(loadData);
 
 .mt {
   margin-top: 16px;
+}
+
+.mb {
+  margin-bottom: 16px;
+}
+
+.feature-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #efe6db;
+}
+
+.empty-text,
+.usage-grid em {
+  color: #8f8276;
+  font-style: normal;
+  font-size: 12px;
 }
 
 @media (max-width: 768px) {

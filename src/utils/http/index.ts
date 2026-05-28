@@ -134,7 +134,11 @@ class PureHttp {
         const $error = error;
         $error.isCancelRequest = Axios.isCancel($error);
         const status = $error?.response?.status;
-        const code = ($error?.response?.data as any)?.code;
+        const data = $error?.response?.data as any;
+        const code = data?.code;
+        if (data?.message) {
+          $error.message = data.message;
+        }
         if (status === 401) {
           useUserStoreHook().logOut();
         } else if (status === 403 && code === 40306) {

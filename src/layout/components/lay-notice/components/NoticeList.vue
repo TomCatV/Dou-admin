@@ -13,11 +13,20 @@ defineProps({
     default: ""
   }
 });
+
+const emit = defineEmits<{
+  (e: "item-click", item: ListItem): void;
+}>();
 </script>
 
 <template>
   <div v-if="list.length">
-    <NoticeItem v-for="(item, index) in list" :key="index" :noticeItem="item" />
+    <NoticeItem
+      v-for="item in list"
+      :key="item.id"
+      :noticeItem="item"
+      @click="emit('item-click', item)"
+    />
   </div>
   <el-empty v-else :description="emptyText" />
 </template>

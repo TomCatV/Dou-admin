@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   manualReviewsApi,
@@ -26,6 +27,7 @@ const total = ref(0);
 const detailVisible = ref(false);
 const current = ref<ManualReviewItem | null>(null);
 const logs = ref<Array<Record<string, any>>>([]);
+const route = useRoute();
 
 const filters = reactive({
   keyword: "",
@@ -153,7 +155,13 @@ async function submitAction() {
   }
 }
 
-onMounted(loadList);
+onMounted(() => {
+  const auditStatus = String(route.query.audit_status || route.query.auditStatus || "");
+  const targetType = String(route.query.target_type || route.query.targetType || "");
+  if (auditStatus) filters.audit_status = auditStatus;
+  if (targetType) filters.target_type = targetType;
+  loadList();
+});
 </script>
 
 <template>

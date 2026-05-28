@@ -1,55 +1,55 @@
 <script setup lang="ts">
-import { ListItem } from "../data";
-import { ref, PropType, nextTick } from "vue";
+import { ref, type PropType, nextTick } from "vue";
 import { useNav } from "@/layout/hooks/useNav";
 import { deviceDetection } from "@pureadmin/utils";
+import type { ListItem } from "../data";
 
 defineProps({
   noticeItem: {
     type: Object as PropType<ListItem>,
-    default: () => {}
+    default: () => ({})
   }
 });
 
-const titleRef = ref(null);
+const emit = defineEmits<{
+  (e: "click", item: ListItem): void;
+}>();
+
+const titleRef = ref<HTMLElement | null>(null);
 const titleTooltip = ref(false);
-const descriptionRef = ref(null);
 const descriptionTooltip = ref(false);
 const { tooltipEffect } = useNav();
 const isMobile = deviceDetection();
 
 function hoverTitle() {
   nextTick(() => {
-    titleRef.value?.scrollWidth > titleRef.value?.clientWidth
-      ? (titleTooltip.value = true)
-      : (titleTooltip.value = false);
+    titleTooltip.value =
+      Number(titleRef.value?.scrollWidth || 0) >
+      Number(titleRef.value?.clientWidth || 0);
   });
 }
 
-function hoverDescription(event, description) {
-  // currentWidth 为文本在页面中所占的宽度，创建标签，加入到页面，获取currentWidth ,最后在移除
+function hoverDescription(event: MouseEvent, description: string) {
   const tempTag = document.createElement("span");
   tempTag.innerText = description;
   tempTag.className = "getDescriptionWidth";
-  document.querySelector("body").appendChild(tempTag);
-  const currentWidth = (
-    document.querySelector(".getDescriptionWidth") as HTMLSpanElement
-  ).offsetWidth;
-  document.querySelector(".getDescriptionWidth").remove();
-
-  // cellWidth为容器的宽度
-  const cellWidth = event.target.offsetWidth;
-
-  // 当文本宽度大于容器宽度两倍时，代表文本显示超过两行
-  currentWidth > 2 * cellWidth
-    ? (descriptionTooltip.value = true)
-    : (descriptionTooltip.value = false);
+  document.querySelector("body")?.appendChild(tempTag);
+  const currentWidth =
+    (document.querySelector(".getDescriptionWidth") as HTMLSpanElement)
+      ?.offsetWidth || 0;
+  document.querySelector(".getDescriptionWidth")?.remove();
+  const cellWidth = (event.target as HTMLElement)?.offsetWidth || 0;
+  descriptionTooltip.value = cellWidth > 0 && currentWidth > 2 * cellWidth;
 }
 </script>
 
 <template>
   <div
     class="notice-container border-0 border-b-[1px] border-solid border-[#f0f0f0] dark:border-[#303030]"
+    role="button"
+    tabindex="0"
+    @click="emit('click', noticeItem)"
+    @keydown.enter="emit('click', noticeItem)"
   >
     <el-avatar
       v-if="noticeItem.avatar"
@@ -93,7 +93,6 @@ function hoverDescription(event, description) {
         placement="top-start"
       >
         <div
-          ref="descriptionRef"
           class="notice-text-description"
           @mouseover="hoverDescription($event, noticeItem.description)"
         >
@@ -112,14 +111,20 @@ function hoverDescription(event, description) {
   max-width: 238px;
 }
 </style>
+
 <style lang="scss" scoped>
 .notice-container {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   padding: 12px 0;
+  cursor: pointer;
 
-  // border-bottom: 1px solid #f0f0f0;
+  &:hover {
+    .notice-title-content {
+      color: var(--el-color-primary);
+    }
+  }
 
   .notice-container-avatar {
     margin-right: 16px;
@@ -131,26 +136,27 @@ function hoverDescription(event, description) {
     flex: 1;
     flex-direction: column;
     justify-content: space-between;
+    min-width: 0;
 
     .notice-text-title {
       display: flex;
+      gap: 8px;
+      align-items: center;
       margin-bottom: 8px;
       font-size: 14px;
       font-weight: 400;
       line-height: 1.5715;
-      cursor: pointer;
 
       .notice-title-content {
         flex: 1;
-        width: 200px;
+        min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
 
       .notice-title-extra {
-        float: right;
-        margin-top: -1.5px;
+        flex: none;
         font-weight: 400;
       }
     }

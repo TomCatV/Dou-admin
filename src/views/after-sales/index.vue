@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   afterSalesApi,
@@ -28,6 +29,7 @@ const total = ref(0);
 const detailVisible = ref(false);
 const current = ref<ResourceAfterSale | null>(null);
 const messages = ref<AfterSaleMessage[]>([]);
+const route = useRoute();
 
 const filters = reactive({
   keyword: "",
@@ -151,7 +153,13 @@ async function syncRefund(row?: ResourceAfterSale) {
   }
 }
 
-onMounted(loadList);
+onMounted(() => {
+  const status = String(route.query.status || "");
+  const refundStatus = String(route.query.refund_status || route.query.refundStatus || "");
+  if (status) filters.status = status;
+  if (refundStatus) filters.refund_status = refundStatus;
+  loadList();
+});
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-28 12:52 (Asia/Shanghai)
+最后更新时间：2026-05-28 13:11 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -68,3 +68,13 @@
 6. 观察下一次 GitHub Actions 发布结果；若仍在 SSH 握手阶段被服务器 reset，优先检查服务器 `sshd`/安全组/Fail2ban/宝塔安全策略是否限制 GitHub Actions 出口 IP 或连接频率。
 7. 按 `CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md` 的 P0 详细设计推进：先补圈主后台商品中心写操作、权限审计、套餐只读和店铺资料收口，再进入 P1 商品中心和 H5 独立下单页。
 8. 继续补财务对账、异常单处理、2FA/IP 白名单、导出额度和更细的套餐到期限制。
+
+## 2026-05-28 本轮续航补充
+
+- 当前目标：按圈主商业后台 P0 设计继续实装，先把商品中心从只读列表升级为可经营的商业后台工作台。
+- 已改文件：`src/api/admin.ts`、`src/views/tenant/resources.vue`、`src/views/tenant/wallet.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：租户商品中心新增商品创建/编辑弹窗、资源交付/卡密交付、封面与预览图、价格、库存、上下架、删除、复制商品链接、跳转订单筛选；只读账号隐藏写操作；钱包提现按钮按 `tenant:wallet:withdraw` 独立权限控制。
+- 协同后端能力：Dou-Server 已补齐租户商品写接口、私有交付字段权限、内容安全、COS 审核任务、审计日志、禁用商品不可由租户后台重新上架和提现权限拆分。
+- 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server 相关文件 `node --check` 和动态导入通过。
+- 下一步：线上用圈主 owner、租户 staff、只读 viewer 三类账号回归商品中心按钮可见性、创建编辑保存、卡密库存、上下架、删除、复制链接、订单跳转、套餐到期只读和提现权限。
+- 风险与回滚：前端写操作依赖 Dou-Server 本轮接口；若线上需止血，可先回滚/隐藏 `src/views/tenant/resources.vue` 的写按钮，后端接口保留不影响小程序既有资源卡交易。

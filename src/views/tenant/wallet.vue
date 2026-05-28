@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
+import { hasPerms } from "@/utils/auth";
 import { tenantApi } from "@/api/admin";
 
 defineOptions({ name: "TenantWallet" });
@@ -9,6 +10,7 @@ const loading = ref(false);
 const submitting = ref(false);
 const data = ref<Record<string, any>>({});
 const form = reactive({ amount_yuan: "", remark: "" });
+const canWithdraw = computed(() => hasPerms("tenant:wallet:withdraw"));
 
 function yuan(value?: number) {
   return `¥${((Number(value) || 0) / 100).toFixed(2)}`;
@@ -24,6 +26,10 @@ async function loadData() {
 }
 
 async function submitWithdrawal() {
+  if (!canWithdraw.value) {
+    ElMessage.warning("当前账号没有发起提现权限");
+    return;
+  }
   const amount = Math.round(Number(form.amount_yuan || 0) * 100);
   if (!amount) {
     ElMessage.warning("请输入提现金额");
@@ -70,14 +76,22 @@ onMounted(loadData);
       <el-col :xs="24" :lg="10">
         <div class="panel">
           <h2>提现申请</h2>
+          <el-alert
+            v-if="!canWithdraw"
+            class="mb"
+            type="info"
+            show-icon
+            :closable="false"
+            title="当前账号可查看钱包，但不能发起提现。"
+          />
           <el-form label-width="80px">
             <el-form-item label="金额">
-              <el-input v-model="form.amount_yuan" placeholder="单位：元" />
+              <el-input v-model="form.amount_yuan" :disabled="!canWithdraw" placeholder="单位：元" />
             </el-form-item>
             <el-form-item label="备注">
-              <el-input v-model="form.remark" maxlength="80" />
+              <el-input v-model="form.remark" :disabled="!canWithdraw" maxlength="80" />
             </el-form-item>
-            <el-button type="primary" :loading="submitting" @click="submitWithdrawal">提交提现</el-button>
+            <el-button type="primary" :disabled="!canWithdraw" :loading="submitting" @click="submitWithdrawal">提交提现</el-button>
           </el-form>
         </div>
       </el-col>
@@ -133,5 +147,8 @@ onMounted(loadData);
 }
 .mt {
   margin-top: 16px;
+}
+.mb {
+  margin-bottom: 12px;
 }
 </style>

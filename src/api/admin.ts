@@ -230,6 +230,50 @@ export const tenantApi = {
         { params }
       )
     ),
+  resourceCardDetail: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ resource_card: ManagedResourceCard }>>(
+        "get",
+        `/tenant/resource-cards/${id}`
+      )
+    ),
+  createResourceCard: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ resource_card: ManagedResourceCard }>>(
+        "post",
+        "/tenant/resource-cards",
+        { data }
+      )
+    ),
+  updateResourceCard: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ resource_card: ManagedResourceCard }>>(
+        "patch",
+        `/tenant/resource-cards/${id}`,
+        { data }
+      )
+    ),
+  publishResourceCard: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ resource_card: ManagedResourceCard }>>(
+        "post",
+        `/tenant/resource-cards/${id}/publish`
+      )
+    ),
+  offlineResourceCard: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ resource_card: ManagedResourceCard }>>(
+        "post",
+        `/tenant/resource-cards/${id}/offline`
+      )
+    ),
+  deleteResourceCard: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ deleted: boolean; resource_card_id: string }>>(
+        "delete",
+        `/tenant/resource-cards/${id}`
+      )
+    ),
   orders: (params: Record<string, any>) =>
     unwrap(
       http.request<ApiResult<PageResult<TenantOrder>>>(
@@ -799,17 +843,20 @@ export type ManagedCircle = {
 export type ManagedResourceCard = {
   id: string;
   circle_id: string;
-  circle_name: string;
-  creator_id: string;
-  creator_dxq_id: string;
-  creator_nickname: string;
+  circle_name?: string;
+  creator_id?: string;
+  creator_dxq_id?: string;
+  creator_nickname?: string;
   title: string;
   summary: string;
   cover_url: string;
+  preview_text?: string;
+  preview_images?: string[];
+  remark?: string;
   delivery_type: string;
   price: number;
   currency: string;
-  resource_type: string;
+  resource_type?: string;
   sales_count: number;
   comment_count: number;
   is_pinned: boolean;
@@ -817,8 +864,16 @@ export type ManagedResourceCard = {
   audit_status: string;
   purchase_count: number;
   refund_count: number;
+  revenue_amount?: number;
   code_stock_total: number;
   code_stock_available: number;
+  code_stock_assigned?: number;
+  resource_url?: string;
+  resource_access_code?: string;
+  doc_content?: string;
+  doc_url?: string;
+  code_items?: string[];
+  public_path?: string;
   created_at: string;
   updated_at: string;
   published_at?: string | null;

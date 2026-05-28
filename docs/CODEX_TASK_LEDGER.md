@@ -239,3 +239,20 @@
 - 验证：Dou-Admin `git diff --check` 通过；Node UTF-8 检查 `CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`、仓内续航文档和外层续航文档均无 U+FFFD。
 - 下一步：按 P0 详细设计推进后台商品中心写操作、店铺资料收口、权限审计、套餐只读保护和通知跳转筛选；P0 收口后再进入 P1 商品中心/H5 独立下单页。
 - 风险与回滚：本次仅修改中文设计与续航文档，不影响运行；如 P0 边界调整，可直接修订方案文档后再开发。
+
+### 圈主商业后台 P0 商品中心实装
+- 时间：2026-05-28 13:11 (Asia/Shanghai)
+- 任务目标：按生产级和商业级标准推进圈主后台 P0，把商品中心从只读列表升级为可创建、编辑、上下架和管理库存的经营页面。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/tenant/resources.vue`
+  - `src/views/tenant/wallet.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 验证：
+  - `pnpm typecheck` 通过。
+  - `pnpm build` 通过。
+  - 协同后端 `node --check src/routes/admin/tenant.routes.js`、`node --check src/lib/adminPermissions.js` 和动态导入通过。
+- 下一步：线上用圈主 owner、租户 staff、只读 viewer 回归商品中心权限、创建编辑、卡密库存、上下架、删除、复制链接、订单跳转、套餐只读和提现权限拆分。
+- 风险与回滚：本轮前端写操作依赖 Dou-Server 最新租户商品接口；如线上异常，可先隐藏写按钮或回滚本次 Dou-Admin 提交，后端接口和小程序资源卡购买链路仍可独立运行。

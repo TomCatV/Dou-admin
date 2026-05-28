@@ -38,12 +38,22 @@ async function loadProduct() {
 
 async function createDraft() {
   if (!product.value || soldOut.value) return;
+  const contact = buyerContact.value.trim();
+  if (!contact) {
+    error.value = "请填写联系方式，后续查询订单需要使用";
+    return;
+  }
   buying.value = true;
+  error.value = "";
   try {
     const data = await shopApi.createOrderDraft(product.value.product_key, {
-      buyer_contact: buyerContact.value.trim(),
+      buyer_contact: contact,
       source_channel: "admin_public_h5"
     });
+    window.sessionStorage?.setItem(
+      `shop_contact_${data.order_draft.id}`,
+      contact
+    );
     router.push(`/shop/checkout/${encodeURIComponent(data.order_draft.id)}`);
   } catch (err) {
     error.value = err instanceof Error ? err.message : "下单失败，请稍后再试";
@@ -64,15 +74,23 @@ onMounted(loadProduct);
 <template>
   <main class="shop-page with-bottom">
     <section v-if="loading" class="state-panel">正在打开商品...</section>
-    <section v-else-if="error && !product" class="state-panel error">{{ error }}</section>
+    <section v-else-if="error && !product" class="state-panel error">
+      {{ error }}
+    </section>
     <template v-else-if="product">
       <section class="product-hero">
         <div class="cover-box">
-          <img v-if="shopImage(product.cover_url)" :src="product.cover_url" alt="" />
+          <img
+            v-if="shopImage(product.cover_url)"
+            :src="product.cover_url"
+            alt=""
+          />
           <span v-else>{{ product.title.slice(0, 1) }}</span>
         </div>
         <div class="product-copy">
-          <button class="store-link" @click="openStore">{{ store?.name || "Dou 小店" }}</button>
+          <button class="store-link" @click="openStore">
+            {{ store?.name || "Dou 小店" }}
+          </button>
           <h1>{{ product.title }}</h1>
           <p>{{ product.summary }}</p>
           <div class="price-line">
@@ -80,7 +98,9 @@ onMounted(loadProduct);
             <span>已售 {{ product.sales_count || 0 }}</span>
           </div>
           <div class="badges">
-            <span>{{ product.delivery_type === "code" ? "卡密自动发放" : "资源资料交付" }}</span>
+            <span>{{
+              product.delivery_type === "code" ? "卡密自动发放" : "资源资料交付"
+            }}</span>
             <span>售后协商入口</span>
             <span>支付前锁价</span>
           </div>
@@ -89,24 +109,31 @@ onMounted(loadProduct);
 
       <section class="section-block">
         <h2>预览部分</h2>
-        <p v-if="product.preview_text" class="preline">{{ product.preview_text }}</p>
+        <p v-if="product.preview_text" class="preline">
+          {{ product.preview_text }}
+        </p>
         <div v-if="previewImages.length" class="preview-grid">
           <img v-for="src in previewImages" :key="src" :src="src" alt="" />
         </div>
-        <p v-if="!product.preview_text && !previewImages.length" class="muted">圈主暂未上传预览内容。</p>
+        <p v-if="!product.preview_text && !previewImages.length" class="muted">
+          圈主暂未上传预览内容。
+        </p>
       </section>
 
       <section class="section-block">
         <h2>购买信息</h2>
         <label class="contact-field">
-          <span>联系方式</span>
+          <span>联系方式（必填）</span>
           <input
             v-model="buyerContact"
             maxlength="80"
+            required
             placeholder="微信号 / 手机号 / 邮箱，便于订单沟通"
           />
         </label>
-        <p class="muted">P1 仅锁定订单草稿和商品价格，扫码支付会在 P2 接入。</p>
+        <p class="muted">
+          联系方式会用于后续查询订单、售后沟通和投诉举报核验。
+        </p>
         <p v-if="error" class="inline-error">{{ error }}</p>
       </section>
 
@@ -124,7 +151,10 @@ onMounted(loadProduct);
           <span>应付</span>
           <strong>{{ yuan(product.price) }}</strong>
         </div>
-        <button :disabled="soldOut || buying" @click="createDraft">
+        <button
+          :disabled="soldOut || buying || !buyerContact.trim()"
+          @click="createDraft"
+        >
           {{ soldOut ? "已售罄" : buying ? "正在锁单" : "立即购买" }}
         </button>
       </div>
@@ -162,13 +192,13 @@ onMounted(loadProduct);
 
 .cover-box {
   display: grid;
+  place-items: center;
   width: 100%;
   aspect-ratio: 1 / 1;
-  place-items: center;
   overflow: hidden;
-  color: #327060;
   font-size: 60px;
   font-weight: 800;
+  color: #327060;
   background: #eef6f2;
   border-radius: 8px;
 }
@@ -182,8 +212,8 @@ onMounted(loadProduct);
 
 .store-link {
   padding: 0;
-  color: #327060;
   font-weight: 700;
+  color: #327060;
   background: transparent;
   border: 0;
 }
@@ -196,27 +226,27 @@ h1 {
 
 .product-copy p,
 .muted {
-  color: #69736e;
   line-height: 1.7;
+  color: #69736e;
 }
 
 .price-line {
   display: flex;
-  align-items: end;
   gap: 14px;
+  align-items: end;
   margin: 18px 0;
 }
 
 .price-line strong,
 .bottom-bar strong {
-  color: #b64826;
   font-size: 30px;
+  color: #b64826;
 }
 
 .price-line span,
 .bottom-bar span {
-  color: #7e8983;
   font-size: 13px;
+  color: #7e8983;
 }
 
 .badges,
@@ -244,9 +274,9 @@ h1 {
 }
 
 .preline {
+  line-height: 1.8;
   color: #3d3731;
   white-space: pre-wrap;
-  line-height: 1.8;
 }
 
 .preview-grid {
@@ -289,11 +319,11 @@ h1 {
   bottom: 0;
   left: 0;
   display: flex;
+  gap: 28px;
   align-items: center;
   justify-content: center;
-  gap: 28px;
   padding: 12px 18px;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgb(255 255 255 / 96%);
   border-top: 1px solid #e2eae6;
   backdrop-filter: blur(12px);
 }
@@ -306,8 +336,8 @@ h1 {
 .bottom-bar button {
   width: min(320px, 46vw);
   height: 46px;
-  color: #fff;
   font-weight: 800;
+  color: #fff;
   background: #1f7a64;
   border: 0;
   border-radius: 6px;
@@ -319,15 +349,15 @@ h1 {
 
 .state-panel {
   max-width: 760px;
-  margin: 28px auto;
   padding: 22px;
+  margin: 28px auto;
   text-align: center;
   background: #fff;
   border: 1px solid #e2eae6;
   border-radius: 8px;
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .shop-page {
     padding: 12px;
   }

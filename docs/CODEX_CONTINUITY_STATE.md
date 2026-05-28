@@ -138,3 +138,12 @@
 - 已完成前端能力：生产/预发构建增加 `VITE_SHOP_API_BASE_URL=https://api.doucatapp.top/api/shop` 和 `VITE_SHOP_BASE_URL=http://admin.doucatapp.top`；公开 H5 API 客户端能识别 HTML/异常响应并展示中文业务提示；举报详情、人工复核、审计日志不再展示原始 JSON；SaaS 套餐配置从 JSON 文本框改为数字输入和功能开关，租户设置只显示可读摘要并保留原配置。
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；构建产物已确认公共页 API 基址写入 `https://api.doucatapp.top/api/shop`；线上公共店铺接口 `https://api.doucatapp.top/api/shop/stores/8254ecd6-190e-4db6-8718-68a4b131f7e5` 返回 JSON。
 - 下一步计划：推送后等待 GitHub Actions 部署完成，再刷新 `admin.doucatapp.top/#/shop/store/8254ecd6-190e-4db6-8718-68a4b131f7e5`、对应商品页和确认订单页；若仍失败，优先检查浏览器控制台是否被旧缓存命中或服务器是否还有额外 CSP/证书策略。
+
+## 2026-05-29 P1 下单联系方式与同单投诉收口
+
+- 当前目标：按用户补充要求，H5 购买联系方式必须填写并作为后续查单凭证；支付成功订单页提供投诉举报入口，且与小程序同一订单售后记录同步，不改 Dou-uniapp。
+- 已改文件：`src/api/shop.ts`、`src/views/shop/product.vue`、`src/views/shop/checkout.vue`、`src/views/shop/order.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/shop/index.js`、`src/lib/resourceAfterSales.js`、`src/db/migrations/035_h5_order_contact_after_sales.sql`。
+- 已完成前端能力：商品详情页联系方式必填；确认订单页缓存联系方式用于后续订单页；订单状态页支持用“订单号 + 下单联系方式”查询，并在已支付订单展示投诉举报表单。
+- 协同后端能力：订单表补充 `buyer_contact`、`source_channel`；公开订单查询按联系方式核验；H5 投诉提交到 `/api/shop/orders/:orderId/after-sales`，后端复用 `resource_after_sales`，同一 `order_id` 已有售后单时直接复用。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；Dou-Server `node --check src/routes/shop/index.js`、`node --check src/lib/resourceAfterSales.js`、动态导入、`npm.cmd run migrate` 和 `git diff --check` 通过。
+- 下一步计划：P1 收口提交推送后开始 P2；P2 先基于官方微信支付/支付宝开放平台文档校准扫码支付设计，再进入代码实现。

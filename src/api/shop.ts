@@ -100,6 +100,20 @@ export type PublicOrder = {
   resource_title?: string;
   resource_summary?: string;
   resource_cover_url?: string;
+  buyer_contact_hint?: string;
+  source_channel?: string;
+  can_report?: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PublicAfterSale = {
+  id: string;
+  order_id: string;
+  resource_card_id: string;
+  complaint_type: string;
+  description: string;
+  status: string;
   created_at: string;
   updated_at: string;
 };
@@ -163,8 +177,14 @@ export const shopApi = {
     unwrap<{ order_draft: OrderDraft }>(
       shopHttp.get(`/order-drafts/${encodeURIComponent(draftId)}`)
     ),
-  order: (orderId: string) =>
+  order: (orderId: string, buyerContact = "") =>
     unwrap<{ order: PublicOrder }>(
-      shopHttp.get(`/orders/${encodeURIComponent(orderId)}`)
+      shopHttp.get(`/orders/${encodeURIComponent(orderId)}`, {
+        params: buyerContact ? { buyer_contact: buyerContact } : undefined
+      })
+    ),
+  createOrderAfterSale: (orderId: string, data: Record<string, any>) =>
+    unwrap<{ after_sale: PublicAfterSale; reused: boolean }>(
+      shopHttp.post(`/orders/${encodeURIComponent(orderId)}/after-sales`, data)
     )
 };

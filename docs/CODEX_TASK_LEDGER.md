@@ -426,3 +426,26 @@
   - 构建产物包含 `https://api.doucatapp.top/api/shop`，线上公共店铺接口返回 JSON。
 - 下一步：推送触发部署后，回归 `/#/shop/store/{storeKey}`、`/#/shop/product/{productKey}`、确认订单页和订单状态页；若页面仍失败，优先清缓存并检查线上证书/CSP/反代策略。
 - 风险与回滚：本次仅调整 Dou-Admin 构建环境和展示层，不改后端状态机；如跨域或证书策略异常，可临时把 `VITE_SHOP_API_BASE_URL` 改回同域并补 Nginx `/api/shop` 反代。
+
+### P1 下单联系方式与同单投诉收口
+
+- 时间：2026-05-29 02:25 (Asia/Shanghai)
+- 任务目标：补齐 H5 购买联系方式必填、订单查询凭证和支付成功页投诉举报入口；投诉举报必须与小程序同一订单售后线同步，不修改 Dou-uniapp。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/shop.ts`
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `src/views/shop/order.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `035_h5_order_contact_after_sales.sql`，公开订单查询核验 `buyer_contact`，H5 投诉提交到 `/api/shop/orders/:orderId/after-sales` 并复用 `resource_after_sales`。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过。
+  - Dou-Server `node --check src/routes/shop/index.js`、`node --check src/lib/resourceAfterSales.js` 通过。
+  - Dou-Server 路由和售后库动态导入通过。
+  - Dou-Server `npm.cmd run migrate` 通过并应用到 `035`。
+  - 双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
+- 下一步：提交推送后进入 P2；P2 先按官方微信支付/支付宝文档校准扫码支付接口、回调、查单、关单和白名单约束。
+- 风险与回滚：若 H5 投诉入口异常，可先隐藏订单页投诉表单；后端同单售后接口保留，不影响小程序既有售后接口。

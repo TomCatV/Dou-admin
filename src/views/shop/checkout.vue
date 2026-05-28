@@ -20,6 +20,18 @@ async function loadDraft() {
     if (!id) throw new Error("订单草稿不存在");
     const data = await shopApi.orderDraft(id);
     draft.value = data.order_draft;
+    if (data.order_draft.buyer_contact) {
+      window.sessionStorage?.setItem(
+        `shop_contact_${data.order_draft.id}`,
+        data.order_draft.buyer_contact
+      );
+      if (data.order_draft.order_id) {
+        window.sessionStorage?.setItem(
+          `shop_order_contact_${data.order_draft.order_id}`,
+          data.order_draft.buyer_contact
+        );
+      }
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : "订单草稿暂不可访问";
   } finally {
@@ -30,6 +42,16 @@ async function loadDraft() {
 function backToProduct() {
   const key = draft.value?.product_snapshot?.product_key;
   if (key) router.push(`/shop/product/${encodeURIComponent(key)}`);
+}
+
+function openOrder() {
+  if (!draft.value?.order_id) return;
+  router.push({
+    path: `/shop/order/${encodeURIComponent(draft.value.order_id)}`,
+    query: draft.value.buyer_contact
+      ? { contact: draft.value.buyer_contact }
+      : undefined
+  });
 }
 
 onMounted(loadDraft);
@@ -48,7 +70,9 @@ onMounted(loadDraft);
             :src="draft.product_snapshot.cover_url"
             alt=""
           />
-          <div v-else class="fallback">{{ draft.product_snapshot.title.slice(0, 1) }}</div>
+          <div v-else class="fallback">
+            {{ draft.product_snapshot.title.slice(0, 1) }}
+          </div>
           <div>
             <strong>{{ draft.product_snapshot.title }}</strong>
             <p>{{ draft.product_snapshot.summary }}</p>
@@ -76,9 +100,13 @@ onMounted(loadDraft);
 
       <section class="checkout-card">
         <h2>下一步</h2>
-        <p class="notice">订单草稿已创建。P2 接入微信/支付宝扫码支付后，这里会展示付款二维码和支付状态。</p>
+        <p class="notice">
+          订单草稿已创建。P2
+          接入微信/支付宝扫码支付后，这里会展示付款二维码和支付状态。
+        </p>
         <div class="actions">
           <button @click="loadDraft">刷新状态</button>
+          <button v-if="draft.order_id" @click="openOrder">查看订单</button>
           <button class="secondary" @click="backToProduct">返回商品</button>
         </div>
       </section>
@@ -97,8 +125,8 @@ onMounted(loadDraft);
 .checkout-card,
 .state-panel {
   max-width: 760px;
-  margin: 0 auto 14px;
   padding: 20px;
+  margin: 0 auto 14px;
   background: #fff;
   border: 1px solid #e2eae6;
   border-radius: 8px;
@@ -131,16 +159,16 @@ h2 {
 .fallback {
   display: grid;
   place-items: center;
-  color: #327060;
   font-size: 28px;
   font-weight: 800;
+  color: #327060;
   background: #eef6f2;
 }
 
 .product-row p,
 .notice {
-  color: #69736e;
   line-height: 1.7;
+  color: #69736e;
 }
 
 dl {
@@ -151,8 +179,8 @@ dl {
 
 dl div {
   display: flex;
-  justify-content: space-between;
   gap: 14px;
+  justify-content: space-between;
   padding: 10px 0;
   border-top: 1px solid #edf2ef;
 }
@@ -167,9 +195,9 @@ dd {
 }
 
 .price {
-  color: #b64826;
   font-size: 22px;
   font-weight: 800;
+  color: #b64826;
 }
 
 .actions {
@@ -180,8 +208,8 @@ dd {
 button {
   height: 42px;
   padding: 0 18px;
-  color: #fff;
   font-weight: 800;
+  color: #fff;
   background: #1f7a64;
   border: 0;
   border-radius: 6px;

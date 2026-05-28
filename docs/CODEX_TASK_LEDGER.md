@@ -211,3 +211,19 @@
   - 新增中文方案文档和通知相关 Vue/TS 文件已做 UTF-8 检查，无 U+FFFD。
 - 下一步：按方案进入圈主商业后台 P0，实现商品/卡密库存、H5 独立下单页、微信/支付宝扫码支付配置、订单交付和资金看板。
 - 风险与回滚：通知下拉只读展示后端聚合结果，不改变业务状态；如跳转筛选异常，可先回滚通知组件和对应页面 query 初始化逻辑。方案文档不影响运行。
+
+### GitHub Actions 发布 SSH 断连兜底
+- 时间：2026-05-28 11:30 (Asia/Shanghai)
+- 任务目标：修复 Dou-Admin 发布流水线在 `Switch release` 步骤偶发 `kex_exchange_identification: read: Connection reset by peer` 导致部署失败的问题。
+- 改动仓库：Dou-Admin
+- 改动文件：
+  - `.github/workflows/deploy.yml`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 验证：
+  - Python `yaml.safe_load` 解析 `.github/workflows/deploy.yml` 通过。
+  - `pnpm typecheck` 通过。
+  - `pnpm build` 通过。
+  - `git diff --check` 通过。
+- 下一步：推送后观察 GitHub Actions 新一轮部署；若仍在 SSH 握手阶段被服务器 reset，优先排查服务器 `sshd`、安全组、Fail2ban 或宝塔安全策略。
+- 风险与回滚：本次只调整发布 workflow，不影响业务代码；如 workflow 兼容性异常，可回滚本次提交，或手动在服务器执行 `mv dist-next dist` 前先确认 `dist-next/index.html` 存在。

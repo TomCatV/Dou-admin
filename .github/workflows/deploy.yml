@@ -13,6 +13,11 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
 
     steps:
       - name: Checkout
@@ -41,26 +46,108 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
+          mkdir -p "$RUNNER_TEMP/ssh-control"
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+          for attempt in 1 2 3 4 5; do
+            if ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts; then
+              break
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "ssh-keyscan failed after $attempt attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+          sort -u ~/.ssh/known_hosts -o ~/.ssh/known_hosts
+          echo "SSH_COMMAND=ssh -i $HOME/.ssh/deploy_key -p $SSH_PORT -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ConnectionAttempts=5 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o TCPKeepAlive=yes -o ControlMaster=auto -o ControlPersist=10m -o ControlPath=$RUNNER_TEMP/ssh-control/%C" >> "$GITHUB_ENV"
 
       - name: Upload dist
         run: |
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.SSH_PORT }}" \
+          retry() {
+            local attempt delay
+            delay=8
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -eq 5 ]; then
+                return 1
+              fi
+              echo "command failed, retrying in ${delay}s (attempt ${attempt}/5)" >&2
+              sleep "$delay"
+              delay=$((delay * 2))
+            done
+          }
+
+          retry rsync -az --delete \
+            -e "$SSH_COMMAND" \
             dist/ \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/dist-next/
+            "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/dist-next/"
 
       - name: Switch release
         run: |
-          ssh -i ~/.ssh/deploy_key -p "${{ secrets.SSH_PORT }}" \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "set -e;
-             cd '${{ secrets.DEPLOY_PATH }}';
-             chattr -i dist/.user.ini dist-prev/.user.ini 2>/dev/null || true;
-             rm -rf dist-prev;
-             if [ -d dist ]; then mv dist dist-prev; fi;
-             mv dist-next dist;
-             test -f dist/index.html;
-             echo 'dou-admin deploy success';"
+          retry() {
+            local attempt delay
+            delay=8
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then
+                return 0
+              fi
+              if [ "$attempt" -eq 5 ]; then
+                return 1
+              fi
+              echo "command failed, retrying in ${delay}s (attempt ${attempt}/5)" >&2
+              sleep "$delay"
+              delay=$((delay * 2))
+            done
+          }
+
+          switch_release() {
+            local deploy_path_quoted
+            deploy_path_quoted=$(printf '%q' "$DEPLOY_PATH")
+            $SSH_COMMAND "$SSH_USER@$SSH_HOST" "DEPLOY_PATH=$deploy_path_quoted sh -se" <<'REMOTE'
+          set -eu
+          cd "$DEPLOY_PATH"
+
+          if [ ! -f dist-next/index.html ]; then
+            if [ -f dist/index.html ]; then
+              echo 'dou-admin deploy success (already switched)'
+              exit 0
+            fi
+            if [ -f dist-prev/index.html ]; then
+              rm -rf dist
+              mv dist-prev dist
+            fi
+            echo 'dist-next/index.html missing and release is not ready' >&2
+            exit 1
+          fi
+
+          rollback() {
+            status=$?
+            if [ "$status" -ne 0 ] && [ ! -f dist/index.html ] && [ -d dist-prev ]; then
+              rm -rf dist
+              mv dist-prev dist
+            fi
+            exit "$status"
+          }
+          trap rollback EXIT
+
+          chattr -i dist/.user.ini dist-prev/.user.ini dist-next/.user.ini 2>/dev/null || true
+          rm -rf dist-prev
+          if [ -d dist ]; then mv dist dist-prev; fi
+          mv dist-next dist
+          test -f dist/index.html
+          trap - EXIT
+          echo 'dou-admin deploy success'
+          REMOTE
+          }
+
+          retry switch_release
+
+      - name: Close SSH control connection
+        if: always()
+        run: |
+          if [ -n "${SSH_COMMAND:-}" ]; then
+            $SSH_COMMAND -O exit "$SSH_USER@$SSH_HOST" 2>/dev/null || true
+          fi

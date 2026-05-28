@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-28 11:30 (Asia/Shanghai)
+最后更新时间：2026-05-28 12:52 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -48,6 +48,7 @@
 11. 新增右上角通知提醒：真实接入 `/api/admin/notifications/summary`，按治理待办、资金相关、到期相关分栏展示投诉举报、人工复核、售后、提现和套餐到期提醒，点击可跳转到对应菜单并带上筛选参数。
 12. 新增圈主商业后台能力整合方案：`docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`，明确对标“链动小铺”的小而美管理系统方案，覆盖店铺、商品/卡密、H5 独立下单页、微信/支付宝扫码支付、订单交付、售后资金和 AI 经营助手分期。
 13. 修复 GitHub Actions 发布切换偶发 SSH reset：`.github/workflows/deploy.yml` 增加 SSH keyscan/rsync/切换发布重试、SSH keepalive/连接复用、远端回滚保护和幂等判断，避免 `dist-next` 已切换但连接断开时误判失败。
+14. 继续补齐圈主商业后台 P0 详细落地设计：在 `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md` 明确 P0 只做商业级后台收口，不直接接 H5 扫码支付；补充 P0 数据模型、接口边界、页面字段、权限审计、套餐只读、生产校验清单和开发顺序。
 
 ## 续航规则
 
@@ -65,5 +66,5 @@
 4. 重点回归套餐到期只读保护、私域功能开关、子账号/线索上限、主房间聊天记录分组授权和资源卡改价后支付金额同步。
 5. 线上回归右上角通知提醒：用平台管理员和圈主账号分别确认投诉举报、售后、提现、到期提醒的数量、权限过滤和点击跳转筛选。
 6. 观察下一次 GitHub Actions 发布结果；若仍在 SSH 握手阶段被服务器 reset，优先检查服务器 `sshd`/安全组/Fail2ban/宝塔安全策略是否限制 GitHub Actions 出口 IP 或连接频率。
-7. 按 `CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md` 进入圈主商业后台 P0：商品/卡密库存、H5 独立下单页、扫码支付配置、订单交付和资金看板。
+7. 按 `CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md` 的 P0 详细设计推进：先补圈主后台商品中心写操作、权限审计、套餐只读和店铺资料收口，再进入 P1 商品中心和 H5 独立下单页。
 8. 继续补财务对账、异常单处理、2FA/IP 白名单、导出额度和更细的套餐到期限制。

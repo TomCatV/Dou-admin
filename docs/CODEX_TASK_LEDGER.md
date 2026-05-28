@@ -227,3 +227,15 @@
   - `git diff --check` 通过。
 - 下一步：推送后观察 GitHub Actions 新一轮部署；若仍在 SSH 握手阶段被服务器 reset，优先排查服务器 `sshd`、安全组、Fail2ban 或宝塔安全策略。
 - 风险与回滚：本次只调整发布 workflow，不影响业务代码；如 workflow 兼容性异常，可回滚本次提交，或手动在服务器执行 `mv dist-next dist` 前先确认 `dist-next/index.html` 存在。
+
+### 圈主商业后台 P0 详细落地设计
+- 时间：2026-05-28 12:52 (Asia/Shanghai)
+- 任务目标：按用户要求继续在 `CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md` 中补齐 P0 设计，而不是直接进入 P1 代码实现。
+- 改动仓库：Dou-Admin
+- 改动文件：
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 验证：Dou-Admin `git diff --check` 通过；Node UTF-8 检查 `CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`、仓内续航文档和外层续航文档均无 U+FFFD。
+- 下一步：按 P0 详细设计推进后台商品中心写操作、店铺资料收口、权限审计、套餐只读保护和通知跳转筛选；P0 收口后再进入 P1 商品中心/H5 独立下单页。
+- 风险与回滚：本次仅修改中文设计与续航文档，不影响运行；如 P0 边界调整，可直接修订方案文档后再开发。

@@ -120,3 +120,12 @@
 - 协同后端能力：Dou-Server 订单公开接口补充 `product_summary`，并返回 `resource_title/resource_summary/resource_cover_url` 兼容别名，支持前后端非原子部署。
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/shop/index.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
 - 下一步计划：继续线上回归公开店铺页、商品详情页、确认订单页和订单状态页；P2 前仍需确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。
+
+## 2026-05-29 P1 H5 入口显性化
+
+- 当前目标：回应前端看不到 P1 店铺页、商品详情页、确认订单页、订单状态页入口的问题，把平台资源卡管理页也接入 H5 预览/复制入口。
+- 已改文件：`src/api/admin.ts`、`src/views/resource-cards/index.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/admin/resourceCards.routes.js`。
+- 已完成前端能力：平台治理 `资源卡管理` 表格右侧新增 `商品页`、`店铺页`、`复制H5` 操作；详情抽屉新增 `H5 公开页` 行，展示可访问状态，并可打开商品页、店铺页或复制商品链接。
+- 协同后端能力：Dou-Server 平台资源卡列表/详情返回 `circle_code`、`share_token`、`h5_status`、`public_path`、`store_path`，让平台管理员无需切到圈主商品中心即可验收 H5 公开页。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/resourceCards.routes.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
+- 下一步计划：部署后刷新 `平台治理 / 资源卡管理`，用已发布且审核通过的资源卡点击 `商品页` 和 `店铺页` 回归公开 H5；确认订单页需要从商品详情页点击立即购买后进入，订单状态页需要真实订单号或后续支付闭环产生订单。

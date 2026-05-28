@@ -383,3 +383,18 @@
 - 验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/shop/index.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
 - 下一步：线上继续回归店铺页、商品详情页、确认订单页、订单状态页，以及 429 频控、订单不存在、店铺暂停等错误提示。
 - 风险与回滚：本次仅补公开订单字段兼容与前端展示兜底，不改变草稿、支付或交付状态机；如异常可回滚本次前端展示修复，后端别名保留不影响旧客户端。
+
+### P1 H5 入口显性化
+
+- 时间：2026-05-29 01:31 (Asia/Shanghai)
+- 任务目标：让平台管理员在 `平台治理 / 资源卡管理` 里直接看到并打开 P1 H5 店铺页、商品详情页入口。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/resource-cards/index.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 平台资源卡列表/详情补充 `circle_code`、`share_token`、`h5_status`、`public_path`、`store_path`。
+- 验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/resourceCards.routes.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
+- 下一步：部署后刷新资源卡管理页，点击表格右侧 `商品页`、`店铺页`、`复制H5` 验收公开入口；确认订单页由商品详情页下单进入，订单状态页需要订单号或后续支付闭环产生订单。
+- 风险与回滚：本次只新增平台后台入口和只读字段，不改变资源卡治理状态；如入口展示异常，可隐藏新增按钮，H5 公开路由和后端公开接口不受影响。

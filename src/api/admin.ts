@@ -184,7 +184,9 @@ export function unwrap<T>(promise: Promise<ApiResult<T>>) {
 
 export const dashboardApi = {
   summary: () =>
-    unwrap(http.request<ApiResult<DashboardSummary>>("get", "/dashboard/summary"))
+    unwrap(
+      http.request<ApiResult<DashboardSummary>>("get", "/dashboard/summary")
+    )
 };
 
 export type ProductCategory = {
@@ -210,7 +212,9 @@ export const notificationsApi = {
 
 export const tenantApi = {
   dashboard: () =>
-    unwrap(http.request<ApiResult<TenantDashboard>>("get", "/tenant/dashboard")),
+    unwrap(
+      http.request<ApiResult<TenantDashboard>>("get", "/tenant/dashboard")
+    ),
   circle: () =>
     unwrap(
       http.request<
@@ -569,7 +573,10 @@ export const reportsApi = {
   ) =>
     unwrap(
       http.request<
-        ApiResult<{ report: ReportItem; target_action_result: Record<string, any> }>
+        ApiResult<{
+          report: ReportItem;
+          target_action_result: Record<string, any>;
+        }>
       >("post", `/reports/${id}/actions`, { data })
     )
 };
@@ -737,7 +744,9 @@ export const adminUsersApi = {
       )
     ),
   create: (data: Record<string, any>) =>
-    unwrap(http.request<ApiResult<AdminUser>>("post", "/admin-users", { data })),
+    unwrap(
+      http.request<ApiResult<AdminUser>>("post", "/admin-users", { data })
+    ),
   update: (id: string, data: Record<string, any>) =>
     unwrap(
       http.request<ApiResult<AdminUser>>("patch", `/admin-users/${id}`, {
@@ -746,11 +755,9 @@ export const adminUsersApi = {
     ),
   resetPassword: (id: string, data: { password?: string }) =>
     unwrap(
-      http.request<ApiResult<{ id: string; username: string; password: string }>>(
-        "post",
-        `/admin-users/${id}/reset-password`,
-        { data }
-      )
+      http.request<
+        ApiResult<{ id: string; username: string; password: string }>
+      >("post", `/admin-users/${id}/reset-password`, { data })
     )
 };
 
@@ -821,10 +828,7 @@ export const adminAccountGroupsApi = {
 };
 
 export const accountApi = {
-  changePassword: (data: {
-    old_password: string;
-    new_password: string;
-  }) =>
+  changePassword: (data: { old_password: string; new_password: string }) =>
     unwrap(
       http.request<ApiResult<{ changed: boolean }>>(
         "post",
@@ -910,6 +914,7 @@ export type ManagedResourceCard = {
   id: string;
   circle_id: string;
   circle_name?: string;
+  circle_code?: string;
   creator_id?: string;
   creator_dxq_id?: string;
   creator_nickname?: string;
@@ -1097,7 +1102,9 @@ export const managedUsersApi = {
       >("get", `/users/${id}`)
     ),
   update: (id: string, data: Record<string, any>) =>
-    unwrap(http.request<ApiResult<ManagedUser>>("patch", `/users/${id}`, { data }))
+    unwrap(
+      http.request<ApiResult<ManagedUser>>("patch", `/users/${id}`, { data })
+    )
 };
 
 export const manualReviewsApi = {
@@ -1149,7 +1156,9 @@ export const managedCirclesApi = {
     ),
   update: (id: string, data: Record<string, any>) =>
     unwrap(
-      http.request<ApiResult<ManagedCircle>>("patch", `/circles/${id}`, { data })
+      http.request<ApiResult<ManagedCircle>>("patch", `/circles/${id}`, {
+        data
+      })
     ),
   members: (id: string, params: Record<string, any>) =>
     unwrap(

@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import {
-  managedResourceCardsApi,
-  type ManagedResourceCard
-} from "@/api/admin";
+import { CopyDocument, Link, View } from "@element-plus/icons-vue";
+import { managedResourceCardsApi, type ManagedResourceCard } from "@/api/admin";
 import {
   auditStatusMap,
   deliveryTypeLabels,
@@ -59,6 +57,62 @@ function metaOf<T extends Record<string, { label: string; type: string }>>(
 
 function moneyText(value: number) {
   return `￥${((Number(value) || 0) / 100).toFixed(2)}`;
+}
+
+function shopBase() {
+  return String(
+    import.meta.env.VITE_SHOP_BASE_URL || window.location.origin
+  ).replace(/\/$/, "");
+}
+
+function isH5Visible(row: ManagedResourceCard) {
+  return (
+    row.status === "published" &&
+    row.audit_status === "pass" &&
+    row.h5_status !== "hidden"
+  );
+}
+
+function shopPath(row: ManagedResourceCard, type: "product" | "store") {
+  if (type === "store") {
+    return (
+      row.store_path ||
+      `/#/shop/store/${encodeURIComponent(row.circle_code || row.circle_id)}`
+    );
+  }
+  return (
+    row.public_path ||
+    `/#/shop/product/${encodeURIComponent(row.share_token || row.id)}`
+  );
+}
+
+function shopUrl(row: ManagedResourceCard, type: "product" | "store") {
+  const path = shopPath(row, type);
+  return /^https?:\/\//i.test(path) ? path : `${shopBase()}${path}`;
+}
+
+function openShopPage(row: ManagedResourceCard, type: "product" | "store") {
+  if (!isH5Visible(row)) {
+    ElMessage.warning("该商品未满足 H5 展示条件，打开后可能显示不可访问。");
+  }
+  window.open(shopUrl(row, type), "_blank", "noopener,noreferrer");
+}
+
+async function copyShopLink(row: ManagedResourceCard) {
+  const url = shopUrl(row, "product");
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(url);
+  } else {
+    const textarea = document.createElement("textarea");
+    textarea.value = url;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+  ElMessage.success("H5 商品链接已复制");
 }
 
 async function loadList() {
@@ -127,9 +181,13 @@ async function submitAction() {
 }
 
 async function setStatus(row: ManagedResourceCard, status: string) {
-  await ElMessageBox.confirm(`确认将资源卡「${row.title}」设为${status}？`, "资源卡状态确认", {
-    type: "warning"
-  });
+  await ElMessageBox.confirm(
+    `确认将资源卡「${row.title}」设为${status}？`,
+    "资源卡状态确认",
+    {
+      type: "warning"
+    }
+  );
   await managedResourceCardsApi.update(row.id, {
     status,
     audit_status: status === "published" ? "pass" : row.audit_status || "pass",
@@ -164,7 +222,12 @@ onMounted(loadList);
         placeholder="圈子ID"
         @keyup.enter="loadList"
       />
-      <el-select v-model="filters.status" class="filter-item" placeholder="状态" clearable>
+      <el-select
+        v-model="filters.status"
+        class="filter-item"
+        placeholder="状态"
+        clearable
+      >
         <el-option label="草稿" value="draft" />
         <el-option label="已发布" value="published" />
         <el-option label="已下架" value="offline" />
@@ -198,8 +261,13 @@ onMounted(loadList);
       <el-table-column label="资源卡" min-width="260">
         <template #default="{ row }">
           <div class="resource-cell">
-            <el-image v-if="row.cover_url" class="cover" :src="row.cover_url" fit="cover" />
-            <div class="cover empty" v-else />
+            <el-image
+              v-if="row.cover_url"
+              class="cover"
+              :src="row.cover_url"
+              fit="cover"
+            />
+            <div v-else class="cover empty" />
             <div>
               <div class="cell-main">{{ row.title }}</div>
               <div class="cell-sub">{{ row.summary || row.id }}</div>
@@ -210,7 +278,9 @@ onMounted(loadList);
       <el-table-column label="圈子/创作者" min-width="190">
         <template #default="{ row }">
           <div class="cell-main">{{ row.circle_name || row.circle_id }}</div>
-          <div class="cell-sub">{{ row.creator_nickname || row.creator_dxq_id }}</div>
+          <div class="cell-sub">
+            {{ row.creator_nickname || row.creator_dxq_id }}
+          </div>
         </template>
       </el-table-column>
       <el-table-column label="价格" width="100">
@@ -232,18 +302,72 @@ onMounted(loadList);
       </el-table-column>
       <el-table-column label="数据" min-width="240">
         <template #default="{ row }">
-          <el-tag class="metric" type="info">{{ deliveryTypeLabels[row.delivery_type] }}</el-tag>
-          <el-tag class="metric" type="success">销量 {{ row.sales_count }}</el-tag>
-          <el-tag class="metric" type="info">评论 {{ row.comment_count }}</el-tag>
-          <el-tag v-if="row.delivery_type === 'code'" class="metric" type="warning">
+          <el-tag class="metric" type="info">{{
+            deliveryTypeLabels[row.delivery_type]
+          }}</el-tag>
+          <el-tag class="metric" type="success"
+            >销量 {{ row.sales_count }}</el-tag
+          >
+          <el-tag class="metric" type="info"
+            >评论 {{ row.comment_count }}</el-tag
+          >
+          <el-tag
+            class="metric"
+            :type="
+              isH5Visible(row)
+                ? 'success'
+                : row.h5_status === 'hidden'
+                  ? 'info'
+                  : 'warning'
+            "
+          >
+            {{
+              isH5Visible(row)
+                ? "H5 可访问"
+                : row.h5_status === "hidden"
+                  ? "H5 隐藏"
+                  : "H5 未公开"
+            }}
+          </el-tag>
+          <el-tag
+            v-if="row.delivery_type === 'code'"
+            class="metric"
+            type="warning"
+          >
             库存 {{ row.code_stock_available }}/{{ row.code_stock_total }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="updated_at" label="更新时间" width="170" />
-      <el-table-column label="操作" fixed="right" width="190">
+      <el-table-column label="操作" fixed="right" width="260">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row)">查看</el-button>
+          <el-button
+            link
+            type="primary"
+            :icon="View"
+            @click="openShopPage(row, 'product')"
+          >
+            商品页
+          </el-button>
+          <el-button
+            link
+            type="primary"
+            :icon="Link"
+            @click="openShopPage(row, 'store')"
+          >
+            店铺页
+          </el-button>
+          <el-button
+            link
+            type="primary"
+            :icon="CopyDocument"
+            @click="copyShopLink(row)"
+          >
+            复制H5
+          </el-button>
+          <el-button link type="primary" @click="openDetail(row)"
+            >查看</el-button
+          >
           <el-button
             v-if="canManage && row.status === 'published'"
             link
@@ -276,15 +400,23 @@ onMounted(loadList);
     </div>
 
     <el-drawer v-model="detailVisible" size="680px" title="资源卡详情">
-      <div v-loading="detailLoading" v-if="current" class="detail">
+      <div v-if="current" v-loading="detailLoading" class="detail">
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="标题">{{ current.title }}</el-descriptions-item>
-          <el-descriptions-item label="简介">{{ current.summary || "-" }}</el-descriptions-item>
+          <el-descriptions-item label="标题">{{
+            current.title
+          }}</el-descriptions-item>
+          <el-descriptions-item label="简介">{{
+            current.summary || "-"
+          }}</el-descriptions-item>
           <el-descriptions-item label="圈子">
             {{ current.circle_name || current.circle_id }}
-            <span class="muted">{{ current.creator_nickname || current.creator_dxq_id }}</span>
+            <span class="muted">{{
+              current.creator_nickname || current.creator_dxq_id
+            }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="价格">{{ moneyText(current.price) }}</el-descriptions-item>
+          <el-descriptions-item label="价格">{{
+            moneyText(current.price)
+          }}</el-descriptions-item>
           <el-descriptions-item label="状态">
             <el-tag :type="metaOf(resourceCardStatusMap, current.status).type">
               {{ metaOf(resourceCardStatusMap, current.status).label }}
@@ -295,9 +427,46 @@ onMounted(loadList);
               {{ metaOf(auditStatusMap, current.audit_status).label }}
             </el-tag>
           </el-descriptions-item>
+          <el-descriptions-item label="H5 公开页">
+            <div class="h5-actions">
+              <el-tag :type="isH5Visible(current) ? 'success' : 'warning'">
+                {{ isH5Visible(current) ? "可访问" : "未公开或已隐藏" }}
+              </el-tag>
+              <el-button
+                link
+                type="primary"
+                :icon="View"
+                @click="openShopPage(current, 'product')"
+              >
+                商品页
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                :icon="Link"
+                @click="openShopPage(current, 'store')"
+              >
+                店铺页
+              </el-button>
+              <el-button
+                link
+                type="primary"
+                :icon="CopyDocument"
+                @click="copyShopLink(current)"
+              >
+                复制商品链接
+              </el-button>
+            </div>
+          </el-descriptions-item>
           <el-descriptions-item label="最近购买">
-            <el-tag v-for="item in purchases" :key="item.id" class="metric" type="info">
-              {{ item.user_nickname || item.user_dxq_id || item.user_id }} / {{ item.status }}
+            <el-tag
+              v-for="item in purchases"
+              :key="item.id"
+              class="metric"
+              type="info"
+            >
+              {{ item.user_nickname || item.user_dxq_id || item.user_id }} /
+              {{ item.status }}
             </el-tag>
             <span v-if="!purchases.length">-</span>
           </el-descriptions-item>
@@ -310,7 +479,11 @@ onMounted(loadList);
             <el-radio-button label="offline">下架</el-radio-button>
             <el-radio-button label="disabled">禁用</el-radio-button>
           </el-radio-group>
-          <el-switch v-model="actionForm.is_pinned" active-text="置顶" inactive-text="不置顶" />
+          <el-switch
+            v-model="actionForm.is_pinned"
+            active-text="置顶"
+            inactive-text="不置顶"
+          />
           <el-select v-model="actionForm.audit_status" class="full">
             <el-option label="待审核" value="pending" />
             <el-option label="通过" value="pass" />
@@ -374,11 +547,11 @@ onMounted(loadList);
 }
 
 .cover {
+  flex: none;
   width: 42px;
   height: 42px;
-  flex: none;
-  border-radius: 6px;
   background: #f0ebe3;
+  border-radius: 6px;
 }
 
 .cell-main {
@@ -389,12 +562,19 @@ onMounted(loadList);
 .cell-sub,
 .muted {
   margin-left: 4px;
-  color: #8f8276;
   font-size: 12px;
+  color: #8f8276;
 }
 
 .metric {
   margin: 0 4px 4px 0;
+}
+
+.h5-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .pagination {
@@ -406,8 +586,8 @@ onMounted(loadList);
 .action-box {
   display: grid;
   gap: 12px;
-  margin-top: 18px;
   padding: 14px;
+  margin-top: 18px;
   background: #fffdf9;
   border: 1px solid #e6ddd2;
   border-radius: 8px;

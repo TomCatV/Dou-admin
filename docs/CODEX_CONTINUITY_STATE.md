@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-28 13:11 (Asia/Shanghai)
+最后更新时间：2026-05-28 13:47 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -78,3 +78,17 @@
 - 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server 相关文件 `node --check` 和动态导入通过。
 - 下一步：线上用圈主 owner、租户 staff、只读 viewer 三类账号回归商品中心按钮可见性、创建编辑保存、卡密库存、上下架、删除、复制链接、订单跳转、套餐到期只读和提现权限。
 - 风险与回滚：前端写操作依赖 Dou-Server 本轮接口；若线上需止血，可先回滚/隐藏 `src/views/tenant/resources.vue` 的写按钮，后端接口保留不影响小程序既有资源卡交易。
+
+## 2026-05-28 研发模式记忆补充
+
+- 用户明确要求：从 P0 到 P5 采用“先设计文档，再写代码”的模式；遇到需要先写文档的 P 阶段，必须先把文档写到足以指导代码实现，再进入开发。
+- 技术资料规则：涉及支付、退款、提现、H5、内容安全、AI、第三方平台接口时，先查官方文档并记录关键链接和约束；GitHub 仅作为工程实践、SDK 示例和踩坑参考，不能替代官方契约。
+- 已同步位置：
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `C:\Users\Vincent\.codex\skills\vincent-dou-default\SKILL.md`
+  - `C:\Users\Vincent\.codex\skills\dou-commerce-production-workflow\SKILL.md`
+  - `C:\Users\Vincent\.codex\skills\dou-commerce-production-workflow\references\commerce-phase-gates.md`
+  - `C:\Users\Vincent\Desktop\Dou-Circle\docs\CODEX_CONTINUITY_STATE.md`
+  - `C:\Users\Vincent\Desktop\Dou-Circle\docs\CODEX_TASK_LEDGER.md`
+- 当前判断：P0 商品中心写操作已完成一轮代码；P0 店铺资料页、通知跳转筛选和全角色验收矩阵已补到实现级设计，可继续按文档开发 P0 剩余项。P1-P5 仍是方向级规划，不允许直接写业务代码。
+- 下一步：按文档开发 P0 店铺资料页、通知跳转筛选和 P0 验收脚本；P0 验收后再补 P1 商品中心与 H5 商品页详细设计。

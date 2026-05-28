@@ -256,3 +256,19 @@
   - 协同后端 `node --check src/routes/admin/tenant.routes.js`、`node --check src/lib/adminPermissions.js` 和动态导入通过。
 - 下一步：线上用圈主 owner、租户 staff、只读 viewer 回归商品中心权限、创建编辑、卡密库存、上下架、删除、复制链接、订单跳转、套餐只读和提现权限拆分。
 - 风险与回滚：本轮前端写操作依赖 Dou-Server 最新租户商品接口；如线上异常，可先隐藏写按钮或回滚本次 Dou-Admin 提交，后端接口和小程序资源卡购买链路仍可独立运行。
+
+### 圈主商业后台 P0-P5 研发模式固化
+- 时间：2026-05-28 13:47 (Asia/Shanghai)
+- 任务目标：按用户要求把“先设计文档，再写代码；官方文档优先；GitHub 作为工程参考；生产级和商业级标准”固化到本地记忆库、技能和圈主商业后台方案文档。
+- 改动仓库：Dou-Admin
+- 改动文件：
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 本地技能改动：
+  - `C:\Users\Vincent\.codex\skills\vincent-dou-default\SKILL.md`
+  - `C:\Users\Vincent\.codex\skills\dou-commerce-production-workflow\SKILL.md`
+  - `C:\Users\Vincent\.codex\skills\dou-commerce-production-workflow\references\commerce-phase-gates.md`
+- 验证：`dou-commerce-production-workflow` skill 快速校验通过；Dou-Admin `git diff --check` 通过；方案文档、续航文档和本地 skill 文件 UTF-8 扫描无 U+FFFD。
+- 下一步：P0 店铺资料页、通知跳转筛选和全角色验收矩阵已补到实现级设计；接下来按文档开发 P0 剩余项和验收脚本。
+- 风险与回滚：本次只固化研发规则和文档门禁，不改业务运行逻辑；如后续阶段边界调整，可先改设计文档和技能规则，再进入代码。

@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-28 14:54 (Asia/Shanghai)
+最后更新时间：2026-05-28 19:10 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -101,3 +101,13 @@
 - 后端兜底结论：Dou-Server 新增 `tenant:store:manage` 权限，owner/staff 默认拥有，viewer 默认没有；`PATCH /api/admin/tenant/circle` 改为强制 `tenant:store:manage`，继续执行圈子 scope、套餐只读、内容安全和审计。
 - 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；Dou-Server `node --check src/routes/admin/tenant.routes.js`、`node --check src/lib/adminPermissions.js`、动态导入和权限矩阵 smoke 通过；双仓 `git diff --check` 通过。
 - 下一步计划：提交推送后在线上用 owner、staff、viewer、到期租户回归店铺资料保存、只读提示、后端 403/402 拒绝和审计日志。
+
+## 2026-05-28 P1 商品中心与 H5 商品页后台
+
+- 当前目标：按 P1 设计把商品中心扩展到 H5 独立商品页，后台侧补分类、H5 可见性和公开链接复制。
+- 已改文件：`src/api/admin.ts`、`src/views/tenant/resources.vue`、`docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`、`docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：商品中心新增分类管理弹窗、分类筛选、商品编辑分类、H5 可见/隐藏设置；复制链接改为调用后端公开链接接口，优先使用 `VITE_SHOP_BASE_URL` 拼接 uniapp H5 hash 路由。
+- 协同后端能力：Dou-Server 已新增 `product_categories`、`commerce_order_drafts`、`/api/shop/*`、租户分类接口和公开链接接口。
+- 验证结果：Dou-Admin `pnpm typecheck`、`pnpm build` 通过；三仓 `git diff --check` 通过（仅 CRLF 转换提示）；本次改动文本经 Node UTF-8 扫描无 U+FFFD 或私用区乱码字符。
+- 下一步计划：P1 随本次三仓提交推送完成；P2 前确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。
+- 风险与回滚：若分类或 H5 链接入口异常，可临时隐藏商品中心分类管理与复制 H5 链接按钮，后端接口和新增字段保留不影响既有资源卡管理。

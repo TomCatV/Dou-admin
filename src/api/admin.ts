@@ -187,6 +187,17 @@ export const dashboardApi = {
     unwrap(http.request<ApiResult<DashboardSummary>>("get", "/dashboard/summary"))
 };
 
+export type ProductCategory = {
+  id: string;
+  circle_id: string;
+  name: string;
+  sort_order: number;
+  status: "active" | "hidden";
+  product_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export const notificationsApi = {
   summary: () =>
     unwrap(
@@ -238,6 +249,52 @@ export const tenantApi = {
         "/tenant/resource-cards",
         { params }
       )
+    ),
+  productCategories: (params: Record<string, any> = {}) =>
+    unwrap(
+      http.request<ApiResult<{ items: ProductCategory[] }>>(
+        "get",
+        "/tenant/product-categories",
+        { params }
+      )
+    ),
+  createProductCategory: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ category: ProductCategory }>>(
+        "post",
+        "/tenant/product-categories",
+        { data }
+      )
+    ),
+  updateProductCategory: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ category: ProductCategory }>>(
+        "patch",
+        `/tenant/product-categories/${id}`,
+        { data }
+      )
+    ),
+  deleteProductCategory: (id: string) =>
+    unwrap(
+      http.request<ApiResult<{ hidden: boolean; category_id: string }>>(
+        "delete",
+        `/tenant/product-categories/${id}`
+      )
+    ),
+  resourceCardPublicLink: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          product_key: string;
+          store_key: string;
+          public_path: string;
+          public_url: string;
+          pretty_path: string;
+          store_path: string;
+          store_url: string;
+          qr_payload: Record<string, any>;
+        }>
+      >("get", `/tenant/resource-cards/${id}/public-link`)
     ),
   resourceCardDetail: (id: string) =>
     unwrap(
@@ -869,6 +926,10 @@ export type ManagedResourceCard = {
   sales_count: number;
   comment_count: number;
   is_pinned: boolean;
+  category_id?: string;
+  category_name?: string;
+  share_token?: string;
+  h5_status?: "visible" | "hidden";
   status: "draft" | "published" | "offline" | "disabled" | "deleted";
   audit_status: string;
   purchase_count: number;
@@ -883,6 +944,7 @@ export type ManagedResourceCard = {
   doc_url?: string;
   code_items?: string[];
   public_path?: string;
+  store_path?: string;
   created_at: string;
   updated_at: string;
   published_at?: string | null;

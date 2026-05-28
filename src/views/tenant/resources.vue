@@ -16,7 +16,11 @@ import {
   type FormRules
 } from "element-plus";
 import { hasPerms } from "@/utils/auth";
-import { tenantApi, type ManagedResourceCard } from "@/api/admin";
+import {
+  tenantApi,
+  type ManagedResourceCard,
+  type ProductCategory
+} from "@/api/admin";
 
 defineOptions({ name: "TenantResources" });
 
@@ -27,20 +31,29 @@ const loading = ref(false);
 const saving = ref(false);
 const actionLoading = ref("");
 const rows = ref<ManagedResourceCard[]>([]);
+const categories = ref<ProductCategory[]>([]);
 const total = ref(0);
 const dialogVisible = ref(false);
+const categoryDialogVisible = ref(false);
 const formRef = ref<FormInstance>();
 const filters = reactive({
   keyword: "",
   status: "",
   delivery_type: "",
+  category_id: "",
   page: 1,
   page_size: 20
+});
+const categoryForm = reactive({
+  name: "",
+  sort_order: 0
 });
 const form = reactive({
   id: "",
   title: "",
   summary: "",
+  category_id: "",
+  h5_status: "visible" as "visible" | "hidden",
   price_yuan: "",
   delivery_type: "resource" as DeliveryType,
   cover_url: "",
@@ -57,6 +70,9 @@ const form = reactive({
 
 const canManage = computed(() => hasPerms("tenant:resource:manage"));
 const dialogTitle = computed(() => (form.id ? "编辑商品" : "新建商品"));
+const activeCategories = computed(() =>
+  categories.value.filter(item => item.status === "active")
+);
 
 const rules: FormRules = {
   title: [{ required: true, message: "请输入商品标题", trigger: "blur" }],
@@ -103,6 +119,8 @@ function resetForm() {
     id: "",
     title: "",
     summary: "",
+    category_id: "",
+    h5_status: "visible",
     price_yuan: "",
     delivery_type: "resource",
     cover_url: "",
@@ -137,8 +155,21 @@ function deliveryLabel(type: string) {
   return type === "code" ? "卡密交付" : "资源交付";
 }
 
+function h5StatusLabel(status?: string) {
+  return status === "hidden" ? "H5 隐藏" : "H5 可见";
+}
+
+function categoryText(row: ManagedResourceCard) {
+  return row.category_name || "未分类";
+}
+
 function canPublish(row: ManagedResourceCard) {
   return row.status === "draft" || row.status === "offline";
+}
+
+async function loadCategories() {
+  const data = await tenantApi.productCategories();
+  categories.value = data.items;
 }
 
 async function loadList() {
@@ -152,9 +183,53 @@ async function loadList() {
   }
 }
 
+async function loadPageData() {
+  await Promise.all([loadCategories(), loadList()]);
+}
+
 function search() {
   filters.page = 1;
   loadList();
+}
+
+function openCategoryDialog() {
+  Object.assign(categoryForm, { name: "", sort_order: 0 });
+  categoryDialogVisible.value = true;
+}
+
+async function createCategory() {
+  const name = categoryForm.name.trim();
+  if (!name) {
+    ElMessage.warning("请输入分类名称");
+    return;
+  }
+  saving.value = true;
+  try {
+    await tenantApi.createProductCategory({
+      name,
+      sort_order: Number(categoryForm.sort_order) || 0
+    });
+    Object.assign(categoryForm, { name: "", sort_order: 0 });
+    ElMessage.success("分类已创建");
+    await loadCategories();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function hideCategory(item: ProductCategory) {
+  await ElMessageBox.confirm(
+    `确认隐藏「${item.name}」？隐藏后商品仍保留，前台不再展示该分类。`,
+    "隐藏分类",
+    { type: "warning" }
+  );
+  await tenantApi.deleteProductCategory(item.id);
+  ElMessage.success("分类已隐藏");
+  await loadCategories();
+  if (filters.category_id === item.id) {
+    filters.category_id = "";
+    await loadList();
+  }
 }
 
 function openCreate() {
@@ -170,6 +245,8 @@ async function openEdit(row: ManagedResourceCard) {
     id: item.id,
     title: item.title || "",
     summary: item.summary || "",
+    category_id: item.category_id || "",
+    h5_status: item.h5_status || "visible",
     price_yuan: fromFen(item.price),
     delivery_type: (item.delivery_type || "resource") as DeliveryType,
     cover_url: item.cover_url || "",
@@ -192,6 +269,8 @@ function buildPayload() {
   const payload: Record<string, any> = {
     title: form.title.trim(),
     summary: form.summary.trim(),
+    category_id: form.category_id || null,
+    h5_status: form.h5_status,
     price: amount,
     delivery_type: form.delivery_type,
     cover_url: form.cover_url.trim(),
@@ -270,8 +349,13 @@ async function deleteResource(row: ManagedResourceCard) {
 
 async function copyLink(row: ManagedResourceCard) {
   const base = String(import.meta.env.VITE_SHOP_BASE_URL || window.location.origin).replace(/\/$/, "");
-  const path = row.public_path || `/shop/products/${row.id}`;
-  const url = /^https?:\/\//i.test(path) ? path : `${base}${path}`;
+  const link = await tenantApi.resourceCardPublicLink(row.id).catch(() => null);
+  const path = link?.public_path || row.public_path || `/#/pages/shop/product?id=${row.id}`;
+  const url = link?.public_url && !import.meta.env.VITE_SHOP_BASE_URL
+    ? link.public_url
+    : /^https?:\/\//i.test(path)
+      ? path
+      : `${base}${path}`;
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(url);
   } else {
@@ -291,7 +375,7 @@ function viewOrders(row: ManagedResourceCard) {
   router.push({ path: "/tenant/orders", query: { keyword: row.title } });
 }
 
-onMounted(loadList);
+onMounted(loadPageData);
 </script>
 
 <template>
@@ -303,6 +387,7 @@ onMounted(loadList);
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="loadList">刷新</el-button>
+        <el-button v-if="canManage" @click="openCategoryDialog">分类管理</el-button>
         <el-button v-if="canManage" type="primary" :icon="Plus" @click="openCreate">新建商品</el-button>
       </div>
     </div>
@@ -328,6 +413,14 @@ onMounted(loadList);
         <el-option label="资源交付" value="resource" />
         <el-option label="卡密交付" value="code" />
       </el-select>
+      <el-select v-model="filters.category_id" class="filter-item" clearable placeholder="分类">
+        <el-option
+          v-for="item in activeCategories"
+          :key="item.id"
+          :label="item.name"
+          :value="item.id"
+        />
+      </el-select>
       <el-select v-model="filters.status" class="filter-item" clearable placeholder="状态">
         <el-option label="草稿" value="draft" />
         <el-option label="已上架" value="published" />
@@ -347,6 +440,14 @@ onMounted(loadList);
               <div class="sub">{{ row.summary || "-" }}</div>
             </div>
           </div>
+        </template>
+      </el-table-column>
+      <el-table-column label="分类 / H5" min-width="140">
+        <template #default="{ row }">
+          <div class="main small">{{ categoryText(row) }}</div>
+          <el-tag class="h5-tag" :type="row.h5_status === 'hidden' ? 'info' : 'success'">
+            {{ h5StatusLabel(row.h5_status) }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column label="交付与库存" min-width="170">
@@ -440,6 +541,22 @@ onMounted(loadList);
         <el-form-item label="商品简介" prop="summary">
           <el-input v-model="form.summary" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
+        <el-form-item label="商品分类">
+          <el-select v-model="form.category_id" clearable placeholder="选择分类">
+            <el-option
+              v-for="item in activeCategories"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="H5 展示">
+          <el-radio-group v-model="form.h5_status">
+            <el-radio-button label="visible">可见</el-radio-button>
+            <el-radio-button label="hidden">隐藏</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="价格" prop="price_yuan">
           <el-input v-model="form.price_yuan" placeholder="单位：元" />
         </el-form-item>
@@ -498,6 +615,48 @@ onMounted(loadList);
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="saving" @click="saveResource">保存</el-button>
       </template>
+    </el-dialog>
+
+    <el-dialog v-model="categoryDialogVisible" title="分类管理" width="520px">
+      <div class="category-create">
+        <el-input
+          v-model="categoryForm.name"
+          maxlength="30"
+          placeholder="分类名称"
+        />
+        <el-input-number
+          v-model="categoryForm.sort_order"
+          :min="0"
+          :max="9999"
+          controls-position="right"
+        />
+        <el-button type="primary" :loading="saving" @click="createCategory">
+          新增
+        </el-button>
+      </div>
+      <el-table :data="categories" border>
+        <el-table-column prop="name" label="分类" />
+        <el-table-column prop="product_count" label="商品数" width="90" />
+        <el-table-column label="状态" width="90">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'active' ? 'success' : 'info'">
+              {{ row.status === "active" ? "启用" : "隐藏" }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'active'"
+              link
+              type="danger"
+              @click="hideCategory(row)"
+            >
+              隐藏
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-dialog>
   </div>
 </template>
@@ -564,6 +723,15 @@ onMounted(loadList);
   font-weight: 700;
 }
 
+.main.small {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.h5-tag {
+  margin-top: 2px;
+}
+
 .sub {
   color: #8f8276;
   font-size: 12px;
@@ -580,6 +748,13 @@ onMounted(loadList);
 }
 
 .mb {
+  margin-bottom: 12px;
+}
+
+.category-create {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 10px;
   margin-bottom: 12px;
 }
 

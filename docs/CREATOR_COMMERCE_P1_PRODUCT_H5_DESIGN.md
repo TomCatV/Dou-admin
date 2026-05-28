@@ -193,3 +193,35 @@ git diff --check
 | H5 承载方式 | 选择 Dou-uniapp H5、独立 Dou-Shop-H5 仓库、或 Dou-Admin 内子应用 |
 | H5 域名 | 建议 `shop.doucatapp.top`，需配置 HTTPS、CORS、微信/支付宝相关白名单 |
 | 店铺短链规则 | 可先用 `circle_id`，后续再允许用户自定义 slug |
+
+## 2026-05-28 P1 实现修订
+
+本轮按“先兼容、再抽象”的方案落地首版 P1，承载方式先采用 `Dou-uniapp` 的 H5 页面：
+
+1. 后端新增 `034_commerce_h5_foundation.sql`，包含 `product_categories`、`commerce_order_drafts`，并给 `resource_cards` 增加 `category_id`、`share_token`、`h5_status`。
+2. 后端新增 `/api/shop/*` 公共接口，支持店铺主页、公开商品详情、订单草稿创建、草稿查询和订单公开状态查询。
+3. 圈主后台新增商品分类接口和商品公开链接接口；商品中心支持按分类筛选、设置分类、设置 H5 可见性、复制 H5 商品链接。
+4. H5 页面新增 `pages/shop/store`、`pages/shop/product`、`pages/shop/checkout`、`pages/shop/order`，P1 只展示支付占位，不生成真实支付二维码。
+5. 实际 H5 链接首版使用 uniapp H5 hash 路由：`/#/pages/shop/product?id={productKey}` 与 `/#/pages/shop/store?store={storeKey}`。若后续服务器或 CDN 做短链重写，可再把 `/p/:productKey`、`/s/:storeKey` 映射到上述页面。
+6. 敏感边界保持不变：公开接口不返回 `resource_url`、`resource_access_code`、`doc_content`、`doc_url`、卡密明文和后台审核原因。
+
+本轮验证：
+
+```powershell
+node --check src/routes/shop/index.js
+node --check src/routes/admin/tenantProductCategories.routes.js
+node --check src/routes/admin/tenant.routes.js
+node --check src/lib/resourceCards.js
+node --check src/app.js
+npm run migrate # 使用临时 DATABASE_PATH 全量迁移
+```
+
+H5 承载仓验证：
+
+```powershell
+node --check api/v09/client.js
+node --check api/v09/index.js
+node -e "JSON.parse(require('fs').readFileSync('pages.json','utf8'))"
+```
+
+并用 Vue SFC 编译器验证新增 `pages/shop/*.vue` 的 template/script 均可编译。

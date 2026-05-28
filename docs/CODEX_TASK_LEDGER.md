@@ -299,3 +299,40 @@
   - 双仓 `git diff --check` 通过。
 - 下一步：线上用 owner、staff、viewer 和到期租户回归店铺资料保存、前端只读提示、后端 403/402 拒绝和审计日志。
 - 风险与回滚：如店铺资料保存异常，可临时隐藏保存按钮或回滚本次店铺资料权限提交；后端独立 `tenant:store:manage` 不影响小程序资源卡购买链路。
+
+### 圈主商业后台 P1 商品中心与 H5 商品页后台
+- 时间：2026-05-28 18:43 (Asia/Shanghai)
+- 任务目标：把 P1 设计落实到管理后台商品中心，支持商品分类、H5 可见性和公开链接复制。
+- 改动仓库：Dou-Admin、Dou-Server、Dou-uniapp
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/tenant/resources.vue`
+  - `docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `/api/shop/*`、商品分类和公开链接接口；Dou-uniapp 新增 H5 店铺/商品/确认订单/订单状态页。
+- 验证：
+  - Dou-Admin `pnpm typecheck` 通过。
+  - Dou-Server 新增后端路由语法检查、临时库迁移和公开 API smoke 已通过。
+  - Dou-uniapp 新增 H5 页 SFC parse/template/script 编译通过。
+- 下一步：继续执行三仓提交推送；P2 前确认 H5 生产域名、HTTPS、短链重写、微信/支付宝白名单和支付商户参数。
+- 风险与回滚：如分类管理或 H5 链接异常，可先隐藏后台分类管理和复制 H5 链接入口，商品基础管理仍可回退到 P0 能力。
+
+### 圈主商业后台 P1 前端收口
+- 时间：2026-05-28 19:10 (Asia/Shanghai)
+- 任务目标：完成 Dou-Admin 侧 P1 构建与提交前校验。
+- 改动仓库：Dou-Admin、Dou-Server、Dou-uniapp
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/tenant/resources.vue`
+  - `docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 验证：
+  - `pnpm build` 通过。
+  - `git diff --check` 通过（仅 CRLF 转换提示）。
+  - 本次改动文本经 Node UTF-8 扫描无 U+FFFD 或私用区乱码字符。
+- 下一步：随三仓提交推送；线上回归商品分类管理、H5 可见性、公开链接复制和 H5 页面承接。
+- 风险与回滚：若后台分类或链接入口异常，可临时隐藏分类管理和复制 H5 链接按钮，保留 P0 商品基础管理能力。

@@ -2,11 +2,7 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import {
-  reportsApi,
-  type ReportDetail,
-  type ReportItem
-} from "@/api/admin";
+import { reportsApi, type ReportDetail, type ReportItem } from "@/api/admin";
 import {
   reasonTypeLabels,
   reportStatusMap,
@@ -14,6 +10,7 @@ import {
   targetTypeLabels
 } from "@/utils/labels";
 import { hasPerms } from "@/utils/auth";
+import { readableRows } from "@/utils/readableDetail";
 
 defineOptions({
   name: "Reports"
@@ -41,19 +38,26 @@ const actionForm = reactive({
   note: ""
 });
 const canProcessReport = computed(() => hasPerms("report:process"));
+const targetRows = computed(() => readableRows(detail.value?.report?.target));
 
 const targetActions = computed(() => {
   const type = detail.value?.report?.target_type || "";
   const base = [{ label: targetActionLabels.none, value: "none" }];
   if (type === "message") {
-    base.push({ label: targetActionLabels.hide_message, value: "hide_message" });
+    base.push({
+      label: targetActionLabels.hide_message,
+      value: "hide_message"
+    });
     base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
   } else if (type === "circle") {
     base.push({
       label: targetActionLabels.hide_circle_from_square,
       value: "hide_circle_from_square"
     });
-    base.push({ label: targetActionLabels.dismiss_circle, value: "dismiss_circle" });
+    base.push({
+      label: targetActionLabels.dismiss_circle,
+      value: "dismiss_circle"
+    });
     base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
   } else if (type === "room") {
     base.push({ label: targetActionLabels.close_room, value: "close_room" });
@@ -85,10 +89,12 @@ function labelOf(map: Record<string, string>, value: string) {
 }
 
 function statusMeta(status: string) {
-  return reportStatusMap[status as keyof typeof reportStatusMap] || {
-    label: status,
-    type: "info"
-  };
+  return (
+    reportStatusMap[status as keyof typeof reportStatusMap] || {
+      label: status,
+      type: "info"
+    }
+  );
 }
 
 async function loadList() {
@@ -151,12 +157,22 @@ onMounted(() => {
 <template>
   <div class="reports-page">
     <div class="filter-bar">
-      <el-select v-model="filters.status" class="filter-item" placeholder="状态" clearable>
+      <el-select
+        v-model="filters.status"
+        class="filter-item"
+        placeholder="状态"
+        clearable
+      >
         <el-option label="待处理" value="pending" />
         <el-option label="已处理" value="processed" />
         <el-option label="已驳回" value="rejected" />
       </el-select>
-      <el-select v-model="filters.target_type" class="filter-item" placeholder="对象" clearable>
+      <el-select
+        v-model="filters.target_type"
+        class="filter-item"
+        placeholder="对象"
+        clearable
+      >
         <el-option
           v-for="(label, value) in targetTypeLabels"
           :key="value"
@@ -185,7 +201,9 @@ onMounted(() => {
       </el-table-column>
       <el-table-column label="举报对象" min-width="180">
         <template #default="{ row }">
-          <div class="cell-main">{{ labelOf(targetTypeLabels, row.target_type) }}</div>
+          <div class="cell-main">
+            {{ labelOf(targetTypeLabels, row.target_type) }}
+          </div>
           <div class="cell-sub">{{ row.target?.title || row.target_id }}</div>
         </template>
       </el-table-column>
@@ -197,14 +215,23 @@ onMounted(() => {
       <el-table-column label="举报人" min-width="150">
         <template #default="{ row }">
           <div class="cell-main">{{ row.reporter?.nickname || "-" }}</div>
-          <div class="cell-sub">{{ row.reporter?.dxq_id || row.reporter_id }}</div>
+          <div class="cell-sub">
+            {{ row.reporter?.dxq_id || row.reporter_id }}
+          </div>
         </template>
       </el-table-column>
-      <el-table-column prop="description" label="说明" min-width="260" show-overflow-tooltip />
+      <el-table-column
+        prop="description"
+        label="说明"
+        min-width="260"
+        show-overflow-tooltip
+      />
       <el-table-column prop="created_at" label="提交时间" width="170" />
       <el-table-column label="操作" fixed="right" width="110">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row)">查看</el-button>
+          <el-button link type="primary" @click="openDetail(row)"
+            >查看</el-button
+          >
         </template>
       </el-table-column>
     </el-table>
@@ -221,7 +248,7 @@ onMounted(() => {
     </div>
 
     <el-drawer v-model="detailVisible" size="640px" title="举报详情">
-      <div v-loading="detailLoading" v-if="detail?.report" class="detail">
+      <div v-if="detail?.report" v-loading="detailLoading" class="detail">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="状态">
             <el-tag :type="statusMeta(detail.report.status).type">
@@ -230,10 +257,19 @@ onMounted(() => {
           </el-descriptions-item>
           <el-descriptions-item label="举报对象">
             {{ labelOf(targetTypeLabels, detail.report.target_type) }}
-            <span class="muted">{{ detail.report.target_id }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="对象摘要">
-            <pre>{{ JSON.stringify(detail.report.target, null, 2) }}</pre>
+            <div v-if="targetRows.length" class="info-list">
+              <div
+                v-for="item in targetRows"
+                :key="item.label"
+                class="info-row"
+              >
+                <span>{{ item.label }}</span>
+                <strong :class="{ long: item.long }">{{ item.value }}</strong>
+              </div>
+            </div>
+            <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="举报说明">
             {{ detail.report.description || "-" }}
@@ -251,7 +287,10 @@ onMounted(() => {
           </el-descriptions-item>
         </el-descriptions>
 
-        <div v-if="detail.report.status === 'pending' && canProcessReport" class="action-box">
+        <div
+          v-if="detail.report.status === 'pending' && canProcessReport"
+          class="action-box"
+        >
           <h3>处理动作</h3>
           <el-radio-group v-model="actionForm.action">
             <el-radio-button label="process">处理通过</el-radio-button>
@@ -319,22 +358,14 @@ onMounted(() => {
 .cell-sub,
 .muted {
   margin-left: 4px;
-  color: #8f8276;
   font-size: 12px;
+  color: #8f8276;
 }
 
 .pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: 12px;
-}
-
-.detail pre {
-  max-height: 220px;
-  padding: 10px;
-  overflow: auto;
-  background: #f7f2ea;
-  border-radius: 6px;
 }
 
 .evidence {
@@ -345,8 +376,8 @@ onMounted(() => {
 }
 
 .action-box {
-  margin-top: 18px;
   padding: 14px;
+  margin-top: 18px;
   background: #fffdf9;
   border: 1px solid #e6ddd2;
   border-radius: 8px;
@@ -364,5 +395,31 @@ onMounted(() => {
 .submit-btn {
   width: 100%;
   margin-top: 12px;
+}
+
+.info-list {
+  display: grid;
+  gap: 8px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.info-row span {
+  color: #8f8276;
+}
+
+.info-row strong {
+  font-weight: 500;
+  color: #221a14;
+  word-break: break-word;
+}
+
+.info-row .long {
+  white-space: pre-wrap;
 }
 </style>

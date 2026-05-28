@@ -129,3 +129,12 @@
 - 协同后端能力：Dou-Server 平台资源卡列表/详情返回 `circle_code`、`share_token`、`h5_status`、`public_path`、`store_path`，让平台管理员无需切到圈主商品中心即可验收 H5 公开页。
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/resourceCards.routes.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
 - 下一步计划：部署后刷新 `平台治理 / 资源卡管理`，用已发布且审核通过的资源卡点击 `商品页` 和 `店铺页` 回归公开 H5；确认订单页需要从商品详情页点击立即购买后进入，订单状态页需要真实订单号或后续支付闭环产生订单。
+
+## 2026-05-29 H5 线上接口与后台代码展示优化
+
+- 当前目标：修复 `admin.doucatapp.top/#/shop/*` 公开页线上打开后请求失败的问题，并按用户要求清理后台详情里直接展示 JSON/代码块的体验。
+- 根因确认：`http://admin.doucatapp.top/api/shop/stores/...` 返回的是 Admin 前端 HTML；`https://api.doucatapp.top/api/shop/stores/...` 返回正常 JSON，因此生产 H5 公共接口不能继续默认走 admin 域相对路径。
+- 已改文件：`.env.production`、`.env.staging`、`build/utils.ts`、`types/global.d.ts`、`src/api/shop.ts`、`src/utils/readableDetail.ts`、`src/views/reports/index.vue`、`src/views/manual-reviews/index.vue`、`src/views/audit-logs/index.vue`、`src/views/saas/index.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：生产/预发构建增加 `VITE_SHOP_API_BASE_URL=https://api.doucatapp.top/api/shop` 和 `VITE_SHOP_BASE_URL=http://admin.doucatapp.top`；公开 H5 API 客户端能识别 HTML/异常响应并展示中文业务提示；举报详情、人工复核、审计日志不再展示原始 JSON；SaaS 套餐配置从 JSON 文本框改为数字输入和功能开关，租户设置只显示可读摘要并保留原配置。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；构建产物已确认公共页 API 基址写入 `https://api.doucatapp.top/api/shop`；线上公共店铺接口 `https://api.doucatapp.top/api/shop/stores/8254ecd6-190e-4db6-8718-68a4b131f7e5` 返回 JSON。
+- 下一步计划：推送后等待 GitHub Actions 部署完成，再刷新 `admin.doucatapp.top/#/shop/store/8254ecd6-190e-4db6-8718-68a4b131f7e5`、对应商品页和确认订单页；若仍失败，优先检查浏览器控制台是否被旧缓存命中或服务器是否还有额外 CSP/证书策略。

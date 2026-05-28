@@ -2,16 +2,14 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import {
-  manualReviewsApi,
-  type ManualReviewItem
-} from "@/api/admin";
+import { manualReviewsApi, type ManualReviewItem } from "@/api/admin";
 import {
   auditStatusMap,
   governanceReasonOptions,
   manualReviewTargetLabels
 } from "@/utils/labels";
 import { hasPerms } from "@/utils/auth";
+import { readableRows } from "@/utils/readableDetail";
 
 defineOptions({
   name: "ManualReviews"
@@ -49,6 +47,7 @@ const canReview = computed(
     hasPerms("circle:manage") ||
     hasPerms("resource_card:manage")
 );
+const targetRows = computed(() => readableRows(current.value?.raw));
 
 const targetStatusOptions = computed(() => {
   const type = current.value?.target_type;
@@ -156,8 +155,12 @@ async function submitAction() {
 }
 
 onMounted(() => {
-  const auditStatus = String(route.query.audit_status || route.query.auditStatus || "");
-  const targetType = String(route.query.target_type || route.query.targetType || "");
+  const auditStatus = String(
+    route.query.audit_status || route.query.auditStatus || ""
+  );
+  const targetType = String(
+    route.query.target_type || route.query.targetType || ""
+  );
   if (auditStatus) filters.audit_status = auditStatus;
   if (targetType) filters.target_type = targetType;
   loadList();
@@ -221,8 +224,18 @@ onMounted(() => {
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="source" label="来源" width="130" show-overflow-tooltip />
-      <el-table-column prop="summary" label="摘要" min-width="260" show-overflow-tooltip />
+      <el-table-column
+        prop="source"
+        label="来源"
+        width="130"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="summary"
+        label="摘要"
+        min-width="260"
+        show-overflow-tooltip
+      />
       <el-table-column label="举报" width="90">
         <template #default="{ row }">
           <el-tag :type="row.report_count > 0 ? 'warning' : 'info'">
@@ -233,7 +246,9 @@ onMounted(() => {
       <el-table-column prop="updated_at" label="更新时间" width="170" />
       <el-table-column label="操作" fixed="right" width="110">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row)">查看</el-button>
+          <el-button link type="primary" @click="openDetail(row)"
+            >查看</el-button
+          >
         </template>
       </el-table-column>
     </el-table>
@@ -250,22 +265,36 @@ onMounted(() => {
     </div>
 
     <el-drawer v-model="detailVisible" size="680px" title="人工复核详情">
-      <div v-loading="detailLoading" v-if="current" class="detail">
+      <div v-if="current" v-loading="detailLoading" class="detail">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="对象">
             {{ targetLabel(current.target_type) }}
             <span class="muted">{{ current.target_id }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="标题">{{ current.title || "-" }}</el-descriptions-item>
-          <el-descriptions-item label="摘要">{{ current.summary || "-" }}</el-descriptions-item>
+          <el-descriptions-item label="标题">{{
+            current.title || "-"
+          }}</el-descriptions-item>
+          <el-descriptions-item label="摘要">{{
+            current.summary || "-"
+          }}</el-descriptions-item>
           <el-descriptions-item label="当前审核">
             <el-tag :type="metaOf(auditStatusMap, current.audit_status).type">
               {{ metaOf(auditStatusMap, current.audit_status).label }}
             </el-tag>
             <span class="muted">{{ current.audit_reason || "-" }}</span>
           </el-descriptions-item>
-          <el-descriptions-item label="原始快照">
-            <pre>{{ JSON.stringify(current.raw || {}, null, 2) }}</pre>
+          <el-descriptions-item label="复核对象信息">
+            <div v-if="targetRows.length" class="info-list">
+              <div
+                v-for="item in targetRows"
+                :key="item.label"
+                class="info-row"
+              >
+                <span>{{ item.label }}</span>
+                <strong :class="{ long: item.long }">{{ item.value }}</strong>
+              </div>
+            </div>
+            <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="操作记录">
             <el-timeline v-if="logs.length">
@@ -274,8 +303,12 @@ onMounted(() => {
                 :key="log.id || log.created_at"
                 :timestamp="log.created_at"
               >
-                <div class="cell-main">{{ log.summary || log.action || "-" }}</div>
-                <div class="cell-sub">{{ log.admin_username || log.operator || "-" }}</div>
+                <div class="cell-main">
+                  {{ log.summary || log.action || "-" }}
+                </div>
+                <div class="cell-sub">
+                  {{ log.admin_username || log.operator || "-" }}
+                </div>
               </el-timeline-item>
             </el-timeline>
             <span v-else>-</span>
@@ -351,8 +384,8 @@ onMounted(() => {
 .cell-sub,
 .muted {
   margin-left: 4px;
-  color: #8f8276;
   font-size: 12px;
+  color: #8f8276;
 }
 
 .pagination {
@@ -361,19 +394,11 @@ onMounted(() => {
   margin-top: 12px;
 }
 
-.detail pre {
-  max-height: 240px;
-  padding: 10px;
-  overflow: auto;
-  background: #f7f2ea;
-  border-radius: 6px;
-}
-
 .action-box {
   display: grid;
   gap: 12px;
-  margin-top: 18px;
   padding: 14px;
+  margin-top: 18px;
   background: #fffdf9;
   border: 1px solid #e6ddd2;
   border-radius: 8px;
@@ -386,5 +411,31 @@ onMounted(() => {
 .full,
 .submit-btn {
   width: 100%;
+}
+
+.info-list {
+  display: grid;
+  gap: 8px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.info-row span {
+  color: #8f8276;
+}
+
+.info-row strong {
+  font-weight: 500;
+  color: #221a14;
+  word-break: break-word;
+}
+
+.info-row .long {
+  white-space: pre-wrap;
 }
 </style>

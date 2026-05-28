@@ -1,4 +1,4 @@
-import Axios from "axios";
+import Axios, { type AxiosResponse } from "axios";
 
 export type ShopApiResult<T> = {
   code: number;
@@ -114,13 +114,33 @@ const shopHttp = Axios.create({
   }
 });
 
-function unwrap<T>(promise: Promise<{ data: ShopApiResult<T> }>) {
-  return promise.then(res => {
-    if (res.data?.code !== 0) {
-      throw new Error(res.data?.message || "请求失败");
-    }
-    return res.data.data;
-  });
+function isHtmlResponse(data: unknown) {
+  return (
+    typeof data === "string" &&
+    /<(html|!doctype)\b/i.test(data.trim().slice(0, 120))
+  );
+}
+
+function unwrap<T>(promise: Promise<AxiosResponse<ShopApiResult<T> | string>>) {
+  return promise
+    .then(res => {
+      if (isHtmlResponse(res.data)) {
+        throw new Error("公开页面接口未接通，请联系管理员检查 H5 服务配置");
+      }
+      if (!res.data || typeof res.data !== "object" || !("code" in res.data)) {
+        throw new Error("公开页面接口返回异常，请稍后再试");
+      }
+      if (res.data.code !== 0) {
+        throw new Error(res.data.message || "请求失败");
+      }
+      return res.data.data;
+    })
+    .catch(error => {
+      if (Axios.isAxiosError(error)) {
+        throw new Error("公开页面接口暂时不可用，请稍后再试");
+      }
+      throw error;
+    });
 }
 
 export const shopApi = {

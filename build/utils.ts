@@ -57,7 +57,9 @@ const wrapperEnv = (envConf: Recordable): ViteEnv => {
     VITE_CDN: false,
     VITE_HIDE_HOME: "false",
     VITE_COMPRESSION: "none",
-    VITE_API_BASE_URL: "/api/admin"
+    VITE_API_BASE_URL: "/api/admin",
+    VITE_SHOP_API_BASE_URL: "",
+    VITE_SHOP_BASE_URL: ""
   };
 
   for (const envName of Object.keys(envConf)) {

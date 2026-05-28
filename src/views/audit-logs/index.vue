@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
 import { auditLogsApi } from "@/api/admin";
+import { readableChangeRows } from "@/utils/readableDetail";
 
 defineOptions({
   name: "AuditLogs"
@@ -40,7 +41,12 @@ onMounted(loadList);
 <template>
   <div class="audit-page">
     <div class="filter-bar">
-      <el-input v-model="filters.action" class="filter-item" clearable placeholder="动作" />
+      <el-input
+        v-model="filters.action"
+        class="filter-item"
+        clearable
+        placeholder="动作"
+      />
       <el-input
         v-model="filters.target_type"
         class="filter-item"
@@ -56,12 +62,32 @@ onMounted(loadList);
       <el-table-column prop="admin_username" label="管理员" width="140" />
       <el-table-column prop="action" label="动作" width="150" />
       <el-table-column prop="target_type" label="对象类型" width="130" />
-      <el-table-column prop="target_id" label="对象ID" min-width="220" show-overflow-tooltip />
-      <el-table-column prop="summary" label="摘要" min-width="220" show-overflow-tooltip />
+      <el-table-column
+        prop="target_id"
+        label="对象ID"
+        min-width="220"
+        show-overflow-tooltip
+      />
+      <el-table-column
+        prop="summary"
+        label="摘要"
+        min-width="220"
+        show-overflow-tooltip
+      />
       <el-table-column label="详情" width="90">
         <template #default="{ row }">
           <el-popover width="420" trigger="click">
-            <pre>{{ JSON.stringify(row.detail, null, 2) }}</pre>
+            <div v-if="readableChangeRows(row.detail).length" class="info-list">
+              <div
+                v-for="item in readableChangeRows(row.detail)"
+                :key="item.label"
+                class="info-row"
+              >
+                <span>{{ item.label }}</span>
+                <strong :class="{ long: item.long }">{{ item.value }}</strong>
+              </div>
+            </div>
+            <span v-else>暂无更多详情</span>
             <template #reference>
               <el-button link type="primary">查看</el-button>
             </template>
@@ -105,11 +131,31 @@ onMounted(loadList);
   margin-top: 12px;
 }
 
-pre {
+.info-list {
+  display: grid;
+  gap: 8px;
   max-height: 360px;
-  padding: 10px;
   overflow: auto;
-  background: #f7f2ea;
-  border-radius: 6px;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.info-row span {
+  color: #8f8276;
+}
+
+.info-row strong {
+  font-weight: 500;
+  color: #221a14;
+  word-break: break-word;
+}
+
+.info-row .long {
+  white-space: pre-wrap;
 }
 </style>

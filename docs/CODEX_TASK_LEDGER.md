@@ -398,3 +398,31 @@
 - 验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/resourceCards.routes.js` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
 - 下一步：部署后刷新资源卡管理页，点击表格右侧 `商品页`、`店铺页`、`复制H5` 验收公开入口；确认订单页由商品详情页下单进入，订单状态页需要订单号或后续支付闭环产生订单。
 - 风险与回滚：本次只新增平台后台入口和只读字段，不改变资源卡治理状态；如入口展示异常，可隐藏新增按钮，H5 公开路由和后端公开接口不受影响。
+
+### H5 线上接口与后台代码展示优化
+
+- 时间：2026-05-29 01:55 (Asia/Shanghai)
+- 任务目标：修复线上公开 H5 页面打开后请求失败，并清理后台详情里直接显示 JSON/代码块的体验。
+- 改动仓库：Dou-Admin
+- Dou-Admin 改动文件：
+  - `.env.production`
+  - `.env.staging`
+  - `build/utils.ts`
+  - `types/global.d.ts`
+  - `src/api/shop.ts`
+  - `src/utils/readableDetail.ts`
+  - `src/views/reports/index.vue`
+  - `src/views/manual-reviews/index.vue`
+  - `src/views/audit-logs/index.vue`
+  - `src/views/saas/index.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 线上根因：`admin.doucatapp.top/api/shop/*` 当前返回 Admin 前端 HTML；`api.doucatapp.top/api/shop/*` 正常返回 JSON，且 CORS 允许 admin 域访问。
+- 前端改动：生产/预发 H5 公共接口基址改为 `https://api.doucatapp.top/api/shop`；H5 API 客户端识别 HTML/异常响应并展示中文提示；举报详情、人工复核、审计日志改为字段化摘要；SaaS 套餐配置从 JSON 文本框改为数字输入和功能开关。
+- 验证：
+  - `corepack pnpm typecheck` 通过。
+  - `corepack pnpm build` 通过。
+  - `git diff --check` 通过（仅 CRLF 转换提示）。
+  - 构建产物包含 `https://api.doucatapp.top/api/shop`，线上公共店铺接口返回 JSON。
+- 下一步：推送触发部署后，回归 `/#/shop/store/{storeKey}`、`/#/shop/product/{productKey}`、确认订单页和订单状态页；若页面仍失败，优先清缓存并检查线上证书/CSP/反代策略。
+- 风险与回滚：本次仅调整 Dou-Admin 构建环境和展示层，不改后端状态机；如跨域或证书策略异常，可临时把 `VITE_SHOP_API_BASE_URL` 改回同域并补 Nginx `/api/shop` 反代。

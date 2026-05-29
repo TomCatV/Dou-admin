@@ -475,3 +475,18 @@
   - 双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
 - 下一步：提交推送后在线上执行迁移 `036_commerce_payment_intents.sql`，配置真实微信/支付宝商户参数和回调地址，用小额测试商品完成真实扫码回归。
 - 风险与回滚：可通过 `WECHAT_NATIVE_PAY_ENABLED=false`、`ALIPAY_PAY_ENABLED=false` 或隐藏前端支付入口暂停通道；未明确支付结果只查单不退款，等待对账处理；Dou-uniapp 本轮未改动。
+
+### 平台端营收与手续费设计
+
+- 时间：2026-05-29 12:07 (Asia/Shanghai)
+- 任务目标：调研链动小铺类平台收费模式，结合 Dou 当前商品、H5 支付、钱包、提现和售后设计，形成平台端营收与手续费中文设计文档。
+- 改动仓库：Dou-Admin
+- 改动文件：
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 设计结论：第一阶段继续平台统一收款和圈主钱包，不做直清/分账；平台收入按“平台技术服务费 + SaaS 套餐 + 增值工具 + 分销/营销工具 + 人工服务”组合设计；默认交易技术服务费建议 20%，套餐可降档到 15% / 10% / 6%。
+- 验证：新增文档、方案索引和续航文档 UTF-8/乱码扫描通过；Dou-Admin `git diff --check` 通过，仅有 CRLF 转换提示。
+- 下一步：实现阶段确认最终套餐价格、默认费率、最低提现金额和负余额阈值；优先兼容迁移 `CREATOR_PLATFORM_FEE_RATE` 到基点制 `PLATFORM_TRADE_FEE_BPS`，并补平台收入流水。
+- 风险与回滚：本次仅文档变更，不影响运行；若后续费率策略出错，暂停新支付入口，用订单快照和人工调整流水修正。

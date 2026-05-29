@@ -157,3 +157,12 @@
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server 支付相关 `node --check`、`npm.cmd run migrate`、mock 微信/支付宝支付 smoke 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
 - 下一步计划：提交推送后服务器执行迁移 `036_commerce_payment_intents.sql`；生产环境配置微信/支付宝商户参数、证书/公钥、API V3 Key、回调 URL 和 H5 域名白名单，再用 0.01-1 元测试商品做真实扫码回归。
 - 风险与回滚：若支付通道异常，可先关闭 `WECHAT_NATIVE_PAY_ENABLED=false` 或 `ALIPAY_PAY_ENABLED=false`，隐藏 H5 支付入口；未明确支付结果的订单只查单不退款，人工对账后处理；Dou-uniapp 本轮不变。
+
+## 2026-05-29 平台端营收与手续费设计
+
+- 当前目标：调研链动小铺类发卡/虚拟商品平台的收费业务，结合 Dou 圈主商业后台、H5 扫码支付、钱包结算、提现和售后退款现状，补齐平台端营收与手续费设计文档。
+- 已改文件：`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 设计结论：Dou 不应只做“支付手续费”，而应采用“平台技术服务费 + SaaS 套餐 + 增值工具 + 分销/营销工具 + 人工服务”的组合；第一阶段继续平台统一收款和圈主钱包结算，默认交易技术服务费建议 20%，后续随套餐降到 15% / 10% / 6%。
+- 关键账务口径：订单支付成功时固化订单级服务费快照，后续退款按订单、结算、钱包顺序冲正；已提现后退款进入平台垫付 + 圈主负余额策略，不直接修改提现终态。
+- 下一步计划：实现前确认最终套餐价格、默认费率、最低提现金额、负余额阈值和是否首期免佣；代码阶段优先把现有 `CREATOR_PLATFORM_FEE_RATE` 兼容迁移到基点制 `PLATFORM_TRADE_FEE_BPS` 并新增平台收入流水。
+- 风险与回滚：本次仅文档变更，不影响运行；后续若费率配置错误，应暂停新支付入口并用人工调整流水修正，不改历史订单快照。

@@ -490,3 +490,18 @@
 - 验证：新增文档、方案索引和续航文档 UTF-8/乱码扫描通过；Dou-Admin `git diff --check` 通过，仅有 CRLF 转换提示。
 - 下一步：实现阶段确认最终套餐价格、默认费率、最低提现金额和负余额阈值；优先兼容迁移 `CREATOR_PLATFORM_FEE_RATE` 到基点制 `PLATFORM_TRADE_FEE_BPS`，并补平台收入流水。
 - 风险与回滚：本次仅文档变更，不影响运行；若后续费率策略出错，暂停新支付入口，用订单快照和人工调整流水修正。
+
+---
+### 支付宝扫码支付前端渠道收口
+- 时间：2026-05-29 18:27 (Asia/Shanghai)
+- 任务目标：确认当前支付宝扫码支付是否闭环，并让确认订单页优先支付宝、跟随后端渠道可用性禁用不可用支付按钮。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/shop.ts`
+  - `src/views/shop/checkout.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 返回订单草稿时补充 `payment_channels`，并收紧支付宝配置完整性和通知验签。
+- 关键结论：本轮没有直接安装或引用 npm `alipay-sdk`；前端只消费后端自有支付宝当面付封装产出的二维码和支付意图。
+- 验证：`corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步：服务器拉取双仓后，用真实小额支付宝订单回归二维码生成、扫码、异步通知、查单和已支付订单页。

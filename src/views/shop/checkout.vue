@@ -23,7 +23,8 @@ const error = ref("");
 const draft = ref<OrderDraft | null>(null);
 const order = ref<PublicOrder | null>(null);
 const paymentIntent = ref<PaymentIntent | null>(null);
-const channel = ref<PaymentChannel>("wechat_native");
+const channel = ref<PaymentChannel>("alipay_precreate");
+const paymentChannels = ref<Record<string, { enabled: boolean }>>({});
 const countdown = ref(0);
 const qrDataUrl = ref("");
 let pollTimer: number | undefined;
@@ -35,6 +36,11 @@ const paymentReady = computed(
     Boolean(paymentIntent.value?.qr_code_url) &&
     ["created", "qr_issued"].includes(String(paymentIntent.value?.status))
 );
+const hasEnabledChannels = computed(() =>
+  ["alipay_precreate", "wechat_native"].some(item =>
+    isChannelEnabled(item as PaymentChannel)
+  )
+);
 
 function draftId() {
   return String(route.params.draftId || "").trim();
@@ -43,6 +49,40 @@ function draftId() {
 function rememberContact(orderId: string, contact = "") {
   if (!contact) return;
   window.sessionStorage?.setItem(`shop_order_contact_${orderId}`, contact);
+}
+
+function normalizedQueryChannel(): PaymentChannel | "" {
+  const raw = String(route.query.channel || route.query.pay_channel || route.query.pay || "")
+    .trim()
+    .toLowerCase();
+  if (raw.includes("ali")) return "alipay_precreate";
+  if (raw.includes("wechat") || raw.includes("wx")) return "wechat_native";
+  return "";
+}
+
+function isChannelEnabled(name: PaymentChannel) {
+  const state = paymentChannels.value[name];
+  return state ? state.enabled !== false : true;
+}
+
+function chooseDefaultChannel(channels = paymentChannels.value) {
+  const preferred = normalizedQueryChannel();
+  if (preferred && channels[preferred]?.enabled !== false) {
+    channel.value = preferred;
+    return;
+  }
+  if (channels.alipay_precreate?.enabled) {
+    channel.value = "alipay_precreate";
+    return;
+  }
+  if (channels.wechat_native?.enabled) {
+    channel.value = "wechat_native";
+  }
+}
+
+function applyPaymentChannels(channels?: Record<string, { enabled: boolean }>) {
+  paymentChannels.value = channels || {};
+  if (!paymentIntent.value) chooseDefaultChannel(paymentChannels.value);
 }
 
 function stopTimers() {
@@ -89,6 +129,7 @@ async function loadDraft() {
     if (!id) throw new Error("订单草稿不存在");
     const data = await shopApi.orderDraft(id);
     draft.value = data.order_draft;
+    applyPaymentChannels(data.payment_channels);
     if (data.order_draft.buyer_contact) {
       window.sessionStorage?.setItem(
         `shop_contact_${data.order_draft.id}`,
@@ -110,6 +151,7 @@ async function createOrder() {
     const data = await shopApi.createOrderFromDraft(draft.value.id);
     order.value = data.order;
     if (data.order_draft) draft.value = data.order_draft;
+    applyPaymentChannels(data.payment_channels);
     rememberContact(data.order.id, draft.value.buyer_contact);
     await createPaymentIntent();
   } catch (err) {
@@ -121,6 +163,13 @@ async function createOrder() {
 
 async function createPaymentIntent() {
   if (!order.value) return;
+  if (!isChannelEnabled(channel.value)) {
+    chooseDefaultChannel();
+    if (!isChannelEnabled(channel.value)) {
+      error.value = "当前暂无可用支付渠道，请联系商家。";
+      return;
+    }
+  }
   creating.value = true;
   error.value = "";
   try {
@@ -244,14 +293,14 @@ onBeforeUnmount(stopTimers);
         <div class="channel-tabs">
           <button
             :class="{ active: channel === 'wechat_native' }"
-            :disabled="creating || Boolean(paymentIntent)"
+            :disabled="creating || Boolean(paymentIntent) || !isChannelEnabled('wechat_native')"
             @click="channel = 'wechat_native'"
           >
             微信
           </button>
           <button
             :class="{ active: channel === 'alipay_precreate' }"
-            :disabled="creating || Boolean(paymentIntent)"
+            :disabled="creating || Boolean(paymentIntent) || !isChannelEnabled('alipay_precreate')"
             @click="channel = 'alipay_precreate'"
           >
             支付宝
@@ -259,8 +308,14 @@ onBeforeUnmount(stopTimers);
         </div>
 
         <div v-if="!paymentIntent" class="pay-start">
-          <p class="notice">点击生成二维码后，请用对应 App 扫码付款。</p>
-          <button :disabled="creating" @click="order ? createPaymentIntent() : createOrder()">
+          <p class="notice">
+            {{
+              hasEnabledChannels
+                ? "点击生成二维码后，请用对应 App 扫码付款。"
+                : "当前暂无可用支付渠道，请联系商家。"
+            }}
+          </p>
+          <button :disabled="creating || !hasEnabledChannels" @click="order ? createPaymentIntent() : createOrder()">
             {{ creating ? "正在生成" : "生成支付二维码" }}
           </button>
         </div>

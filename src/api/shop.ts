@@ -80,6 +80,7 @@ export type OrderDraft = {
 
 export type OrderDraftPayload = {
   order_draft: OrderDraft;
+  payment_channels?: Record<string, { enabled: boolean }>;
   next_action?: {
     type: string;
     message: string;
@@ -212,7 +213,7 @@ export const shopApi = {
       )
     ),
   orderDraft: (draftId: string) =>
-    unwrap<{ order_draft: OrderDraft }>(
+    unwrap<OrderDraftPayload>(
       shopHttp.get(`/order-drafts/${encodeURIComponent(draftId)}`)
     ),
   createOrderFromDraft: (draftId: string) =>

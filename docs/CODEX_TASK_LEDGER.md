@@ -449,3 +449,29 @@
   - 双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
 - 下一步：提交推送后进入 P2；P2 先按官方微信支付/支付宝文档校准扫码支付接口、回调、查单、关单和白名单约束。
 - 风险与回滚：若 H5 投诉入口异常，可先隐藏订单页投诉表单；后端同单售后接口保留，不影响小程序既有售后接口。
+
+### P2 H5 扫码支付首版闭环
+
+- 时间：2026-05-29 11:04 (Asia/Shanghai)
+- 任务目标：基于 P2 设计文档接入 H5 微信 Native 与支付宝当面付扫码支付，完成真实订单、支付意图、二维码、回调/查单、自动交付和订单取货页闭环。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `package.json`
+  - `pnpm-lock.yaml`
+  - `src/api/shop.ts`
+  - `src/views/shop/checkout.vue`
+  - `src/views/shop/format.ts`
+  - `src/views/shop/order.vue`
+  - `docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `036_commerce_payment_intents.sql`、支付意图服务、微信 Native/支付宝当面付封装、H5 支付接口和 `/api/v0.9/payments/*/notify` 通知路由。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - Dou-Server 支付相关文件 `node --check` 通过。
+  - Dou-Server `npm.cmd run migrate` 通过。
+  - Dou-Server mock 支付 smoke 通过：微信/支付宝金额不符不交付，金额正确后交付并生成结算，重复回调不重复发货。
+  - 双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
+- 下一步：提交推送后在线上执行迁移 `036_commerce_payment_intents.sql`，配置真实微信/支付宝商户参数和回调地址，用小额测试商品完成真实扫码回归。
+- 风险与回滚：可通过 `WECHAT_NATIVE_PAY_ENABLED=false`、`ALIPAY_PAY_ENABLED=false` 或隐藏前端支付入口暂停通道；未明确支付结果只查单不退款，等待对账处理；Dou-uniapp 本轮未改动。

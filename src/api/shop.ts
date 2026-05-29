@@ -86,6 +86,35 @@ export type OrderDraftPayload = {
   };
 };
 
+export type PaymentChannel = "wechat_native" | "alipay_precreate";
+
+export type PaymentIntent = {
+  id: string;
+  order_id: string;
+  draft_id: string;
+  circle_id: string;
+  channel: PaymentChannel | string;
+  out_trade_no: string;
+  amount: number;
+  currency: string;
+  status: "created" | "qr_issued" | "paid" | "closed" | "failed" | "unknown" | string;
+  qr_code_url: string;
+  expires_at: string;
+  paid_at?: string | null;
+  closed_at?: string | null;
+  last_error_code?: string;
+  last_error_message?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ShopOrderPayload = {
+  order: PublicOrder;
+  order_draft?: OrderDraft;
+  reused?: boolean;
+  payment_channels?: Record<string, { enabled: boolean }>;
+};
+
 export type PublicOrder = {
   id: string;
   circle_id: string;
@@ -103,6 +132,15 @@ export type PublicOrder = {
   buyer_contact_hint?: string;
   source_channel?: string;
   can_report?: boolean;
+  delivery?: {
+    type: "resource" | "code" | string;
+    resource_url: string;
+    resource_access_code: string;
+    doc_content: string;
+    doc_url: string;
+    assigned_code: string;
+    assigned_code_at?: string | null;
+  } | null;
   created_at: string;
   updated_at: string;
 };
@@ -176,6 +214,34 @@ export const shopApi = {
   orderDraft: (draftId: string) =>
     unwrap<{ order_draft: OrderDraft }>(
       shopHttp.get(`/order-drafts/${encodeURIComponent(draftId)}`)
+    ),
+  createOrderFromDraft: (draftId: string) =>
+    unwrap<ShopOrderPayload>(
+      shopHttp.post(`/order-drafts/${encodeURIComponent(draftId)}/orders`)
+    ),
+  createPaymentIntent: (
+    orderId: string,
+    data: { channel: PaymentChannel | string }
+  ) =>
+    unwrap<{ order: PublicOrder; payment_intent: PaymentIntent; reused: boolean; already_paid?: boolean }>(
+      shopHttp.post(
+        `/orders/${encodeURIComponent(orderId)}/payment-intents`,
+        data
+      )
+    ),
+  paymentIntent: (intentId: string) =>
+    unwrap<{ payment_intent: PaymentIntent }>(
+      shopHttp.get(`/payment-intents/${encodeURIComponent(intentId)}`)
+    ),
+  syncPaymentStatus: (orderId: string, paymentIntentId = "") =>
+    unwrap<{ order: PublicOrder; payment_intent: PaymentIntent }>(
+      shopHttp.post(`/orders/${encodeURIComponent(orderId)}/payment-status`, {
+        payment_intent_id: paymentIntentId
+      })
+    ),
+  closePaymentIntent: (intentId: string) =>
+    unwrap<{ order: PublicOrder; payment_intent: PaymentIntent }>(
+      shopHttp.post(`/payment-intents/${encodeURIComponent(intentId)}/close`)
     ),
   order: (orderId: string, buyerContact = "") =>
     unwrap<{ order: PublicOrder }>(

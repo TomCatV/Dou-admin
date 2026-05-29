@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import QRCode from "qrcode";
 import { useRoute, useRouter } from "vue-router";
-import { shopApi, type OrderDraft } from "@/api/shop";
+import {
+  shopApi,
+  type OrderDraft,
+  type PaymentChannel,
+  type PaymentIntent,
+  type PublicOrder
+} from "@/api/shop";
 import { shopImage, statusLabel, yuan } from "./format";
 
 defineOptions({ name: "PublicShopCheckout" });
@@ -9,14 +16,76 @@ defineOptions({ name: "PublicShopCheckout" });
 const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
+const creating = ref(false);
+const syncing = ref(false);
+const closing = ref(false);
 const error = ref("");
 const draft = ref<OrderDraft | null>(null);
+const order = ref<PublicOrder | null>(null);
+const paymentIntent = ref<PaymentIntent | null>(null);
+const channel = ref<PaymentChannel>("wechat_native");
+const countdown = ref(0);
+const qrDataUrl = ref("");
+let pollTimer: number | undefined;
+let countdownTimer: number | undefined;
+
+const snapshot = computed(() => draft.value?.product_snapshot);
+const paymentReady = computed(
+  () =>
+    Boolean(paymentIntent.value?.qr_code_url) &&
+    ["created", "qr_issued"].includes(String(paymentIntent.value?.status))
+);
+
+function draftId() {
+  return String(route.params.draftId || "").trim();
+}
+
+function rememberContact(orderId: string, contact = "") {
+  if (!contact) return;
+  window.sessionStorage?.setItem(`shop_order_contact_${orderId}`, contact);
+}
+
+function stopTimers() {
+  if (pollTimer) window.clearInterval(pollTimer);
+  if (countdownTimer) window.clearInterval(countdownTimer);
+  pollTimer = undefined;
+  countdownTimer = undefined;
+}
+
+function updateCountdown() {
+  const expiresAt = paymentIntent.value?.expires_at;
+  if (!expiresAt) {
+    countdown.value = 0;
+    return;
+  }
+  const end = new Date(`${expiresAt.replace(" ", "T")}Z`).getTime();
+  const seconds = Math.max(0, Math.floor((end - Date.now()) / 1000));
+  countdown.value = Number.isFinite(seconds) ? seconds : 0;
+}
+
+function startPolling() {
+  stopTimers();
+  updateCountdown();
+  countdownTimer = window.setInterval(updateCountdown, 1000);
+  pollTimer = window.setInterval(syncPaymentStatus, 4000);
+}
+
+async function renderQr() {
+  qrDataUrl.value = "";
+  const qr = paymentIntent.value?.qr_code_url || "";
+  if (!qr) return;
+  qrDataUrl.value = await QRCode.toDataURL(qr, {
+    width: 220,
+    margin: 1,
+    errorCorrectionLevel: "M"
+  });
+}
 
 async function loadDraft() {
   loading.value = true;
   error.value = "";
   try {
-    const id = String(route.params.draftId || "").trim();
+    const id = draftId();
     if (!id) throw new Error("订单草稿不存在");
     const data = await shopApi.orderDraft(id);
     draft.value = data.order_draft;
@@ -25,12 +94,6 @@ async function loadDraft() {
         `shop_contact_${data.order_draft.id}`,
         data.order_draft.buyer_contact
       );
-      if (data.order_draft.order_id) {
-        window.sessionStorage?.setItem(
-          `shop_order_contact_${data.order_draft.order_id}`,
-          data.order_draft.buyer_contact
-        );
-      }
     }
   } catch (err) {
     error.value = err instanceof Error ? err.message : "订单草稿暂不可访问";
@@ -39,76 +102,206 @@ async function loadDraft() {
   }
 }
 
+async function createOrder() {
+  if (!draft.value) return;
+  creating.value = true;
+  error.value = "";
+  try {
+    const data = await shopApi.createOrderFromDraft(draft.value.id);
+    order.value = data.order;
+    if (data.order_draft) draft.value = data.order_draft;
+    rememberContact(data.order.id, draft.value.buyer_contact);
+    await createPaymentIntent();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "订单创建失败，请重新下单";
+  } finally {
+    creating.value = false;
+  }
+}
+
+async function createPaymentIntent() {
+  if (!order.value) return;
+  creating.value = true;
+  error.value = "";
+  try {
+    const data = await shopApi.createPaymentIntent(order.value.id, {
+      channel: channel.value
+    });
+    order.value = data.order;
+    paymentIntent.value = data.payment_intent;
+    await renderQr();
+    startPolling();
+  } catch (err) {
+    error.value =
+      err instanceof Error ? err.message : "支付二维码创建失败，请稍后重试";
+  } finally {
+    creating.value = false;
+  }
+}
+
+async function syncPaymentStatus() {
+  if (!order.value || !paymentIntent.value || syncing.value) return;
+  syncing.value = true;
+  try {
+    const data = await shopApi.syncPaymentStatus(
+      order.value.id,
+      paymentIntent.value.id
+    );
+    order.value = data.order;
+    paymentIntent.value = data.payment_intent;
+    if (data.order.status === "paid" || data.payment_intent.status === "paid") {
+      stopTimers();
+      router.push({
+        path: `/shop/order/${encodeURIComponent(data.order.id)}`,
+        query: draft.value?.buyer_contact
+          ? { contact: draft.value.buyer_contact }
+          : undefined
+      });
+    }
+  } catch {
+    // Polling failure should not interrupt the payment page.
+  } finally {
+    syncing.value = false;
+  }
+}
+
+async function closeIntent() {
+  if (!paymentIntent.value || closing.value) return;
+  closing.value = true;
+  try {
+    const data = await shopApi.closePaymentIntent(paymentIntent.value.id);
+    paymentIntent.value = data.payment_intent;
+    order.value = data.order;
+    stopTimers();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "关闭支付单失败";
+  } finally {
+    closing.value = false;
+  }
+}
+
 function backToProduct() {
-  const key = draft.value?.product_snapshot?.product_key;
+  const key = snapshot.value?.product_key;
   if (key) router.push(`/shop/product/${encodeURIComponent(key)}`);
 }
 
-function openOrder() {
-  if (!draft.value?.order_id) return;
-  router.push({
-    path: `/shop/order/${encodeURIComponent(draft.value.order_id)}`,
-    query: draft.value.buyer_contact
-      ? { contact: draft.value.buyer_contact }
-      : undefined
-  });
-}
+onMounted(async () => {
+  await loadDraft();
+  if (draft.value?.order_id) {
+    order.value = {
+      id: draft.value.order_id,
+      circle_id: draft.value.circle_id,
+      resource_card_id: draft.value.resource_card_id,
+      amount: draft.value.amount,
+      currency: "CNY",
+      status: "created",
+      created_at: draft.value.created_at,
+      updated_at: draft.value.updated_at
+    };
+  }
+});
 
-onMounted(loadDraft);
+onBeforeUnmount(stopTimers);
 </script>
 
 <template>
   <main class="checkout-page">
     <section v-if="loading" class="state-panel">正在确认订单...</section>
-    <section v-else-if="error" class="state-panel error">{{ error }}</section>
-    <template v-else-if="draft">
+    <section v-else-if="error && !draft" class="state-panel error">{{ error }}</section>
+    <template v-else-if="draft && snapshot">
       <section class="checkout-card">
         <h1>确认订单</h1>
         <div class="product-row">
-          <img
-            v-if="shopImage(draft.product_snapshot.cover_url)"
-            :src="draft.product_snapshot.cover_url"
-            alt=""
-          />
-          <div v-else class="fallback">
-            {{ draft.product_snapshot.title.slice(0, 1) }}
-          </div>
+          <img v-if="shopImage(snapshot.cover_url)" :src="snapshot.cover_url" alt="" />
+          <div v-else class="fallback">{{ snapshot.title.slice(0, 1) }}</div>
           <div>
-            <strong>{{ draft.product_snapshot.title }}</strong>
-            <p>{{ draft.product_snapshot.summary }}</p>
+            <strong>{{ snapshot.title }}</strong>
+            <p>{{ snapshot.summary }}</p>
           </div>
         </div>
         <dl>
           <div>
             <dt>订单状态</dt>
-            <dd>{{ statusLabel(draft.status) }}</dd>
+            <dd>{{ statusLabel(order?.status || draft.status) }}</dd>
           </div>
           <div>
             <dt>联系方式</dt>
-            <dd>{{ draft.buyer_contact || "未填写" }}</dd>
+            <dd>{{ draft.buyer_contact }}</dd>
           </div>
           <div>
             <dt>锁定金额</dt>
             <dd class="price">{{ yuan(draft.amount) }}</dd>
           </div>
           <div>
-            <dt>有效期</dt>
+            <dt>草稿有效期</dt>
             <dd>{{ draft.expires_at }}</dd>
           </div>
         </dl>
       </section>
 
       <section class="checkout-card">
-        <h2>下一步</h2>
-        <p class="notice">
-          订单草稿已创建。P2
-          接入微信/支付宝扫码支付后，这里会展示付款二维码和支付状态。
-        </p>
-        <div class="actions">
-          <button @click="loadDraft">刷新状态</button>
-          <button v-if="draft.order_id" @click="openOrder">查看订单</button>
-          <button class="secondary" @click="backToProduct">返回商品</button>
+        <h2>扫码支付</h2>
+        <div class="channel-tabs">
+          <button
+            :class="{ active: channel === 'wechat_native' }"
+            :disabled="creating || Boolean(paymentIntent)"
+            @click="channel = 'wechat_native'"
+          >
+            微信
+          </button>
+          <button
+            :class="{ active: channel === 'alipay_precreate' }"
+            :disabled="creating || Boolean(paymentIntent)"
+            @click="channel = 'alipay_precreate'"
+          >
+            支付宝
+          </button>
         </div>
+
+        <div v-if="!paymentIntent" class="pay-start">
+          <p class="notice">点击生成二维码后，请用对应 App 扫码付款。</p>
+          <button :disabled="creating" @click="order ? createPaymentIntent() : createOrder()">
+            {{ creating ? "正在生成" : "生成支付二维码" }}
+          </button>
+        </div>
+
+        <div v-else class="qr-panel">
+          <div class="qr-box">
+            <img v-if="qrDataUrl && paymentReady" :src="qrDataUrl" alt="支付二维码" />
+            <span v-else>{{ statusLabel(paymentIntent.status) }}</span>
+          </div>
+          <div class="qr-copy">
+            <strong>{{ statusLabel(paymentIntent.status) }}</strong>
+            <p class="notice">
+              {{ channel === "wechat_native" ? "请使用微信扫码完成支付。" : "请使用支付宝扫码完成支付。" }}
+            </p>
+            <p v-if="paymentReady" class="timer">剩余 {{ countdown }} 秒</p>
+            <p v-if="paymentIntent.last_error_message" class="inline-error">
+              {{ paymentIntent.last_error_message }}
+            </p>
+            <div class="actions">
+              <button :disabled="syncing" @click="syncPaymentStatus">
+                {{ syncing ? "正在刷新" : "刷新支付状态" }}
+              </button>
+              <button
+                class="secondary"
+                :disabled="closing || paymentIntent.status === 'paid'"
+                @click="closeIntent"
+              >
+                {{ closing ? "正在关闭" : "取消支付" }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <p v-if="error" class="inline-error">{{ error }}</p>
+      </section>
+
+      <section class="checkout-card subtle">
+        <h2>付款后</h2>
+        <p class="notice">
+          后端收到可信支付回调或查单确认后，会自动交付资源或卡密，并跳转到订单页查看取货信息。
+        </p>
+        <button class="secondary" @click="backToProduct">返回商品</button>
       </section>
     </template>
   </main>
@@ -156,13 +349,17 @@ h2 {
   object-fit: cover;
 }
 
-.fallback {
+.fallback,
+.qr-box {
   display: grid;
   place-items: center;
-  font-size: 28px;
-  font-weight: 800;
   color: #327060;
   background: #eef6f2;
+}
+
+.fallback {
+  font-size: 28px;
+  font-weight: 800;
 }
 
 .product-row p,
@@ -200,9 +397,14 @@ dd {
   color: #b64826;
 }
 
+.channel-tabs,
 .actions {
   display: flex;
   gap: 10px;
+}
+
+.channel-tabs {
+  margin-bottom: 14px;
 }
 
 button {
@@ -215,9 +417,61 @@ button {
   border-radius: 6px;
 }
 
+button:disabled {
+  background: #a9b6b0;
+}
+
+.channel-tabs button {
+  color: #2e5148;
+  background: #eef6f2;
+}
+
+.channel-tabs button.active {
+  color: #fff;
+  background: #1f7a64;
+}
+
 .secondary {
   color: #2e5148;
   background: #eef6f2;
+}
+
+.pay-start {
+  display: grid;
+  gap: 12px;
+}
+
+.qr-panel {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.qr-box {
+  width: 240px;
+  height: 240px;
+  border: 1px solid #dbe6e1;
+  border-radius: 8px;
+}
+
+.qr-box img {
+  width: 220px;
+  height: 220px;
+}
+
+.qr-copy strong {
+  font-size: 20px;
+}
+
+.timer {
+  font-weight: 800;
+  color: #b64826;
+}
+
+.inline-error,
+.error {
+  color: #a33424;
 }
 
 .state-panel {
@@ -225,7 +479,19 @@ button {
   text-align: center;
 }
 
-.error {
-  color: #a33424;
+.subtle {
+  background: #fbfcfb;
+}
+
+@media (width <= 680px) {
+  .qr-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-box {
+    width: 100%;
+    max-width: 260px;
+    margin: 0 auto;
+  }
 }
 </style>

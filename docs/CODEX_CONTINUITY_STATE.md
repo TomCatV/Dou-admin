@@ -147,3 +147,13 @@
 - 协同后端能力：订单表补充 `buyer_contact`、`source_channel`；公开订单查询按联系方式核验；H5 投诉提交到 `/api/shop/orders/:orderId/after-sales`，后端复用 `resource_after_sales`，同一 `order_id` 已有售后单时直接复用。
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；Dou-Server `node --check src/routes/shop/index.js`、`node --check src/lib/resourceAfterSales.js`、动态导入、`npm.cmd run migrate` 和 `git diff --check` 通过。
 - 下一步计划：P1 收口提交推送后开始 P2；P2 先基于官方微信支付/支付宝开放平台文档校准扫码支付设计，再进入代码实现。
+
+## 2026-05-29 P2 H5 扫码支付首版闭环
+
+- 当前目标：在 P1 H5 商品页和订单草稿基础上接入微信 Native 与支付宝当面付扫码支付，形成“草稿转订单、二维码、回调/查单、自动交付、订单取货”的首版闭环。
+- 已改文件：`package.json`、`pnpm-lock.yaml`、`src/api/shop.ts`、`src/views/shop/checkout.vue`、`src/views/shop/format.ts`、`src/views/shop/order.vue`、`docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `036_commerce_payment_intents.sql`、`commercePayments.js`、微信/支付宝支付封装和通知路由。
+- 已完成前端能力：确认订单页把草稿转为真实订单，按微信/支付宝生成支付意图，使用本地 `qrcode` 渲染二维码，轮询后端支付状态；支付成功后跳转订单页，订单页只在已支付时展示资源链接、提取码、兑换说明或已分配卡密。
+- 协同后端能力：新增支付意图与支付日志；H5 匿名买家用联系方式 hash 生成稳定本地用户，复用订单、资源购买、卡密发放和圈主钱包结算；微信/支付宝回调和查单按金额、商户号/AppID、幂等规则推进支付终态。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server 支付相关 `node --check`、`npm.cmd run migrate`、mock 微信/支付宝支付 smoke 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）。
+- 下一步计划：提交推送后服务器执行迁移 `036_commerce_payment_intents.sql`；生产环境配置微信/支付宝商户参数、证书/公钥、API V3 Key、回调 URL 和 H5 域名白名单，再用 0.01-1 元测试商品做真实扫码回归。
+- 风险与回滚：若支付通道异常，可先关闭 `WECHAT_NATIVE_PAY_ENABLED=false` 或 `ALIPAY_PAY_ENABLED=false`，隐藏 H5 支付入口；未明确支付结果的订单只查单不退款，人工对账后处理；Dou-uniapp 本轮不变。

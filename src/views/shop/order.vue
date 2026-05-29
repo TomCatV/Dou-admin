@@ -43,6 +43,7 @@ const canSubmitReport = computed(
     Boolean(contact.value.trim()) &&
     Boolean(reportForm.description.trim())
 );
+const delivery = computed(() => order.value?.delivery || null);
 
 function orderId() {
   return String(route.params.orderId || "").trim();
@@ -157,8 +158,40 @@ onMounted(() => {
           <dd>{{ order.updated_at }}</dd>
         </div>
       </dl>
-      <p class="notice">
-        P1 阶段不展示购买后的私密交付内容；支付和交付闭环会在 P2/P3 接入。
+      <div v-if="delivery" class="delivery-panel">
+        <h2>取货信息</h2>
+        <template v-if="delivery.type === 'code'">
+          <dl>
+            <div>
+              <dt>卡密</dt>
+              <dd>{{ delivery.assigned_code || "正在分配" }}</dd>
+            </div>
+            <div v-if="delivery.assigned_code_at">
+              <dt>发放时间</dt>
+              <dd>{{ delivery.assigned_code_at }}</dd>
+            </div>
+          </dl>
+        </template>
+        <template v-else>
+          <dl>
+            <div v-if="delivery.resource_url">
+              <dt>资源链接</dt>
+              <dd><a :href="delivery.resource_url" target="_blank">{{ delivery.resource_url }}</a></dd>
+            </div>
+            <div v-if="delivery.resource_access_code">
+              <dt>提取码</dt>
+              <dd>{{ delivery.resource_access_code }}</dd>
+            </div>
+            <div v-if="delivery.doc_url">
+              <dt>说明链接</dt>
+              <dd><a :href="delivery.doc_url" target="_blank">{{ delivery.doc_url }}</a></dd>
+            </div>
+          </dl>
+        </template>
+        <p v-if="delivery.doc_content" class="preline">{{ delivery.doc_content }}</p>
+      </div>
+      <p v-else class="notice">
+        订单支付成功后，这里会展示购买后的资源或卡密。
       </p>
     </section>
 
@@ -274,6 +307,25 @@ h2 {
 .notice {
   line-height: 1.7;
   color: #69736e;
+}
+
+.delivery-panel {
+  padding: 14px;
+  margin-top: 16px;
+  background: #f7faf8;
+  border: 1px solid #dbe6e1;
+  border-radius: 8px;
+}
+
+.delivery-panel a {
+  color: #1f7a64;
+  word-break: break-all;
+}
+
+.preline {
+  line-height: 1.8;
+  color: #3d3731;
+  white-space: pre-wrap;
 }
 
 dl {

@@ -563,4 +563,24 @@
   - Dou-Server 费率命中 smoke 覆盖套餐、租户覆盖和到期回落。
   - Dou-Admin 费率页面 SFC 解析通过。
   - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
-- 下一步：圈主侧展示当前生效率和升级降费提示；对账中心、导出和人工调账继续后置。
+- 下一步：圈主侧展示当前生效费率和升级降费提示；对账中心、导出和人工调账继续后置。
+
+### Phase E 圈主费率提示
+
+- 时间：2026-05-31 22:05 (Asia/Shanghai)
+- 任务目标：让圈主后台展示当前生效交易服务费，并给出开通、续费或升级套餐后可降费的提示。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/tenant/dashboard.vue`
+  - `src/views/tenant/wallet.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `platformFeePolicies` 新增租户费率视图，租户工作台和钱包接口返回当前费率、费率来源和可降费套餐建议。
+- 验证：
+  - Dou-Server `node --check src/lib/platformFeePolicies.js` 通过。
+  - Dou-Server `node --check src/routes/admin/tenant.routes.js` 通过。
+  - Dou-Server 动态导入通过。
+  - Dou-Server 临时库迁移到 `038` 后的费率视图 smoke 覆盖入门版升级专业版、到期专业版续费提示。
+  - Dou-Admin 圈主工作台和钱包页 SFC 解析通过。
+- 下一步：做对账中心和导出前的低风险只读能力，优先补平台收入流水导出预览或按圈子/订单的对账筛选；人工调账继续后置。

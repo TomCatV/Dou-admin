@@ -200,3 +200,12 @@
 - 协同后端能力：新增 `finance:fee-policy:manage` 权限和 `/api/admin/finance/fee-policies` 系列接口；新订单结算按 `租户覆盖 > 有效套餐费率 > 平台默认费率 > 环境默认` 命中并固化 `fee_policy_id`、`fee_rate_bps`；租户到期或套餐停用时回落到平台默认，不影响历史订单。
 - 验证结果：后端费率策略、结算、租户路由 `node --check` 和动态导入通过；临时库迁移到 `038_platform_fee_policies.sql` 成功；费率命中 smoke 覆盖套餐、租户覆盖和到期回落；前端费率页 SFC 解析通过；双仓 `git diff --check` 通过，仅有 CRLF 转换提示。未启动本地服务、未安装依赖。
 - 下一步计划：Phase E 优先做圈主侧“当前费率/升级可降费”提示，再做对账中心或导出；人工调账继续后置。
+
+## 2026-05-31 Phase E 圈主费率提示
+
+- 当前目标：把 Phase D 的费率策略从平台后台延伸到圈主经营视角，让圈主能看到当前生效服务费率，并在可降费时看到开通、续费或升级套餐提示。
+- 已改文件：`src/api/admin.ts`、`src/views/tenant/dashboard.vue`、`src/views/tenant/wallet.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/lib/platformFeePolicies.js`、`src/routes/admin/tenant.routes.js`。
+- 已完成前端能力：圈主工作台 `套餐订阅` 卡片展示当前交易服务费、费率来源和新订单生效说明；钱包页新增当前交易服务费展示，并在有更低费率套餐时提示每成交 ¥100 可少扣的服务费。
+- 协同后端能力：Dou-Server 租户工作台和钱包接口返回 `fee_policy`、`fee_policy_upgrade` 和 `fee_policy_options`；升级建议按有效租户、套餐价格和套餐费率计算，支持到期套餐给出“续费”降费提示。
+- 验证结果：Dou-Server `node --check src/lib/platformFeePolicies.js`、`src/routes/admin/tenant.routes.js` 和动态导入通过；临时库迁移到 `038` 后的费率视图 smoke 覆盖入门版升级专业版、到期专业版续费提示；Dou-Admin 圈主工作台和钱包页 SFC 解析通过。未启动本地服务、未安装依赖。
+- 下一步计划：继续做对账中心和导出前的低风险只读能力，优先补平台收入流水导出预览或按圈子/订单的对账筛选；人工调账继续后置。

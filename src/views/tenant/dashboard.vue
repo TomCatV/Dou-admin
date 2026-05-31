@@ -8,10 +8,30 @@ const loading = ref(false);
 const data = ref<TenantDashboard | null>(null);
 
 const usageRows = computed(() => [
-  { key: "members", label: "成员", value: data.value?.usage?.members || 0, limit: data.value?.limits?.max_members || 0 },
-  { key: "staff_accounts", label: "子账号", value: data.value?.usage?.staff_accounts || 0, limit: data.value?.limits?.max_staff || 0 },
-  { key: "resource_cards", label: "资源卡", value: data.value?.usage?.resource_cards || 0, limit: data.value?.limits?.max_resource_cards || 0 },
-  { key: "leads", label: "线索", value: data.value?.usage?.leads || 0, limit: data.value?.limits?.max_leads || 0 }
+  {
+    key: "members",
+    label: "成员",
+    value: data.value?.usage?.members || 0,
+    limit: data.value?.limits?.max_members || 0
+  },
+  {
+    key: "staff_accounts",
+    label: "子账号",
+    value: data.value?.usage?.staff_accounts || 0,
+    limit: data.value?.limits?.max_staff || 0
+  },
+  {
+    key: "resource_cards",
+    label: "资源卡",
+    value: data.value?.usage?.resource_cards || 0,
+    limit: data.value?.limits?.max_resource_cards || 0
+  },
+  {
+    key: "leads",
+    label: "线索",
+    value: data.value?.usage?.leads || 0,
+    limit: data.value?.limits?.max_leads || 0
+  }
 ]);
 
 const enabledFeatures = computed(() =>
@@ -19,9 +39,30 @@ const enabledFeatures = computed(() =>
     .filter(([, enabled]) => enabled)
     .map(([key]) => key)
 );
+const feePolicy = computed(() => data.value?.fee_policy || null);
+const feeUpgrade = computed(() => data.value?.fee_policy_upgrade || null);
 
 function yuan(value?: number) {
   return `¥${((Number(value) || 0) / 100).toFixed(2)}`;
+}
+
+function percentBps(value?: number) {
+  return `${((Number(value) || 0) / 100).toFixed(2)}%`;
+}
+
+function feeSourceLabel(source?: string) {
+  return (
+    {
+      tenant: "专属费率",
+      plan: "套餐费率",
+      global: "平台默认",
+      env: "系统默认"
+    }[String(source || "")] || "当前策略"
+  );
+}
+
+function savingPerHundred(value?: number) {
+  return yuan(Math.floor((10000 * (Number(value) || 0)) / 10000));
 }
 
 function statusLabel(status?: string) {
@@ -56,11 +97,15 @@ onMounted(loadData);
 </script>
 
 <template>
-  <div class="tenant-page" v-loading="loading">
+  <div v-loading="loading" class="tenant-page">
     <div class="page-head">
       <div>
         <h1>{{ data?.circle?.name || "圈主工作台" }}</h1>
-        <p>{{ data?.circle?.description || "查看本圈经营、内容、订单和钱包概览。" }}</p>
+        <p>
+          {{
+            data?.circle?.description || "查看本圈经营、内容、订单和钱包概览。"
+          }}
+        </p>
       </div>
       <el-button type="primary" @click="loadData">刷新</el-button>
     </div>
@@ -122,11 +167,33 @@ onMounted(loadData);
             <span>租户状态</span>
             <strong>{{ statusLabel(data?.subscription?.status) }}</strong>
           </div>
+          <div v-if="feePolicy" class="line">
+            <span>交易服务费</span>
+            <strong>{{ percentBps(feePolicy.fee_bps) }}</strong>
+          </div>
+          <div v-if="feePolicy" class="fee-note">
+            {{
+              feeSourceLabel(feePolicy.source)
+            }}生效，后续新订单会按该费率结算。
+          </div>
+          <div v-if="feeUpgrade" class="upgrade-hint">
+            <strong
+              >{{ feeUpgrade.action_label || "升级"
+              }}{{ feeUpgrade.plan.name }}可降至
+              {{ percentBps(feeUpgrade.fee_policy.fee_bps) }}</strong
+            >
+            <span
+              >每成交 ¥100 预计少扣
+              {{ savingPerHundred(feeUpgrade.save_bps) }} 服务费。</span
+            >
+          </div>
           <div class="feature-tags">
             <el-tag v-for="item in enabledFeatures" :key="item" type="success">
               {{ item }}
             </el-tag>
-            <span v-if="!enabledFeatures.length" class="empty-text">暂无开通功能</span>
+            <span v-if="!enabledFeatures.length" class="empty-text"
+              >暂无开通功能</span
+            >
           </div>
         </div>
       </el-col>
@@ -148,17 +215,35 @@ onMounted(loadData);
       <el-col :xs="24" :lg="12">
         <div class="panel">
           <h2>内容与售后</h2>
-          <div class="line"><span>已发布资源</span><strong>{{ data?.metrics.published_resources || 0 }}</strong></div>
-          <div class="line"><span>待处理售后</span><strong>{{ data?.metrics.open_after_sales || 0 }}</strong></div>
-          <div class="line"><span>待处理举报</span><strong>{{ data?.metrics.reports_pending || 0 }}</strong></div>
+          <div class="line">
+            <span>已发布资源</span
+            ><strong>{{ data?.metrics.published_resources || 0 }}</strong>
+          </div>
+          <div class="line">
+            <span>待处理售后</span
+            ><strong>{{ data?.metrics.open_after_sales || 0 }}</strong>
+          </div>
+          <div class="line">
+            <span>待处理举报</span
+            ><strong>{{ data?.metrics.reports_pending || 0 }}</strong>
+          </div>
         </div>
       </el-col>
       <el-col :xs="24" :lg="12">
         <div class="panel">
           <h2>钱包</h2>
-          <div class="line"><span>可提现</span><strong>{{ yuan(data?.wallet.available_amount) }}</strong></div>
-          <div class="line"><span>结算中</span><strong>{{ yuan(data?.wallet.pending_amount) }}</strong></div>
-          <div class="line"><span>累计收入</span><strong>{{ yuan(data?.wallet.lifetime_income_amount) }}</strong></div>
+          <div class="line">
+            <span>可提现</span
+            ><strong>{{ yuan(data?.wallet.available_amount) }}</strong>
+          </div>
+          <div class="line">
+            <span>结算中</span
+            ><strong>{{ yuan(data?.wallet.pending_amount) }}</strong>
+          </div>
+          <div class="line">
+            <span>累计收入</span
+            ><strong>{{ yuan(data?.wallet.lifetime_income_amount) }}</strong>
+          </div>
         </div>
       </el-col>
     </el-row>
@@ -172,9 +257,9 @@ onMounted(loadData);
 
 .page-head {
   display: flex;
+  gap: 16px;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
   margin-bottom: 16px;
 }
 
@@ -205,8 +290,8 @@ onMounted(loadData);
 .metric strong {
   display: block;
   margin-top: 8px;
-  color: #221a14;
   font-size: 28px;
+  color: #221a14;
 }
 
 .metric.income strong {
@@ -220,9 +305,9 @@ onMounted(loadData);
 
 .panel-title {
   display: flex;
+  gap: 12px;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
 }
 
 .panel-title h2 {
@@ -245,7 +330,7 @@ onMounted(loadData);
 .usage-grid div {
   min-height: 74px;
   padding: 12px;
-  background: #ffffff;
+  background: #fff;
   border: 1px solid #efe6db;
   border-radius: 8px;
 }
@@ -258,8 +343,8 @@ onMounted(loadData);
 .usage-grid strong {
   display: block;
   margin-top: 8px;
-  color: #221a14;
   font-size: 20px;
+  color: #221a14;
 }
 
 .mt {
@@ -278,14 +363,39 @@ onMounted(loadData);
   border-top: 1px solid #efe6db;
 }
 
-.empty-text,
-.usage-grid em {
+.fee-note {
+  padding: 8px 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
   color: #8f8276;
-  font-style: normal;
-  font-size: 12px;
+  border-top: 1px solid #efe6db;
 }
 
-@media (max-width: 768px) {
+.upgrade-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  margin: 8px 0 12px;
+  color: #4f3a1b;
+  background: #fff7e8;
+  border: 1px solid #f0d5a8;
+  border-radius: 8px;
+}
+
+.upgrade-hint span {
+  font-size: 13px;
+  color: #8a6125;
+}
+
+.empty-text,
+.usage-grid em {
+  font-size: 12px;
+  font-style: normal;
+  color: #8f8276;
+}
+
+@media (width <= 768px) {
   .usage-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

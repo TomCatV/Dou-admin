@@ -84,6 +84,40 @@ export type TenantDashboard = {
   limits?: Record<string, number>;
   features?: Record<string, boolean>;
   writable?: boolean;
+  fee_policy?: TenantFeePolicy | null;
+  fee_policy_upgrade?: TenantFeeUpgradeOption | null;
+  fee_policy_options?: TenantFeeUpgradeOption[];
+};
+
+export type TenantFeePolicy = {
+  id: string;
+  scope_type: string;
+  scope_id: string;
+  name: string;
+  fee_bps: number;
+  min_fee_amount: number;
+  max_fee_amount: number | null;
+  status: string;
+  source: string;
+  note?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type TenantFeeUpgradeOption = {
+  plan: {
+    id: string;
+    code: string;
+    name: string;
+    price_monthly: number;
+    price_yearly: number;
+  };
+  fee_policy: TenantFeePolicy;
+  save_bps: number;
+  monthly_price_gap: number;
+  yearly_price_gap: number;
+  action?: "open" | "renew" | "upgrade" | string;
+  action_label?: string;
 };
 
 export type AdminNotificationItem = {
@@ -375,6 +409,9 @@ export const tenantApi = {
           settlement: Record<string, any>;
           recent_ledger: Array<Record<string, any>>;
           config: Record<string, any>;
+          fee_policy?: TenantFeePolicy | null;
+          fee_policy_upgrade?: TenantFeeUpgradeOption | null;
+          fee_policy_options?: TenantFeeUpgradeOption[];
           withdrawals: Array<Record<string, any>>;
         }>
       >("get", "/tenant/wallet")

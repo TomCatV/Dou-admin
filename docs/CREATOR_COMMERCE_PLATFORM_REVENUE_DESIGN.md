@@ -452,3 +452,14 @@ PLATFORM_NEGATIVE_BALANCE_BLOCK_AMOUNT=5000
 | 通道成本高于预期 | 上调套餐价格或下调低价订单支持，增加最低提现金额 |
 | 对账不一致 | 支付、退款、提现不明确订单只查单和人工对账，不自动退款或释放余额 |
 | 圈主质疑扣费 | 后台展示服务费明细和规则说明，订单级快照可追溯 |
+
+## 15. 2026-05-31 Phase B 实现补充
+
+本轮已开始落地账务快照增强：
+
+1. Dou-Server 新增 `037_platform_revenue_ledger.sql`，给 `order_settlements` 增加 `fee_rate_bps`、`fee_policy_id`、`channel_cost_amount`、`platform_net_amount`，并新增 `platform_revenue_ledger`。
+2. 结算配置优先读取 `PLATFORM_TRADE_FEE_BPS`，继续兼容 `CREATOR_PLATFORM_FEE_BPS` 与 `CREATOR_PLATFORM_FEE_RATE`。
+3. 支付成功创建圈主结算时同步写平台收入流水；资源卡售后退款成功时写平台收入冲正流水，退款失败恢复时写人工调整流水。
+4. 圈主后台订单列表展示平台服务费、费率和预计入账，便于圈主看到扣费口径。
+
+下一步进入 Phase C：平台后台营收总览和收入流水列表，按时间、圈子、支付通道统计 GMV、平台服务费、退款冲正和净收入估算。

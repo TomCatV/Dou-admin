@@ -173,3 +173,12 @@
 - 本轮没有直接安装或引用 npm `alipay-sdk`；前端只消费后端自有支付宝当面付封装产出的二维码和支付意图。
 - 确认订单页默认优先支付宝扫码，支持 `channel/pay/pay_channel` 查询参数指定渠道；订单草稿和转正式订单时都会消费后端 `payment_channels`，禁用不可用渠道。
 - 本轮验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；改动文件 UTF-8 扫描无 U+FFFD。
+
+## 2026-05-31 平台收入流水与服务费展示
+
+- 当前目标：按平台端营收设计 Phase B 落地订单级服务费快照、平台收入流水和圈主订单服务费展示。
+- 已改文件：`src/api/admin.ts`、`src/views/tenant/orders.vue`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `037_platform_revenue_ledger.sql`、`src/lib/creatorWallet.js`、`src/lib/resourceAfterSales.js`、`src/routes/admin/tenant.routes.js`。
+- 已完成前端能力：圈主后台订单列表新增“平台服务费”和“预计入账”，服务费下方展示本单费率。
+- 协同后端能力：结算配置优先基点制 `PLATFORM_TRADE_FEE_BPS`；支付成功时固化 `fee_rate_bps`、`fee_policy_id`、通道成本估算和平台净收入；新增 `platform_revenue_ledger` 并在支付成功、退款冲正、退款失败恢复时写入流水。
+- 验证结果：后端 `node --check` 覆盖账务、售后和租户订单路由；`npm.cmd run migrate` 已应用到 `037`；双仓 `git diff --check` 通过。前端依赖已补齐后可继续执行 `corepack pnpm typecheck` 与 `corepack pnpm build`。
+- 下一步计划：Phase C 做平台后台营收总览和收入流水列表；真实支付回归继续在线上用商户参数与小额订单完成。

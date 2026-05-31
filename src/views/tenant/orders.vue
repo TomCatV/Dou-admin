@@ -17,6 +17,11 @@ function yuan(value: number) {
   return `¥${((Number(value) || 0) / 100).toFixed(2)}`;
 }
 
+function feeRate(value?: number) {
+  const bps = Number(value) || 0;
+  return bps ? `${(bps / 100).toFixed(2)}%` : "-";
+}
+
 async function loadList() {
   loading.value = true;
   try {
@@ -85,6 +90,15 @@ onMounted(() => {
       </el-table-column>
       <el-table-column label="金额" width="120">
         <template #default="{ row }">{{ yuan(row.amount) }}</template>
+      </el-table-column>
+      <el-table-column label="平台服务费" width="140">
+        <template #default="{ row }">
+          <div>{{ yuan(row.platform_fee_amount || 0) }}</div>
+          <div class="sub">{{ feeRate(row.fee_rate_bps) }}</div>
+        </template>
+      </el-table-column>
+      <el-table-column label="预计入账" width="130">
+        <template #default="{ row }">{{ yuan(row.creator_amount || 0) }}</template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="110" />
       <el-table-column prop="created_at" label="创建时间" width="170" />

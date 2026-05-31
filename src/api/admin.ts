@@ -129,6 +129,12 @@ export type TenantOrder = {
   amount: number;
   currency: string;
   status: string;
+  settlement_status?: string;
+  platform_fee_amount?: number;
+  creator_amount?: number;
+  fee_rate_bps?: number;
+  channel_cost_amount?: number;
+  platform_net_amount?: number;
   paid_at?: string | null;
   created_at: string;
   updated_at: string;

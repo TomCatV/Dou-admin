@@ -285,6 +285,16 @@ export default [
         }
       },
       {
+        path: "/finance/revenue",
+        name: "PlatformRevenue",
+        component: () => import("@/views/finance/revenue.vue"),
+        meta: {
+          title: "平台营收",
+          icon: "ep/data-line",
+          roles: ["super_admin", "admin_l1", "admin_l2", "operator"]
+        }
+      },
+      {
         path: "/after-sales",
         name: "AfterSales",
         component: () => import("@/views/after-sales/index.vue"),

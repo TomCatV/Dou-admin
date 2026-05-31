@@ -492,7 +492,9 @@
 - 风险与回滚：本次仅文档变更，不影响运行；若后续费率策略出错，暂停新支付入口，用订单快照和人工调整流水修正。
 
 ---
+
 ### 支付宝扫码支付前端渠道收口
+
 - 时间：2026-05-29 18:27 (Asia/Shanghai)
 - 任务目标：确认当前支付宝扫码支付是否闭环，并让确认订单页优先支付宝、跟随后端渠道可用性禁用不可用支付按钮。
 - 改动仓库：Dou-Admin、Dou-Server
@@ -520,3 +522,23 @@
 - 协同改动：Dou-Server 新增 `037_platform_revenue_ledger.sql`；账务配置优先 `PLATFORM_TRADE_FEE_BPS`，支付成功写平台收入流水，售后退款写收入冲正，退款失败恢复写人工调整。
 - 验证：后端 `node --check src/lib/creatorWallet.js`、`src/lib/resourceAfterSales.js`、`src/routes/admin/tenant.routes.js` 通过；`npm.cmd run migrate` 应用到 `037` 成功；双仓 `git diff --check` 通过。前端依赖安装后继续执行 typecheck/build。
 - 下一步：做平台后台营收总览和收入流水列表，支持按时间、圈子、支付通道统计 GMV、平台服务费、退款冲正和净收入估算。
+
+### Phase C 平台营收总览与流水
+
+- 时间：2026-05-31 20:10 (Asia/Shanghai)
+- 任务目标：补齐平台后台营收可视化入口，让平台管理员能查看平台服务费、退款冲正、通道成本、净收入和收入流水。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/views/finance/revenue.vue`
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `finance:revenue:view`、`/api/admin/finance/revenue/summary` 和 `/api/admin/finance/revenue/ledger`。
+- 验证：
+  - Dou-Server `node --check src/routes/admin/revenue.routes.js` 通过。
+  - Dou-Server `node --check src/routes/admin/index.js` 通过。
+  - Dou-Server `node --check src/lib/adminPermissions.js` 通过。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
+- 下一步：Phase D 做费率策略展示与配置闭环，先做全局/套餐/租户覆盖费率，不做人工调账和导出。

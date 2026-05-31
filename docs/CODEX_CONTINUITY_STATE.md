@@ -182,3 +182,12 @@
 - 协同后端能力：结算配置优先基点制 `PLATFORM_TRADE_FEE_BPS`；支付成功时固化 `fee_rate_bps`、`fee_policy_id`、通道成本估算和平台净收入；新增 `platform_revenue_ledger` 并在支付成功、退款冲正、退款失败恢复时写入流水。
 - 验证结果：后端 `node --check` 覆盖账务、售后和租户订单路由；`npm.cmd run migrate` 已应用到 `037`；双仓 `git diff --check` 通过。前端依赖已补齐后可继续执行 `corepack pnpm typecheck` 与 `corepack pnpm build`。
 - 下一步计划：Phase C 做平台后台营收总览和收入流水列表；真实支付回归继续在线上用商户参数与小额订单完成。
+
+## 2026-05-31 Phase C 平台营收总览与流水
+
+- 当前目标：在 Phase B 平台收入流水基础上补齐平台后台可视化入口，让运营能在 `交易资金 / 平台营收` 查看 GMV、平台服务费、退款冲正、通道成本、净收入、收入构成、圈子贡献和收入流水。
+- 已改文件：`src/api/admin.ts`、`src/router/modules/home.ts`、`src/views/finance/revenue.vue`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/admin/revenue.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js`。
+- 已完成前端能力：新增 `/finance/revenue` 页面和菜单入口；支持日期、业务类型、关键字筛选；展示汇总指标、近 14 天趋势、收入构成、圈子贡献和分页流水；页面不展示原始 JSON/evidence 代码，只显示可读业务摘要。
+- 协同后端能力：新增 `finance:revenue:view` 权限和 `/api/admin/finance/revenue/summary`、`/api/admin/finance/revenue/ledger` 只读接口；接口只允许平台全局账号访问，圈主 scope 即使误授权限也不能查看平台营收。
+- 验证结果：Dou-Server `node --check src/routes/admin/revenue.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js` 通过；双仓 `git diff --check` 通过，仅有 CRLF 转换提示。按本轮约定未启动本地服务、未安装依赖，前端完整 typecheck/build 留给线上发布链路。
+- 下一步计划：Phase D 做费率策略只读/编辑闭环，优先把全局默认费率、套餐费率和租户覆盖费率的生效口径展示清楚；暂不做人工调账和导出，避免过早引入高风险资金动作。

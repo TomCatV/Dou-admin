@@ -1091,6 +1091,62 @@ export type CreatorWithdrawal = {
   updated_at: string;
 };
 
+export type PlatformRevenueBusinessType =
+  | "order_fee"
+  | "refund_reverse"
+  | "subscription"
+  | "manual_adjust";
+
+export type PlatformRevenueSummary = {
+  ledger_count: number;
+  gmv_amount: number;
+  service_fee_amount: number;
+  refund_reverse_amount: number;
+  channel_cost_amount: number;
+  net_revenue_amount: number;
+};
+
+export type PlatformRevenueDaySummary = PlatformRevenueSummary & {
+  day: string;
+};
+
+export type PlatformRevenueTypeSummary = {
+  business_type: PlatformRevenueBusinessType;
+  ledger_count: number;
+  gross_amount: number;
+  platform_fee_amount: number;
+  channel_cost_amount: number;
+  net_revenue_amount: number;
+};
+
+export type PlatformRevenueCircleSummary = {
+  circle_id: string;
+  circle_name: string;
+  ledger_count: number;
+  gmv_amount: number;
+  net_revenue_amount: number;
+};
+
+export type PlatformRevenueLedgerItem = {
+  id: string;
+  business_type: PlatformRevenueBusinessType;
+  business_id: string;
+  order_id: string;
+  circle_id: string;
+  circle_name: string;
+  gross_amount: number;
+  platform_fee_amount: number;
+  channel_cost_amount: number;
+  net_revenue_amount: number;
+  status: string;
+  pay_channel: string;
+  provider_trade_no: string;
+  fee_rate_bps: number;
+  fee_policy_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export const managedUsersApi = {
   list: (params: Record<string, any>) =>
     unwrap(
@@ -1301,6 +1357,28 @@ export const withdrawalsApi = {
         "post",
         `/withdrawals/${id}/cancel`,
         { data }
+      )
+    )
+};
+
+export const platformRevenueApi = {
+  summary: (params: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          summary: PlatformRevenueSummary;
+          by_type: PlatformRevenueTypeSummary[];
+          by_day: PlatformRevenueDaySummary[];
+          top_circles: PlatformRevenueCircleSummary[];
+        }>
+      >("get", "/finance/revenue/summary", { params })
+    ),
+  ledger: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<PlatformRevenueLedgerItem>>>(
+        "get",
+        "/finance/revenue/ledger",
+        { params }
       )
     )
 };

@@ -476,3 +476,37 @@ PLATFORM_NEGATIVE_BALANCE_BLOCK_AMOUNT=5000
 | `GET /api/admin/finance/revenue/ledger`  | `finance:revenue:view` | 返回平台收入流水分页列表                 |
 
 边界：本轮只读展示，不做人工调账、导出、费率编辑；页面不展示原始 `evidence_json`，只展示可读的订单、交易、圈子和金额摘要。
+
+## 17. 2026-05-31 Phase D 实现补充
+
+本轮已新增 `platform_fee_policies`，支持 `global`、`plan`、`tenant` 三类策略。默认内置：
+
+| 范围     | 默认费率 |
+| -------- | -------- |
+| 平台默认 | 20%      |
+| 入门版   | 20%      |
+| 专业版   | 10%      |
+| 机构版   | 6%       |
+
+新订单结算按以下顺序命中费率：
+
+```text
+租户覆盖费率
+> 当前有效套餐费率
+> 平台默认费率
+> 环境默认费率
+```
+
+租户套餐到期、暂停或套餐停用时，不再命中租户/套餐策略，回落到平台默认或环境默认。历史订单仍按 `order_settlements` 里的 `fee_rate_bps` 与 `fee_policy_id` 快照结算，不随策略变化重算。
+
+已落地接口：
+
+| 接口                                                    | 权限                        | 说明                                   |
+| ------------------------------------------------------- | --------------------------- | -------------------------------------- |
+| `GET /api/admin/finance/fee-policies`                   | `finance:fee-policy:manage` | 查看平台默认、套餐、租户覆盖和策略记录 |
+| `PUT /api/admin/finance/fee-policies/global`            | `finance:fee-policy:manage` | 更新平台默认费率                       |
+| `PUT /api/admin/finance/fee-policies/plans/:planId`     | `finance:fee-policy:manage` | 更新套餐费率                           |
+| `PUT /api/admin/finance/fee-policies/tenants/:circleId` | `finance:fee-policy:manage` | 设置租户覆盖费率                       |
+| `DELETE /api/admin/finance/fee-policies/:id`            | `finance:fee-policy:manage` | 停用策略                               |
+
+后台页面：`交易资金 / 费率策略`，路由 `/finance/fee-policies`。所有修改和停用都要求填写原因，并写入管理员审计日志。

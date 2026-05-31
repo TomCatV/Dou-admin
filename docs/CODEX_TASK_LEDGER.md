@@ -542,3 +542,25 @@
   - Dou-Server `node --check src/lib/adminPermissions.js` 通过。
   - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
 - 下一步：Phase D 做费率策略展示与配置闭环，先做全局/套餐/租户覆盖费率，不做人工调账和导出。
+
+### Phase D 费率策略展示与配置闭环
+
+- 时间：2026-05-31 21:15 (Asia/Shanghai)
+- 任务目标：落地平台默认、套餐和租户覆盖费率的后台配置能力，并让新订单结算按策略固化费率快照。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/views/finance/fee-policies.vue`
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `038_platform_fee_policies.sql`、`platformFeePolicies` 策略解析、`/api/admin/finance/fee-policies` 管理接口和结算命中链路。
+- 验证：
+  - Dou-Server `node --check` 覆盖费率策略库、结算库、费率路由、admin index 和租户路由。
+  - Dou-Server 动态导入通过。
+  - Dou-Server 临时库迁移到 `038_platform_fee_policies.sql` 成功。
+  - Dou-Server 费率命中 smoke 覆盖套餐、租户覆盖和到期回落。
+  - Dou-Admin 费率页面 SFC 解析通过。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
+- 下一步：圈主侧展示当前生效率和升级降费提示；对账中心、导出和人工调账继续后置。

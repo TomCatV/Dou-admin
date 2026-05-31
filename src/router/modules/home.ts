@@ -295,6 +295,16 @@ export default [
         }
       },
       {
+        path: "/finance/fee-policies",
+        name: "PlatformFeePolicies",
+        component: () => import("@/views/finance/fee-policies.vue"),
+        meta: {
+          title: "费率策略",
+          icon: "ep/setting",
+          roles: ["super_admin", "admin_l1"]
+        }
+      },
+      {
         path: "/after-sales",
         name: "AfterSales",
         component: () => import("@/views/after-sales/index.vue"),

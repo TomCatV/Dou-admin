@@ -191,3 +191,12 @@
 - 协同后端能力：新增 `finance:revenue:view` 权限和 `/api/admin/finance/revenue/summary`、`/api/admin/finance/revenue/ledger` 只读接口；接口只允许平台全局账号访问，圈主 scope 即使误授权限也不能查看平台营收。
 - 验证结果：Dou-Server `node --check src/routes/admin/revenue.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js` 通过；双仓 `git diff --check` 通过，仅有 CRLF 转换提示。按本轮约定未启动本地服务、未安装依赖，前端完整 typecheck/build 留给线上发布链路。
 - 下一步计划：Phase D 做费率策略只读/编辑闭环，优先把全局默认费率、套餐费率和租户覆盖费率的生效口径展示清楚；暂不做人工调账和导出，避免过早引入高风险资金动作。
+
+## 2026-05-31 Phase D 费率策略展示与配置闭环
+
+- 当前目标：把平台默认、套餐和租户覆盖费率从环境变量推进到可配置、可审计、只影响新订单的后台策略闭环。
+- 已改文件：`src/api/admin.ts`、`src/router/modules/home.ts`、`src/views/finance/fee-policies.vue`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `038_platform_fee_policies.sql`、`src/lib/platformFeePolicies.js`、`src/lib/creatorWallet.js`、`src/routes/admin/feePolicies.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js`、`src/routes/admin/tenant.routes.js`。
+- 已完成前端能力：新增 `交易资金 / 费率策略`，支持编辑平台默认费率、套餐费率、租户覆盖费率和停用策略；列表展示生效来源、最低/最高服务费、租户覆盖和策略记录，不展示原始 JSON。
+- 协同后端能力：新增 `finance:fee-policy:manage` 权限和 `/api/admin/finance/fee-policies` 系列接口；新订单结算按 `租户覆盖 > 有效套餐费率 > 平台默认费率 > 环境默认` 命中并固化 `fee_policy_id`、`fee_rate_bps`；租户到期或套餐停用时回落到平台默认，不影响历史订单。
+- 验证结果：后端费率策略、结算、租户路由 `node --check` 和动态导入通过；临时库迁移到 `038_platform_fee_policies.sql` 成功；费率命中 smoke 覆盖套餐、租户覆盖和到期回落；前端费率页 SFC 解析通过；双仓 `git diff --check` 通过，仅有 CRLF 转换提示。未启动本地服务、未安装依赖。
+- 下一步计划：Phase E 优先做圈主侧“当前费率/升级可降费”提示，再做对账中心或导出；人工调账继续后置。

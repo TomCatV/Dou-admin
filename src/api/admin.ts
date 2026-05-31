@@ -1147,6 +1147,53 @@ export type PlatformRevenueLedgerItem = {
   updated_at: string;
 };
 
+export type PlatformFeePolicy = {
+  id: string;
+  scope_type: "global" | "plan" | "tenant" | "env" | string;
+  scope_id: string;
+  name: string;
+  fee_bps: number;
+  min_fee_amount: number;
+  max_fee_amount: number | null;
+  status: string;
+  effective_start_at?: string | null;
+  effective_end_at?: string | null;
+  note: string;
+  source: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PlatformFeePolicyPlan = {
+  id: string;
+  code: string;
+  name: string;
+  price_monthly: number;
+  price_yearly: number;
+  status: string;
+  fee_policy: PlatformFeePolicy | null;
+  effective_policy: PlatformFeePolicy;
+};
+
+export type PlatformFeePolicyTenant = {
+  id: string;
+  circle_id: string;
+  circle_name: string;
+  owner_user_id: string;
+  owner_nickname: string;
+  owner_dxq_id: string;
+  plan_id: string;
+  plan_code: string;
+  plan_name: string;
+  status: string;
+  trial_ends_at?: string | null;
+  paid_until?: string | null;
+  updated_at: string;
+  fee_policy: PlatformFeePolicy | null;
+  plan_policy: PlatformFeePolicy | null;
+  effective_policy: PlatformFeePolicy;
+};
+
 export const managedUsersApi = {
   list: (params: Record<string, any>) =>
     unwrap(
@@ -1379,6 +1426,53 @@ export const platformRevenueApi = {
         "get",
         "/finance/revenue/ledger",
         { params }
+      )
+    )
+};
+
+export const platformFeePoliciesApi = {
+  overview: (params: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          fallback_policy: PlatformFeePolicy;
+          global_policy: PlatformFeePolicy | null;
+          plans: PlatformFeePolicyPlan[];
+          tenants: PageResult<PlatformFeePolicyTenant>;
+          policies: PlatformFeePolicy[];
+        }>
+      >("get", "/finance/fee-policies", { params })
+    ),
+  updateGlobal: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ policy: PlatformFeePolicy }>>(
+        "put",
+        "/finance/fee-policies/global",
+        { data }
+      )
+    ),
+  updatePlan: (planId: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ policy: PlatformFeePolicy }>>(
+        "put",
+        `/finance/fee-policies/plans/${planId}`,
+        { data }
+      )
+    ),
+  updateTenant: (circleId: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ policy: PlatformFeePolicy }>>(
+        "put",
+        `/finance/fee-policies/tenants/${circleId}`,
+        { data }
+      )
+    ),
+  disable: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<ApiResult<{ policy: PlatformFeePolicy }>>(
+        "delete",
+        `/finance/fee-policies/${id}`,
+        { data }
       )
     )
 };

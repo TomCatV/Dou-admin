@@ -1228,6 +1228,11 @@ export type FinanceReconciliationSummary = {
   difference_amount: number;
 };
 
+export type FinanceReconciliationMarkStatus =
+  | "watching"
+  | "resolved"
+  | "ignored";
+
 export type FinanceReconciliationIssueCount = {
   issue_type: FinanceReconciliationIssueType | string;
   count: number;
@@ -1253,6 +1258,25 @@ export type FinanceReconciliationItem = {
   difference_amount: number;
   occurred_at: string;
   updated_at: string;
+  mark_status: FinanceReconciliationMarkStatus | string;
+  mark_note: string;
+  mark_updated_at: string;
+  mark_resolved_at: string;
+  mark_operator_username: string;
+};
+
+export type FinanceReconciliationMark = {
+  id: string;
+  issue_key: string;
+  issue_type: string;
+  ref_type: string;
+  ref_id: string;
+  status: FinanceReconciliationMarkStatus | string;
+  note: string;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string;
+  operator_username: string;
 };
 
 export type PlatformFeePolicy = {
@@ -1564,6 +1588,34 @@ export const financeReconciliationApi = {
           }
         >
       >("get", "/finance/reconciliation", { params })
+    ),
+  detail: (issueKey: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          item: FinanceReconciliationItem;
+          mark: FinanceReconciliationMark | null;
+          related: Record<string, any>;
+        }>
+      >("get", `/finance/reconciliation/issues/${encodeURIComponent(issueKey)}`)
+    ),
+  mark: (
+    issueKey: string,
+    data: { status: FinanceReconciliationMarkStatus; note: string }
+  ) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          item: FinanceReconciliationItem;
+          mark: FinanceReconciliationMark;
+        }>
+      >(
+        "post",
+        `/finance/reconciliation/issues/${encodeURIComponent(issueKey)}/mark`,
+        {
+          data
+        }
+      )
     )
 };
 

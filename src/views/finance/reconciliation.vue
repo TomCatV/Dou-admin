@@ -7,6 +7,7 @@ import {
   type FinanceReconciliationItem,
   type FinanceReconciliationIssueCount,
   type FinanceReconciliationIssueType,
+  type FinanceReconciliationMarkStatus,
   type FinanceReconciliationSeverity,
   type FinanceReconciliationSummary
 } from "@/api/admin";
@@ -48,6 +49,16 @@ const severityMap: Record<
   warning: { label: "提醒", type: "warning" }
 };
 
+const markStatusMap: Record<
+  FinanceReconciliationMarkStatus | "none",
+  { label: string; type: TagType }
+> = {
+  none: { label: "未标记", type: "info" },
+  watching: { label: "跟进中", type: "warning" },
+  resolved: { label: "已处理", type: "success" },
+  ignored: { label: "已忽略", type: "info" }
+};
+
 const businessTypeMap: Record<FinanceReconciliationBusinessType, string> = {
   payment: "支付",
   settlement: "结算",
@@ -69,6 +80,11 @@ const issueCounts = ref<FinanceReconciliationIssueCount[]>([]);
 const summary = ref<FinanceReconciliationSummary>({ ...emptySummary });
 const total = ref(0);
 const generatedAt = ref("");
+const detailVisible = ref(false);
+const detailLoading = ref(false);
+const markSubmitting = ref(false);
+const currentIssue = ref<FinanceReconciliationItem | null>(null);
+const related = ref<Record<string, any>>({});
 
 const filters = reactive({
   date_range: defaultDateRange(),
@@ -80,7 +96,18 @@ const filters = reactive({
   page_size: 20
 });
 
+const markForm = reactive({
+  status: "watching" as FinanceReconciliationMarkStatus,
+  note: ""
+});
+
 const topIssueCounts = computed(() => issueCounts.value.slice(0, 6));
+
+const relatedRevenueRows = computed(() => related.value?.revenue_ledgers || []);
+const relatedPaymentRows = computed(() => related.value?.payment_intents || []);
+const relatedAllocationRows = computed(
+  () => related.value?.withdrawal_allocations || []
+);
 
 function defaultDateRange() {
   const end = new Date();
@@ -120,6 +147,13 @@ function severityMeta(value?: string): { label: string; type: TagType } {
       label: String(value || "-"),
       type: "info"
     }
+  );
+}
+
+function markMeta(value?: string): { label: string; type: TagType } {
+  return (
+    markStatusMap[value as FinanceReconciliationMarkStatus] ||
+    markStatusMap.none
   );
 }
 
@@ -179,6 +213,57 @@ function resetSearch() {
   filters.keyword = "";
   filters.page = 1;
   loadData();
+}
+
+function applyUpdatedIssue(item: FinanceReconciliationItem) {
+  rows.value = rows.value.map(row => (row.id === item.id ? item : row));
+  if (currentIssue.value?.id === item.id) currentIssue.value = item;
+}
+
+async function openDetail(row: FinanceReconciliationItem) {
+  detailVisible.value = true;
+  detailLoading.value = true;
+  currentIssue.value = row;
+  related.value = {};
+  markForm.status =
+    (row.mark_status as FinanceReconciliationMarkStatus) || "watching";
+  markForm.note = row.mark_note || "";
+  try {
+    const data = await financeReconciliationApi.detail(row.id);
+    currentIssue.value = data.item;
+    related.value = data.related || {};
+    markForm.status =
+      (data.mark?.status as FinanceReconciliationMarkStatus) || "watching";
+    markForm.note = data.mark?.note || "";
+    applyUpdatedIssue(data.item);
+  } catch (error) {
+    ElMessage.error(
+      error instanceof Error ? error.message : "对账详情加载失败"
+    );
+  } finally {
+    detailLoading.value = false;
+  }
+}
+
+async function submitMark() {
+  if (!currentIssue.value) return;
+  if (markForm.status !== "watching" && !markForm.note.trim()) {
+    ElMessage.warning("请填写处理备注");
+    return;
+  }
+  markSubmitting.value = true;
+  try {
+    const data = await financeReconciliationApi.mark(currentIssue.value.id, {
+      status: markForm.status,
+      note: markForm.note.trim()
+    });
+    applyUpdatedIssue(data.item);
+    ElMessage.success("对账项标记已保存");
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "对账项标记失败");
+  } finally {
+    markSubmitting.value = false;
+  }
 }
 
 onMounted(loadData);
@@ -300,6 +385,16 @@ onMounted(loadData);
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="标记" width="120">
+          <template #default="{ row }">
+            <el-tag :type="markMeta(row.mark_status).type">
+              {{ markMeta(row.mark_status).label }}
+            </el-tag>
+            <div v-if="row.mark_operator_username" class="cell-sub">
+              {{ row.mark_operator_username }}
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="业务对象" min-width="250">
           <template #default="{ row }">
             <div class="cell-main">{{ row.title }}</div>
@@ -348,6 +443,13 @@ onMounted(loadData);
         <el-table-column label="发生时间" min-width="160">
           <template #default="{ row }">{{ row.occurred_at || "-" }}</template>
         </el-table-column>
+        <el-table-column label="操作" fixed="right" width="100">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openDetail(row)">
+              详情
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <div class="pagination">
         <el-pagination
@@ -360,6 +462,185 @@ onMounted(loadData);
         />
       </div>
     </section>
+
+    <el-drawer
+      v-model="detailVisible"
+      title="对账详情"
+      size="62%"
+      destroy-on-close
+    >
+      <div v-loading="detailLoading" class="detail-drawer">
+        <template v-if="currentIssue">
+          <section class="detail-section">
+            <div class="detail-title">
+              <span>{{ currentIssue.title }}</span>
+              <el-tag :type="severityMeta(currentIssue.severity).type">
+                {{ severityMeta(currentIssue.severity).label }}
+              </el-tag>
+              <el-tag :type="markMeta(currentIssue.mark_status).type">
+                {{ markMeta(currentIssue.mark_status).label }}
+              </el-tag>
+            </div>
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="异常类型">
+                {{ issueMeta(currentIssue.issue_type).label }}
+              </el-descriptions-item>
+              <el-descriptions-item label="业务域">
+                {{ businessText(currentIssue.business_type) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="订单号">
+                {{ currentIssue.order_id || "-" }}
+              </el-descriptions-item>
+              <el-descriptions-item label="引用对象">
+                {{ currentIssue.ref_type }} / {{ currentIssue.ref_id || "-" }}
+              </el-descriptions-item>
+              <el-descriptions-item label="圈子">
+                {{ currentIssue.circle_name || currentIssue.circle_id || "-" }}
+              </el-descriptions-item>
+              <el-descriptions-item label="渠道">
+                {{ channelText(currentIssue.pay_channel) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="涉及金额">
+                {{ yuan(currentIssue.amount) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="差额">
+                {{ signedYuan(currentIssue.difference_amount) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="说明" :span="2">
+                {{ currentIssue.description }}
+              </el-descriptions-item>
+              <el-descriptions-item label="建议" :span="2">
+                {{ currentIssue.suggestion }}
+              </el-descriptions-item>
+            </el-descriptions>
+          </section>
+
+          <section class="detail-section mark-panel">
+            <div class="panel-title">处理标记</div>
+            <el-form label-width="88px">
+              <el-form-item label="标记状态">
+                <el-radio-group v-model="markForm.status">
+                  <el-radio-button label="watching">跟进中</el-radio-button>
+                  <el-radio-button label="resolved">已处理</el-radio-button>
+                  <el-radio-button label="ignored">忽略</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="处理备注">
+                <el-input
+                  v-model="markForm.note"
+                  maxlength="500"
+                  show-word-limit
+                  type="textarea"
+                  :rows="3"
+                  placeholder="记录核对结论、第三方单号、后续处理人或忽略原因"
+                />
+              </el-form-item>
+              <el-form-item>
+                <el-button
+                  type="primary"
+                  :loading="markSubmitting"
+                  @click="submitMark"
+                >
+                  保存标记
+                </el-button>
+              </el-form-item>
+            </el-form>
+          </section>
+
+          <section class="detail-section">
+            <div class="panel-title">关联记录</div>
+            <div class="related-grid">
+              <div v-if="related.order" class="related-card">
+                <span>订单</span>
+                <strong>{{ related.order.status }}</strong>
+                <em>{{ yuan(related.order.amount) }}</em>
+                <small>{{ related.order.provider_trade_no || "-" }}</small>
+              </div>
+              <div v-if="related.settlement" class="related-card">
+                <span>结算</span>
+                <strong>{{ related.settlement.status }}</strong>
+                <em>{{ yuan(related.settlement.platform_fee_amount) }}</em>
+                <small>{{ related.settlement.fee_rate_bps || 0 }} bps</small>
+              </div>
+              <div v-if="related.after_sale" class="related-card">
+                <span>售后退款</span>
+                <strong>{{ related.after_sale.refund_status }}</strong>
+                <em>{{ yuan(related.after_sale.refund_amount) }}</em>
+                <small>{{
+                  related.after_sale.wechat_refund_status || "-"
+                }}</small>
+              </div>
+              <div v-if="related.withdrawal" class="related-card">
+                <span>提现</span>
+                <strong>{{ related.withdrawal.status }}</strong>
+                <em>{{ yuan(related.withdrawal.amount) }}</em>
+                <small>{{ related.withdrawal.out_bill_no || "-" }}</small>
+              </div>
+            </div>
+
+            <el-table
+              v-if="relatedRevenueRows.length"
+              :data="relatedRevenueRows"
+              border
+              class="related-table"
+            >
+              <el-table-column label="收入流水" prop="business_type" />
+              <el-table-column label="服务费">
+                <template #default="{ row }">
+                  {{ signedYuan(row.platform_fee_amount) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="净收入">
+                <template #default="{ row }">
+                  {{ signedYuan(row.net_revenue_amount) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="时间" prop="created_at" min-width="150" />
+            </el-table>
+
+            <el-table
+              v-if="relatedPaymentRows.length"
+              :data="relatedPaymentRows"
+              border
+              class="related-table"
+            >
+              <el-table-column label="支付意图" prop="id" min-width="200" />
+              <el-table-column label="渠道">
+                <template #default="{ row }">{{
+                  channelText(row.channel)
+                }}</template>
+              </el-table-column>
+              <el-table-column label="状态" prop="status" />
+              <el-table-column label="金额">
+                <template #default="{ row }">{{ yuan(row.amount) }}</template>
+              </el-table-column>
+              <el-table-column
+                label="过期时间"
+                prop="expires_at"
+                min-width="150"
+              />
+            </el-table>
+
+            <el-table
+              v-if="relatedAllocationRows.length"
+              :data="relatedAllocationRows"
+              border
+              class="related-table"
+            >
+              <el-table-column
+                label="结算单"
+                prop="settlement_id"
+                min-width="210"
+              />
+              <el-table-column label="状态" prop="status" />
+              <el-table-column label="锁定金额">
+                <template #default="{ row }">{{ yuan(row.amount) }}</template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </template>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -498,14 +779,85 @@ onMounted(loadData);
   margin-top: 12px;
 }
 
+.detail-drawer {
+  min-height: 420px;
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.detail-title span {
+  margin-right: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #211a14;
+}
+
+.mark-panel {
+  padding: 14px;
+  background: #fbfaf8;
+  border: 1px solid #e6e1da;
+  border-radius: 8px;
+}
+
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.related-card {
+  min-height: 96px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e6e1da;
+  border-radius: 8px;
+}
+
+.related-card span,
+.related-card small {
+  display: block;
+  color: #8f8276;
+  word-break: break-all;
+}
+
+.related-card strong {
+  display: block;
+  margin: 8px 0 4px;
+  color: #211a14;
+}
+
+.related-card em {
+  display: block;
+  margin-bottom: 4px;
+  font-style: normal;
+  color: #4f463f;
+}
+
+.related-table {
+  margin-top: 10px;
+}
+
 @media (width <= 1280px) {
-  .summary-strip {
+  .summary-strip,
+  .related-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (width <= 760px) {
-  .summary-strip {
+  .summary-strip,
+  .related-grid {
     grid-template-columns: 1fr;
   }
 

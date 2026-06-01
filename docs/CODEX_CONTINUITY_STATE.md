@@ -235,3 +235,13 @@
 - 边界：本轮不创建对账批次、不写人工调整流水、不导出文件、不改变订单、结算、钱包、提现、退款或平台营收流水状态；所有记录只用于运营核对和后续人工处理。
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/reconciliation.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js` 和动态导入通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）；改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步计划：验证线上权限和接口返回后，再做对账详情/标记处理设计；人工调账继续后置到独立二次确认、审计和回滚方案之后。
+
+## 2026-06-01 对账详情与处理标记
+
+- 当前目标：在只读对账列表基础上补齐单项详情和处理标记，让运营能记录“跟进中、已处理、忽略”的核对结论，但不触碰资金主链路。
+- 已改文件：`src/api/admin.ts`、`src/views/finance/reconciliation.vue`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/db/migrations/039_finance_reconciliation_marks.sql`、`src/routes/admin/reconciliation.routes.js`。
+- 已完成前端能力：对账列表新增标记列和“详情”操作；详情抽屉展示异常说明、建议、关联订单/结算/收入流水/支付意图/售后/提现摘要，并支持保存处理标记和备注。
+- 协同后端能力：新增 `finance_reconciliation_marks` 标记表；新增对账详情接口和标记接口；保存标记时写入 `finance_reconciliation.mark` 管理员审计。标记只依附实时对账项，不修改任何业务资金表。
+- 边界：本轮不创建人工调整流水、不释放余额、不重算结算、不同步退款/提现状态；“已处理/忽略”只是运营核对标记，不能代表资金终态已被自动修复。
+- 验证结果：Dou-Server `npm.cmd run migrate` 已应用 `039_finance_reconciliation_marks.sql`；`node --check src/routes/admin/reconciliation.routes.js`、动态导入通过；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）；改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步计划：线上回归详情抽屉、标记审计和权限；之后再设计人工调整流水，必须先补二次确认、差额限制、审计详情和回滚/反向调整方案。

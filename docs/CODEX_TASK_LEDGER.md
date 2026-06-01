@@ -640,3 +640,27 @@
   - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
   - 改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步：线上用超管/1 级/2 级管理员回归菜单、权限和接口返回；后续再补对账详情、处理标记和人工调账的独立审计方案。
+
+### 对账详情与处理标记
+
+- 时间：2026-06-01 00:00 (Asia/Shanghai)
+- 任务目标：继续推进对账中心，在只读列表后补单项详情和处理标记，便于运营记录核对结论。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/finance/reconciliation.vue`
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `039_finance_reconciliation_marks.sql`，对账详情接口和对账标记接口。
+- 已完成前端能力：对账列表新增标记列；点击“详情”打开抽屉，展示异常说明、建议、关联记录摘要和标记表单；标记支持“跟进中、已处理、忽略”及备注。
+- 边界：处理标记只写 `finance_reconciliation_marks` 和管理员审计，不改变订单、结算、钱包、退款、提现或平台营收流水状态。
+- 验证：
+  - Dou-Server `npm.cmd run migrate` 成功应用 `039_finance_reconciliation_marks.sql`。
+  - Dou-Server `node --check src/routes/admin/reconciliation.routes.js` 通过。
+  - Dou-Server 对账路由动态导入通过。
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
+  - 改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步：线上回归详情、标记审计和权限；人工调整流水继续后置到独立方案。

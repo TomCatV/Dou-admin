@@ -225,3 +225,13 @@
 - 已完成前端能力：预览抽屉新增“确认导出 CSV”，导出前二次确认；成功后浏览器下载 CSV，并提示导出动作已写入审计。
 - 边界：导出仍为只读能力，不改变订单、结算、钱包或营收流水状态；单次导出超过后端上限会要求缩小筛选范围。
 - 下一步计划：验证通过并提交推送后，线上用超管或 1 级管理员回归导出、审计日志和 2 级管理员无导出权限；对账中心继续先做只读列表，人工调账继续后置。
+
+## 2026-06-01 对账中心只读列表
+
+- 当前目标：承接平台营收导出后的下一步，把对账中心先做成只读异常列表，覆盖支付、结算、平台收入流水、退款和提现的低风险核对入口。
+- 已改文件：`src/api/admin.ts`、`src/router/modules/home.ts`、`src/views/finance/reconciliation.vue`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/admin/reconciliation.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js`。
+- 已完成前端能力：`交易资金 / 对账中心` 新增只读页面；支持日期、异常类型、严重级别、业务域和关键词筛选；展示待核对总数、异常数、提醒数、涉及金额、差额合计、异常类型分布和分页对账列表。
+- 协同后端能力：新增 `finance:reconciliation:view` 权限和 `/api/admin/finance/reconciliation` 只读接口；接口实时聚合缺结算、缺收入流水、结算/流水金额不一致、订单服务费负数、支付意图待查单、支付金额不一致、退款待确认、提现待确认和提现锁定不一致等记录。
+- 边界：本轮不创建对账批次、不写人工调整流水、不导出文件、不改变订单、结算、钱包、提现、退款或平台营收流水状态；所有记录只用于运营核对和后续人工处理。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/reconciliation.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js` 和动态导入通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）；改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步计划：验证线上权限和接口返回后，再做对账详情/标记处理设计；人工调账继续后置到独立二次确认、审计和回滚方案之后。

@@ -295,6 +295,16 @@ export default [
         }
       },
       {
+        path: "/finance/reconciliation",
+        name: "FinanceReconciliation",
+        component: () => import("@/views/finance/reconciliation.vue"),
+        meta: {
+          title: "对账中心",
+          icon: "ep/connection",
+          roles: ["super_admin", "admin_l1", "admin_l2"]
+        }
+      },
+      {
         path: "/finance/fee-policies",
         name: "PlatformFeePolicies",
         component: () => import("@/views/finance/fee-policies.vue"),

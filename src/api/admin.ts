@@ -1200,6 +1200,61 @@ export type PlatformRevenueExportPreview = {
   generated_at: string;
 };
 
+export type FinanceReconciliationIssueType =
+  | "missing_settlement"
+  | "missing_revenue_ledger"
+  | "settlement_revenue_mismatch"
+  | "negative_order_fee"
+  | "stale_payment_intent"
+  | "payment_amount_mismatch"
+  | "refund_pending"
+  | "withdrawal_pending"
+  | "withdrawal_allocation_mismatch";
+
+export type FinanceReconciliationSeverity = "exception" | "warning";
+
+export type FinanceReconciliationBusinessType =
+  | "payment"
+  | "settlement"
+  | "refund"
+  | "withdrawal"
+  | "revenue";
+
+export type FinanceReconciliationSummary = {
+  total: number;
+  exception_count: number;
+  warning_count: number;
+  involved_amount: number;
+  difference_amount: number;
+};
+
+export type FinanceReconciliationIssueCount = {
+  issue_type: FinanceReconciliationIssueType | string;
+  count: number;
+};
+
+export type FinanceReconciliationItem = {
+  id: string;
+  issue_type: FinanceReconciliationIssueType | string;
+  severity: FinanceReconciliationSeverity | string;
+  business_type: FinanceReconciliationBusinessType | string;
+  ref_type: string;
+  ref_id: string;
+  title: string;
+  description: string;
+  suggestion: string;
+  circle_id: string;
+  circle_name: string;
+  order_id: string;
+  pay_channel: string;
+  third_trade_no: string;
+  amount: number;
+  platform_fee_amount: number;
+  difference_amount: number;
+  occurred_at: string;
+  updated_at: string;
+};
+
 export type PlatformFeePolicy = {
   id: string;
   scope_type: "global" | "plan" | "tenant" | "env" | string;
@@ -1495,6 +1550,21 @@ export const platformRevenueApi = {
       responseType: "blob",
       timeout: 60000
     })
+};
+
+export const financeReconciliationApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<
+          PageResult<FinanceReconciliationItem> & {
+            summary: FinanceReconciliationSummary;
+            by_issue_type: FinanceReconciliationIssueCount[];
+            generated_at: string;
+          }
+        >
+      >("get", "/finance/reconciliation", { params })
+    )
 };
 
 export const platformFeePoliciesApi = {

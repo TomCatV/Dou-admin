@@ -614,3 +614,29 @@
 - 边界：导出为只读响应流，不在服务器落持久文件，不改变订单、结算、钱包或营收流水状态；单次导出上限 5000 条。
 - 验证：待执行 Dou-Admin typecheck/build、Dou-Server node --check、双仓 diff 与 UTF-8 检查。
 - 下一步：验证通过后双仓分别提交推送；线上用超管/1 级管理员回归 CSV 下载和审计日志，用 2 级管理员回归无正式导出权限。
+
+### 对账中心只读列表
+
+- 时间：2026-06-01 00:00 (Asia/Shanghai)
+- 任务目标：根据最新续航继续推进对账中心，先做只读异常列表，不做人工调账和资金状态变更。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/views/finance/reconciliation.vue`
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `finance:reconciliation:view` 权限，挂载 `/api/admin/finance/reconciliation`，实时聚合支付、结算、平台收入流水、退款和提现的异常/待确认项。
+- 已完成前端能力：新增 `交易资金 / 对账中心` 页面，展示待核对总数、异常数、提醒数、涉及金额、差额合计、异常类型分布和分页列表；支持日期、异常类型、严重级别、业务域和关键词筛选。
+- 边界：本轮只读，不创建对账批次，不写人工调整流水，不导出文件，不改变订单、结算、钱包、退款、提现或平台营收流水状态。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过，构建产物包含 `reconciliation` chunk。
+  - Dou-Server `node --check src/routes/admin/reconciliation.routes.js` 通过。
+  - Dou-Server `node --check src/routes/admin/index.js` 通过。
+  - Dou-Server `node --check src/lib/adminPermissions.js` 通过。
+  - Dou-Server 对账路由动态导入通过。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
+  - 改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步：线上用超管/1 级/2 级管理员回归菜单、权限和接口返回；后续再补对账详情、处理标记和人工调账的独立审计方案。

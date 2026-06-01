@@ -1184,6 +1184,21 @@ export type PlatformRevenueLedgerItem = {
   updated_at: string;
 };
 
+export type PlatformRevenueExportColumn = {
+  key: string;
+  label: string;
+};
+
+export type PlatformRevenueExportPreview = {
+  columns: PlatformRevenueExportColumn[];
+  items: PlatformRevenueLedgerItem[];
+  summary: PlatformRevenueSummary;
+  total: number;
+  preview_count: number;
+  limit: number;
+  generated_at: string;
+};
+
 export type PlatformFeePolicy = {
   id: string;
   scope_type: "global" | "plan" | "tenant" | "env" | string;
@@ -1462,6 +1477,14 @@ export const platformRevenueApi = {
       http.request<ApiResult<PageResult<PlatformRevenueLedgerItem>>>(
         "get",
         "/finance/revenue/ledger",
+        { params }
+      )
+    ),
+  exportPreview: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PlatformRevenueExportPreview>>(
+        "get",
+        "/finance/revenue/export-preview",
         { params }
       )
     )

@@ -584,3 +584,17 @@
   - Dou-Server 临时库迁移到 `038` 后的费率视图 smoke 覆盖入门版升级专业版、到期专业版续费提示。
   - Dou-Admin 圈主工作台和钱包页 SFC 解析通过。
 - 下一步：做对账中心和导出前的低风险只读能力，优先补平台收入流水导出预览或按圈子/订单的对账筛选；人工调账继续后置。
+
+### 平台营收导出预览
+
+- 时间：2026-06-01 00:00 (Asia/Shanghai)
+- 任务目标：补齐平台营收导出前的只读预览，并增强收入流水按状态和支付渠道筛选。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/finance/revenue.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `/api/admin/finance/revenue/ledger` 支持 `status`、`pay_channel` 筛选，新增 `/api/admin/finance/revenue/export-preview`。
+- 验证：`corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步：正式导出需要生成脱敏文件并写管理员审计；对账中心继续先做只读列表，不做人工调账。

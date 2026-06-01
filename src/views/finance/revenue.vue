@@ -6,6 +6,7 @@ import {
   type PlatformRevenueBusinessType,
   type PlatformRevenueCircleSummary,
   type PlatformRevenueDaySummary,
+  type PlatformRevenueExportPreview,
   type PlatformRevenueLedgerItem,
   type PlatformRevenueSummary,
   type PlatformRevenueTypeSummary
@@ -43,8 +44,17 @@ const channelMap: Record<string, string> = {
   alipay: "支付宝"
 };
 
+const statusMap: Record<string, string> = {
+  booked: "已入账",
+  reversed: "已冲正",
+  settled: "已结清"
+};
+
 const loading = ref(false);
 const ledgerLoading = ref(false);
+const previewLoading = ref(false);
+const previewVisible = ref(false);
+const preview = ref<PlatformRevenueExportPreview | null>(null);
 const summary = ref<PlatformRevenueSummary>({ ...emptySummary });
 const byType = ref<PlatformRevenueTypeSummary[]>([]);
 const byDay = ref<PlatformRevenueDaySummary[]>([]);
@@ -55,6 +65,8 @@ const total = ref(0);
 const filters = reactive({
   date_range: defaultDateRange(),
   business_type: "",
+  status: "",
+  pay_channel: "",
   keyword: "",
   page: 1,
   page_size: 20
@@ -107,11 +119,18 @@ function channelText(value?: string) {
   return channelMap[key] || key || "-";
 }
 
+function statusText(value?: string) {
+  const key = String(value || "");
+  return statusMap[key] || key || "-";
+}
+
 function queryParams(includePage = false) {
   return {
     date_from: filters.date_range?.[0] || "",
     date_to: filters.date_range?.[1] || "",
     business_type: filters.business_type,
+    status: filters.status,
+    pay_channel: filters.pay_channel,
     keyword: filters.keyword,
     ...(includePage ? { page: filters.page, page_size: filters.page_size } : {})
   };
@@ -159,9 +178,25 @@ function search() {
 function resetSearch() {
   filters.date_range = defaultDateRange();
   filters.business_type = "";
+  filters.status = "";
+  filters.pay_channel = "";
   filters.keyword = "";
   filters.page = 1;
   loadAll();
+}
+
+async function openExportPreview() {
+  previewLoading.value = true;
+  try {
+    preview.value = await platformRevenueApi.exportPreview(queryParams());
+    previewVisible.value = true;
+  } catch (error) {
+    ElMessage.error(
+      error instanceof Error ? error.message : "导出预览生成失败"
+    );
+  } finally {
+    previewLoading.value = false;
+  }
 }
 
 onMounted(loadAll);
@@ -190,6 +225,27 @@ onMounted(loadAll);
         <el-option label="套餐收入" value="subscription" />
         <el-option label="人工调整" value="manual_adjust" />
       </el-select>
+      <el-select
+        v-model="filters.status"
+        class="filter-item"
+        clearable
+        placeholder="流水状态"
+      >
+        <el-option label="已入账" value="booked" />
+        <el-option label="已冲正" value="reversed" />
+        <el-option label="已结清" value="settled" />
+      </el-select>
+      <el-select
+        v-model="filters.pay_channel"
+        class="filter-item"
+        clearable
+        placeholder="支付渠道"
+      >
+        <el-option label="微信扫码" value="wechat_native" />
+        <el-option label="微信支付" value="wechat_jsapi" />
+        <el-option label="支付宝扫码" value="alipay_precreate" />
+        <el-option label="支付宝" value="alipay" />
+      </el-select>
       <el-input
         v-model="filters.keyword"
         class="keyword"
@@ -199,6 +255,9 @@ onMounted(loadAll);
       />
       <el-button type="primary" @click="search">查询</el-button>
       <el-button @click="resetSearch">重置</el-button>
+      <el-button :loading="previewLoading" @click="openExportPreview">
+        导出预览
+      </el-button>
     </div>
 
     <div v-loading="loading" class="summary-strip">
@@ -358,6 +417,9 @@ onMounted(loadAll);
             channelText(row.pay_channel)
           }}</template>
         </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">{{ statusText(row.status) }}</template>
+        </el-table-column>
       </el-table>
       <div class="pagination">
         <el-pagination
@@ -370,6 +432,87 @@ onMounted(loadAll);
         />
       </div>
     </section>
+
+    <el-drawer
+      v-model="previewVisible"
+      title="收入流水导出预览"
+      size="72%"
+      destroy-on-close
+    >
+      <template v-if="preview">
+        <div class="preview-summary">
+          <div>
+            <span>匹配流水</span>
+            <strong>{{ preview.total }}</strong>
+          </div>
+          <div>
+            <span>预览笔数</span>
+            <strong>{{ preview.preview_count }} / {{ preview.limit }}</strong>
+          </div>
+          <div>
+            <span>平台服务费</span>
+            <strong>{{ yuan(preview.summary.service_fee_amount) }}</strong>
+          </div>
+          <div>
+            <span>平台净收入</span>
+            <strong
+              :class="{ negative: preview.summary.net_revenue_amount < 0 }"
+            >
+              {{ signedYuan(preview.summary.net_revenue_amount) }}
+            </strong>
+          </div>
+        </div>
+        <p class="preview-note">
+          当前仅提供导出前只读预览，不生成文件、不写审计、不改变任何资金状态。
+          后续正式导出会按相同筛选条件生成脱敏文件并写入审计日志。
+        </p>
+        <el-table :data="preview.items" border max-height="560">
+          <el-table-column label="流水时间" prop="created_at" min-width="160" />
+          <el-table-column label="业务类型" min-width="130">
+            <template #default="{ row }">
+              {{ businessMeta(row.business_type).label }}
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" min-width="100">
+            <template #default="{ row }">{{ statusText(row.status) }}</template>
+          </el-table-column>
+          <el-table-column label="圈子" min-width="170">
+            <template #default="{ row }">
+              {{ row.circle_name || row.circle_id || "-" }}
+            </template>
+          </el-table-column>
+          <el-table-column label="订单号" prop="order_id" min-width="210" />
+          <el-table-column label="第三方交易号" min-width="190">
+            <template #default="{ row }">
+              {{ row.provider_trade_no || "-" }}
+            </template>
+          </el-table-column>
+          <el-table-column label="渠道" min-width="120">
+            <template #default="{ row }">{{ channelText(row.pay_channel) }}</template>
+          </el-table-column>
+          <el-table-column label="成交金额" min-width="110">
+            <template #default="{ row }">{{ yuan(row.gross_amount) }}</template>
+          </el-table-column>
+          <el-table-column label="服务费" min-width="110">
+            <template #default="{ row }">
+              {{ signedYuan(row.platform_fee_amount) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="通道成本" min-width="110">
+            <template #default="{ row }">
+              {{ yuan(row.channel_cost_amount) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="净收入" min-width="120">
+            <template #default="{ row }">
+              <span :class="{ negative: row.net_revenue_amount < 0 }">
+                {{ signedYuan(row.net_revenue_amount) }}
+              </span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
@@ -474,6 +617,37 @@ onMounted(loadAll);
   margin-top: 12px;
 }
 
+.preview-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.preview-summary div {
+  padding: 12px;
+  background: #fbfaf8;
+  border: 1px solid #eee7df;
+  border-radius: 8px;
+}
+
+.preview-summary span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #8f8276;
+}
+
+.preview-summary strong {
+  font-size: 18px;
+  color: #211a14;
+}
+
+.preview-note {
+  margin: 0 0 12px;
+  color: #76695e;
+}
+
 @media (width <= 1280px) {
   .summary-strip,
   .panel-grid {
@@ -491,6 +665,10 @@ onMounted(loadAll);
   .filter-item,
   .keyword {
     width: 100%;
+  }
+
+  .preview-summary {
+    grid-template-columns: 1fr;
   }
 }
 </style>

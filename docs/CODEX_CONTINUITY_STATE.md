@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-05-29 18:27 (Asia/Shanghai)
+最后更新时间：2026-06-01 00:00 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -209,3 +209,11 @@
 - 协同后端能力：Dou-Server 租户工作台和钱包接口返回 `fee_policy`、`fee_policy_upgrade` 和 `fee_policy_options`；升级建议按有效租户、套餐价格和套餐费率计算，支持到期套餐给出“续费”降费提示。
 - 验证结果：Dou-Server `node --check src/lib/platformFeePolicies.js`、`src/routes/admin/tenant.routes.js` 和动态导入通过；临时库迁移到 `038` 后的费率视图 smoke 覆盖入门版升级专业版、到期专业版续费提示；Dou-Admin 圈主工作台和钱包页 SFC 解析通过。未启动本地服务、未安装依赖。
 - 下一步计划：继续做对账中心和导出前的低风险只读能力，优先补平台收入流水导出预览或按圈子/订单的对账筛选；人工调账继续后置。
+
+## 2026-06-01 平台营收导出预览
+
+- 当前目标：根据最新代码与续航文档继续推进平台营收低风险只读能力，补齐收入流水按支付渠道/状态筛选和导出前预览。
+- 已改文件：`src/api/admin.ts`、`src/views/finance/revenue.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/admin/revenue.routes.js`。
+- 已完成前端能力：`交易资金 / 平台营收` 新增流水状态、支付渠道筛选；新增“导出预览”抽屉，展示匹配流水数、预览笔数、平台服务费、净收入和前 200 条脱敏预览。
+- 边界：当前只做导出前只读预览，不生成文件、不写审计、不改变任何资金状态；正式导出和审计留到下一步。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；改动文件 UTF-8 扫描无 U+FFFD。

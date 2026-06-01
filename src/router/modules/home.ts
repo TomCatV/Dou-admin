@@ -117,6 +117,16 @@ export default [
         }
       },
       {
+        path: "/risk/buyers",
+        name: "BuyerRiskProfiles",
+        component: () => import("@/views/risk/buyers.vue"),
+        meta: {
+          title: "买家风控",
+          icon: "ep/warn-triangle-filled",
+          roles: ["super_admin", "admin_l1"]
+        }
+      },
+      {
         path: "/reports",
         name: "Reports",
         component: () => import("@/views/reports/index.vue"),

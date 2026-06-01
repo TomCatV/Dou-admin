@@ -177,18 +177,52 @@ export type TenantOrder = {
 export type TenantAfterSale = {
   id: string;
   order_id: string;
+  purchase_id?: string;
   resource_card_id: string;
+  circle_id?: string;
   resource_title: string;
   buyer_user_id: string;
   buyer_nickname: string;
+  creator_user_id?: string;
   complaint_type: string;
   description: string;
+  evidence_images?: string[];
+  contact_email?: string;
   status: string;
   refund_amount: number;
   refund_status: string;
+  out_refund_no?: string;
+  wechat_refund_id?: string;
+  wechat_refund_status?: string;
+  refund_requested_at?: string | null;
+  refund_notified_at?: string | null;
+  refund_success_time?: string | null;
+  refund_error?: string;
   resolution_note: string;
+  closed_by?: string;
+  order_amount?: number;
+  order_status?: string;
+  paid_at?: string | null;
+  purchase_status?: string;
+  purchased_at?: string | null;
+  resource_summary?: string;
+  resource_cover_url?: string;
+  delivery_type?: string;
+  circle_name?: string;
+  buyer?: {
+    id: string;
+    nickname: string;
+    avatar: string;
+  };
+  creator?: {
+    id: string;
+    nickname: string;
+    avatar: string;
+  };
+  unread_count?: number;
   created_at: string;
   updated_at: string;
+  resolved_at?: string | null;
 };
 
 export type TenantLead = {
@@ -399,6 +433,74 @@ export const tenantApi = {
         "/tenant/after-sales",
         { params }
       )
+    ),
+  afterSaleDetail: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          after_sale: TenantAfterSale;
+          messages: AfterSaleMessage[];
+          actions: AfterSaleAction[];
+        }>
+      >("get", `/tenant/after-sales/${id}`)
+    ),
+  replyAfterSale: (
+    id: string,
+    data: {
+      content: string;
+      message_type?: "text" | "image";
+      image_url?: string;
+    }
+  ) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          after_sale: TenantAfterSale;
+          messages: AfterSaleMessage[];
+          actions: AfterSaleAction[];
+        }>
+      >("post", `/tenant/after-sales/${id}/messages`, { data })
+    ),
+  resendAfterSale: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          after_sale: TenantAfterSale;
+          messages: AfterSaleMessage[];
+          actions: AfterSaleAction[];
+        }>
+      >("post", `/tenant/after-sales/${id}/resend`, { data })
+    ),
+  replaceAfterSaleCode: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          after_sale: TenantAfterSale;
+          messages: AfterSaleMessage[];
+          actions: AfterSaleAction[];
+        }>
+      >("post", `/tenant/after-sales/${id}/replace-code`, { data })
+    ),
+  refundAfterSale: (id: string, data: { note: string }) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          after_sale: TenantAfterSale;
+          messages: AfterSaleMessage[];
+          actions: AfterSaleAction[];
+          ambiguous?: boolean;
+        }>
+      >("post", `/tenant/after-sales/${id}/refund`, { data })
+    ),
+  syncAfterSaleRefund: (id: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          after_sale: TenantAfterSale;
+          messages: AfterSaleMessage[];
+          actions: AfterSaleAction[];
+        }>
+      >("post", `/tenant/after-sales/${id}/refund/sync`)
     ),
   wallet: () =>
     unwrap(
@@ -1096,6 +1198,39 @@ export type AfterSaleMessage = {
   created_at: string;
 };
 
+export type AfterSaleAction = {
+  id: string;
+  after_sale_id: string;
+  order_id: string;
+  circle_id: string;
+  actor_type: "buyer" | "creator" | "platform" | "system";
+  actor_id: string;
+  actor_name: string;
+  action: string;
+  summary: string;
+  payload: Record<string, any>;
+  created_at: string;
+};
+
+export type BuyerRiskLevel = "normal" | "watch" | "blocked";
+
+export type BuyerRiskProfile = {
+  id: string;
+  buyer_key: string;
+  user_id: string;
+  buyer_contact_hash: string;
+  buyer_contact_mask: string;
+  risk_level: BuyerRiskLevel;
+  after_sale_count_30d: number;
+  refund_count_30d: number;
+  blocked_until?: string | null;
+  reason: string;
+  note: string;
+  is_blocking: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type WithdrawalStatus =
   | "requested"
   | "approved"
@@ -1469,6 +1604,7 @@ export const afterSalesApi = {
         ApiResult<{
           after_sale: ResourceAfterSale;
           messages: AfterSaleMessage[];
+          actions: AfterSaleAction[];
         }>
       >("get", `/after-sales/${id}`)
     ),
@@ -1491,6 +1627,33 @@ export const afterSalesApi = {
       http.request<ApiResult<{ after_sale: ResourceAfterSale }>>(
         "post",
         `/after-sales/${id}/refund/sync`
+      )
+    )
+};
+
+export const buyerRiskApi = {
+  list: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<BuyerRiskProfile>>>(
+        "get",
+        "/risk/buyers",
+        { params }
+      )
+    ),
+  create: (data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ profile: BuyerRiskProfile }>>(
+        "post",
+        "/risk/buyers",
+        { data }
+      )
+    ),
+  update: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ profile: BuyerRiskProfile }>>(
+        "patch",
+        `/risk/buyers/${id}`,
+        { data }
       )
     )
 };

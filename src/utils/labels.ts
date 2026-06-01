@@ -143,6 +143,21 @@ export const refundStatusMap = {
   failed: { label: "退款失败", type: "danger" }
 } as const;
 
+export const afterSaleActionLabels: Record<string, string> = {
+  reply: "协商回复",
+  resend: "补发资源",
+  replace_code: "更换卡密",
+  refund_request: "发起退款",
+  reject: "拒绝售后",
+  platform_decision: "平台裁决"
+};
+
+export const buyerRiskLevelMap = {
+  normal: { label: "正常", type: "success" },
+  watch: { label: "观察", type: "warning" },
+  blocked: { label: "黑名单", type: "danger" }
+} as const;
+
 export const complaintTypeLabels: Record<string, string> = {
   cannot_access: "无法访问资源",
   resource_mismatch: "资源与描述不符",

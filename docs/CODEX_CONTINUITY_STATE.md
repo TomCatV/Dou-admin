@@ -265,3 +265,13 @@
 - 当前线上探测结果：本地网络能解析并连通 `admin.doucatapp.top` / `api.doucatapp.top` 端口，但当前解析到 `28.0.0.5` / `28.0.0.6`，HTTP 为空响应或 502，HTTPS 握手失败；因此暂不能从当前环境确认线上已完整部署。
 - 验证结果：`node --check scripts/verify-finance-online.mjs`、`corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 和 UTF-8 扫描通过；`corepack pnpm verify:finance-online` 在当前线上域名因 `ECONNRESET` 失败，符合当前域名/反代阻塞判断。
 - 下一步计划：待 GitHub Actions 部署结果、线上域名/反代和管理员 token 可用后，运行 `corepack pnpm verify:finance-online`；再用超管/1 级/2 级管理员完成真实页面和审计日志回归。
+
+## 2026-06-02 P3 售后动作与买家风控
+
+- 当前目标：回到 P3 剩余缺口，把圈主售后动作、补发/换码、平台买家风控和 H5 黑名单下单阻断补齐。
+- 已改文件：`src/api/admin.ts`、`src/router/modules/home.ts`、`src/utils/labels.ts`、`src/views/tenant/orders.vue`、`src/views/risk/buyers.vue`、`docs/CREATOR_COMMERCE_P3_AFTERSALE_RISK_FUNDS_DESIGN.md`、`docs/ADMIN_USER_MANUAL.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `040_commerce_after_sale_actions_risk.sql`、`src/lib/resourceAfterSales.js`、`src/lib/commerceRisk.js`、`src/lib/commercePayments.js`、`src/routes/shop/index.js`、`src/routes/admin/tenant.routes.js`、`src/routes/admin/afterSales.routes.js`、`src/routes/admin/risk.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js`。
+- 已完成前端能力：圈主 `交易资金 / 订单售后` 增加售后详情抽屉，支持查看协商记录和动作轨迹，并执行回复、补发资源、更换卡密、通过并退款、刷新退款；平台 `平台治理 / 买家风控` 可维护正常、观察和黑名单档案。
+- 协同后端能力：新增售后动作日志、交付调整记录、买家风控档案；圈主售后接口补齐详情和处理动作；黑名单买家在 H5 创建订单草稿和草稿转订单两处被阻断；平台售后拒绝和平台代发退款也写入动作轨迹。
+- 风险边界：补发和换码不改变资金；换码会禁用旧卡密并消耗新卡密库存；退款仍由微信退款请求、回调和查单推进终态；买家风控暂为人工维护，不做自动封禁。
+- 验证结果：Dou-Server `node --check` 覆盖售后、风控、租户路由、平台售后、H5 下单、支付转单和权限模块；`npm.cmd run migrate` 已应用 `040`；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过。
+- 下一步计划：提交推送后继续 P4，优先做 H5 优惠券领取/试用、订单归因和圈主转化工具与实际成交的闭环；最终上线前再做全角色验收和手册收口。

@@ -711,3 +711,32 @@
   - 改动文件 UTF-8 扫描无 U+FFFD。
   - `corepack pnpm verify:finance-online` 因线上域名 TLS 建连前 `ECONNRESET` 失败，记录为生产访问/反代阻塞而非本地构建失败。
 - 下一步：域名/反代、GitHub Actions 结果和管理员 token 可用后运行 `corepack pnpm verify:finance-online`，再进行页面、权限和审计日志人工回归。
+
+### P3 售后动作与买家风控
+
+- 时间：2026-06-02 00:00 (Asia/Shanghai)
+- 任务目标：继续按 P0-P5 推进商用后台，把 P3 未闭环的售后动作、补发资源、换卡密、买家风控和 H5 黑名单阻断补齐。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/utils/labels.ts`
+  - `src/views/tenant/orders.vue`
+  - `src/views/risk/buyers.vue`
+  - `docs/CREATOR_COMMERCE_P3_AFTERSALE_RISK_FUNDS_DESIGN.md`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server 新增 `040_commerce_after_sale_actions_risk.sql`
+  - 新增 `commerceRisk` 买家风控 helper 和 `/api/admin/risk/buyers`
+  - 圈主售后接口新增详情、回复、补发、换卡密、退款和退款同步
+  - H5 创建订单草稿与草稿转订单都检查黑名单
+- 已完成前端能力：圈主订单售后页新增详情抽屉、协商记录、动作轨迹和处理按钮；平台治理新增买家风控页，支持新增和编辑正常、观察、黑名单档案。
+- 边界：补发/换码只处理交付和审计，不改变资金；退款终态仍由微信退款、回调或查单确认；买家风控暂不自动封禁。
+- 验证：
+  - Dou-Server `node --check` 覆盖 `resourceAfterSales`、`commerceRisk`、`commercePayments`、`shop/index`、`admin/tenant`、`admin/afterSales`、`admin/risk`、`admin/index`、`adminPermissions`
+  - Dou-Server `npm.cmd run migrate` 成功应用 `040_commerce_after_sale_actions_risk.sql`
+  - Dou-Admin `corepack pnpm typecheck` 通过
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示
+- 下一步：完成本阶段双仓提交推送后进入 P4，先做 H5 优惠券领取/使用、订单来源归因和私域转化成交闭环。

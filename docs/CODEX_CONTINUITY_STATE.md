@@ -255,3 +255,13 @@
 - 风险边界：默认单次调整任一金额绝对值不超过 `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT=100000` 分；人工调整不释放余额、不重算结算、不触发退款/提现同步、不生成持久导出文件。若线上异常，可隐藏前端“人工调整/反向”入口或临时移除 `/finance/revenue/adjustments` 路由，不影响支付和提现主链路。
 - 验证结果：Dou-Server `node --check src/routes/admin/revenue.routes.js`、`node --check src/lib/adminPermissions.js` 和动态导入通过；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）；改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步计划：分仓提交推送后，线上用超管/1 级管理员回归人工调整、反向调整、审计日志和 2 级管理员无调整权限。
+
+## 2026-06-02 线上财务模块验收脚本
+
+- 当前目标：把平台营收、对账和人工调整的上线验收固化为可重复脚本，避免只依赖手工观察 GitHub Actions 或线上页面。
+- 已改文件：`scripts/verify-finance-online.mjs`、`package.json`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成能力：新增 `corepack pnpm verify:finance-online`，默认检查 `https://admin.doucatapp.top` 和 `https://api.doucatapp.top`；会确认前端构建产物包含“人工调整 / 确认人工调整 / 确认反向调整”，并确认平台营收只读接口、人工调整接口不是 404/405。
+- 可选凭证回归：设置 `ADMIN_AUTH_TOKEN` 后，脚本会要求平台营收 summary 返回 200、人工调整接口进入参数校验，并确认当前管理员返回 `finance:revenue:adjust` 权限；设置 `ADMIN_L2_AUTH_TOKEN` 后，会回归 2 级管理员调用人工调整接口返回 403。
+- 当前线上探测结果：本地网络能解析并连通 `admin.doucatapp.top` / `api.doucatapp.top` 端口，但当前解析到 `28.0.0.5` / `28.0.0.6`，HTTP 为空响应或 502，HTTPS 握手失败；因此暂不能从当前环境确认线上已完整部署。
+- 验证结果：`node --check scripts/verify-finance-online.mjs`、`corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 和 UTF-8 扫描通过；`corepack pnpm verify:finance-online` 在当前线上域名因 `ECONNRESET` 失败，符合当前域名/反代阻塞判断。
+- 下一步计划：待 GitHub Actions 部署结果、线上域名/反代和管理员 token 可用后，运行 `corepack pnpm verify:finance-online`；再用超管/1 级/2 级管理员完成真实页面和审计日志回归。

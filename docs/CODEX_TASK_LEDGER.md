@@ -688,3 +688,26 @@
   - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
   - 改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步：双仓提交推送；线上回归超管/1 级管理员可调整、2 级管理员 403、审计日志详情和反向调整抵消口径。
+
+### 线上财务模块验收脚本
+
+- 时间：2026-06-02 00:00 (Asia/Shanghai)
+- 任务目标：把平台营收、对账和人工调整的上线状态检查做成可重复脚本，支撑完整上线前最后一轮回归。
+- 改动仓库：Dou-Admin
+- Dou-Admin 改动文件：
+  - `scripts/verify-finance-online.mjs`
+  - `package.json`
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 已完成能力：新增 `corepack pnpm verify:finance-online`，默认检查 Admin 构建产物是否包含人工调整入口文案，并检查平台营收 summary 与人工调整接口已部署且受鉴权保护。
+- 可选凭证：设置 `ADMIN_AUTH_TOKEN` 可验证超管/1 级管理员具备 `finance:revenue:adjust` 且接口进入参数校验；设置 `ADMIN_L2_AUTH_TOKEN` 可验证 2 级管理员被 403 拦截。
+- 当前线上探测：本地环境解析 `admin.doucatapp.top` 到 `28.0.0.5`、`api.doucatapp.top` 到 `28.0.0.6`；端口可连通，但 HTTP 返回空响应或 502，HTTPS 握手失败，暂不能确认线上部署状态。
+- 验证：
+  - `node --check scripts/verify-finance-online.mjs` 通过。
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过。
+  - Dou-Admin `git diff --check` 通过，仅有 CRLF 转换提示。
+  - 改动文件 UTF-8 扫描无 U+FFFD。
+  - `corepack pnpm verify:finance-online` 因线上域名 TLS 建连前 `ECONNRESET` 失败，记录为生产访问/反代阻塞而非本地构建失败。
+- 下一步：域名/反代、GitHub Actions 结果和管理员 token 可用后运行 `corepack pnpm verify:finance-online`，再进行页面、权限和审计日志人工回归。

@@ -653,3 +653,29 @@ Admin 页面：
 1. 人工调整不释放余额、不重算结算、不触发退款、不同步提现、不调用第三方支付接口。
 2. 如果线上发现误操作，使用反向调整抵消，不允许删除历史流水。
 3. 若入口需要临时止血，可隐藏 Admin 的人工调整按钮或临时移除后端调整路由，支付、退款、提现和对账只读能力不受影响。
+
+## 23. 2026-06-02 线上验收脚本与上线门槛
+
+为避免“代码已推送”与“线上已可用”混淆，Admin 仓库新增 `scripts/verify-finance-online.mjs`，通过 `corepack pnpm verify:finance-online` 执行线上财务模块烟测。
+
+默认检查：
+
+1. `ADMIN_BASE_URL`，默认 `https://admin.doucatapp.top`，首页构建产物必须包含 `人工调整`、`确认人工调整`、`确认反向调整`。
+2. `API_BASE_URL`，默认 `https://api.doucatapp.top`，`GET /api/admin/finance/revenue/summary` 必须不是 404/405。
+3. `POST /api/admin/finance/revenue/adjustments` 必须不是 404/405，且匿名模式应被 401/403 鉴权拦截。
+
+带凭证检查：
+
+1. 设置 `ADMIN_AUTH_TOKEN` 后，平台营收 summary 必须返回 200。
+2. 设置 `ADMIN_AUTH_TOKEN` 后，人工调整接口使用空参数应进入 400/422 参数校验，而不是 401/403/404。
+3. 设置 `ADMIN_AUTH_TOKEN` 后，`/api/admin/auth/me` 返回内容必须包含 `finance:revenue:adjust`。
+4. 设置 `ADMIN_L2_AUTH_TOKEN` 后，人工调整接口必须返回 403，用于确认 2 级管理员没有调整权限。
+
+完整上线门槛：
+
+1. GitHub Actions 或等效部署日志确认 Dou-Server `master` 和 Dou-Admin `main` 均发布成功。
+2. 生产 `.env` 若需非默认限额，应配置 `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT`；不配置时默认 100000 分。
+3. `corepack pnpm verify:finance-online` 在当前线上域名通过。
+4. 用超管/1 级管理员完成一次小额人工调整和反向调整，确认收入汇总抵消、流水保留、审计日志完整。
+5. 用 2 级管理员确认无人工调整入口或接口返回 403。
+6. 真实支付闭环仍需商户参数、证书路径、回调域名和小额订单完成微信/支付宝支付、异步通知、查单和交付回归。

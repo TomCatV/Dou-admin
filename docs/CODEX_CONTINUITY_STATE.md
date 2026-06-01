@@ -217,3 +217,11 @@
 - 已完成前端能力：`交易资金 / 平台营收` 新增流水状态、支付渠道筛选；新增“导出预览”抽屉，展示匹配流水数、预览笔数、平台服务费、净收入和前 200 条脱敏预览。
 - 边界：当前只做导出前只读预览，不生成文件、不写审计、不改变任何资金状态；正式导出和审计留到下一步。
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；改动文件 UTF-8 扫描无 U+FFFD。
+
+## 2026-06-01 平台营收正式导出与审计
+
+- 当前目标：在导出预览基础上补齐正式 CSV 导出和管理员审计，形成平台营收对账文件下载闭环。
+- 已改文件：`src/api/admin.ts`、`src/views/finance/revenue.vue`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/admin/revenue.routes.js`、`src/lib/adminPermissions.js`。
+- 已完成前端能力：预览抽屉新增“确认导出 CSV”，导出前二次确认；成功后浏览器下载 CSV，并提示导出动作已写入审计。
+- 边界：导出仍为只读能力，不改变订单、结算、钱包或营收流水状态；单次导出超过后端上限会要求缩小筛选范围。
+- 下一步计划：验证通过并提交推送后，线上用超管或 1 级管理员回归导出、审计日志和 2 级管理员无导出权限；对账中心继续先做只读列表，人工调账继续后置。

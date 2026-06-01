@@ -1196,6 +1196,7 @@ export type PlatformRevenueExportPreview = {
   total: number;
   preview_count: number;
   limit: number;
+  export_limit: number;
   generated_at: string;
 };
 
@@ -1487,7 +1488,13 @@ export const platformRevenueApi = {
         "/finance/revenue/export-preview",
         { params }
       )
-    )
+    ),
+  exportCsv: (params: Record<string, any>) =>
+    http.request<Blob>("get", "/finance/revenue/export", {
+      params,
+      responseType: "blob",
+      timeout: 60000
+    })
 };
 
 export const platformFeePoliciesApi = {

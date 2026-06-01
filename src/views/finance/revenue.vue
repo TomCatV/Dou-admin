@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   platformRevenueApi,
   type PlatformRevenueBusinessType,
@@ -53,6 +53,7 @@ const statusMap: Record<string, string> = {
 const loading = ref(false);
 const ledgerLoading = ref(false);
 const previewLoading = ref(false);
+const exportLoading = ref(false);
 const previewVisible = ref(false);
 const preview = ref<PlatformRevenueExportPreview | null>(null);
 const summary = ref<PlatformRevenueSummary>({ ...emptySummary });
@@ -196,6 +197,58 @@ async function openExportPreview() {
     );
   } finally {
     previewLoading.value = false;
+  }
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function exportFileName() {
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
+  return `platform-revenue-${stamp}.csv`;
+}
+
+async function confirmExport() {
+  if (!preview.value) return;
+  const exportLimit = preview.value.export_limit || preview.value.limit || 0;
+  if (exportLimit && preview.value.total > exportLimit) {
+    ElMessage.error(`匹配流水超过单次导出上限 ${exportLimit} 条，请缩小筛选范围`);
+    return;
+  }
+  try {
+    await ElMessageBox.confirm(
+      `将按当前筛选条件导出 ${preview.value.total} 条平台营收流水，并写入管理员审计日志。导出不会改变任何资金状态。`,
+      "确认导出收入流水",
+      {
+        confirmButtonText: "确认导出",
+        cancelButtonText: "取消",
+        type: "warning"
+      }
+    );
+  } catch {
+    return;
+  }
+
+  exportLoading.value = true;
+  try {
+    const blob = await platformRevenueApi.exportCsv(queryParams());
+    downloadBlob(blob, exportFileName());
+    ElMessage.success("收入流水 CSV 已生成，导出动作已写入审计");
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "收入流水导出失败");
+  } finally {
+    exportLoading.value = false;
   }
 }
 
@@ -462,10 +515,22 @@ onMounted(loadAll);
             </strong>
           </div>
         </div>
-        <p class="preview-note">
-          当前仅提供导出前只读预览，不生成文件、不写审计、不改变任何资金状态。
-          后续正式导出会按相同筛选条件生成脱敏文件并写入审计日志。
-        </p>
+        <div class="preview-action">
+          <p class="preview-note">
+            导出将按当前筛选条件生成 CSV 文件，并写入管理员审计日志；该动作不会改变订单、结算、钱包或营收流水状态。
+            单次最多导出 {{ preview.export_limit || preview.limit }} 条。
+          </p>
+          <el-button
+            type="primary"
+            :loading="exportLoading"
+            :disabled="
+              !!preview.export_limit && preview.total > preview.export_limit
+            "
+            @click="confirmExport"
+          >
+            确认导出 CSV
+          </el-button>
+        </div>
         <el-table :data="preview.items" border max-height="560">
           <el-table-column label="流水时间" prop="created_at" min-width="160" />
           <el-table-column label="业务类型" min-width="130">
@@ -644,8 +709,16 @@ onMounted(loadAll);
 }
 
 .preview-note {
-  margin: 0 0 12px;
+  margin: 0;
   color: #76695e;
+}
+
+.preview-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 @media (width <= 1280px) {
@@ -669,6 +742,11 @@ onMounted(loadAll);
 
   .preview-summary {
     grid-template-columns: 1fr;
+  }
+
+  .preview-action {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 </style>

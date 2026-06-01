@@ -598,3 +598,19 @@
 - 协同改动：Dou-Server `/api/admin/finance/revenue/ledger` 支持 `status`、`pay_channel` 筛选，新增 `/api/admin/finance/revenue/export-preview`。
 - 验证：`corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步：正式导出需要生成脱敏文件并写管理员审计；对账中心继续先做只读列表，不做人工调账。
+
+### 平台营收正式导出与审计
+
+- 时间：2026-06-01 00:00 (Asia/Shanghai)
+- 任务目标：按上一轮建议继续推进“平台营收正式导出 + 管理员审计”，让运营可在预览确认后下载 CSV 对账文件。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/finance/revenue.vue`
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `finance:revenue:export` 权限和 `/api/admin/finance/revenue/export` CSV 导出接口，导出写 `finance_revenue.export` 管理员审计。
+- 边界：导出为只读响应流，不在服务器落持久文件，不改变订单、结算、钱包或营收流水状态；单次导出上限 5000 条。
+- 验证：待执行 Dou-Admin typecheck/build、Dou-Server node --check、双仓 diff 与 UTF-8 检查。
+- 下一步：验证通过后双仓分别提交推送；线上用超管/1 级管理员回归 CSV 下载和审计日志，用 2 级管理员回归无正式导出权限。

@@ -664,3 +664,27 @@
   - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
   - 改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步：线上回归详情、标记审计和权限；人工调整流水继续后置到独立方案。
+
+### Phase I 人工调整流水
+
+- 时间：2026-06-02 00:00 (Asia/Shanghai)
+- 任务目标：补齐平台营收人工调整与反向调整闭环，作为对账中心之后的上线前受控修正能力。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/views/finance/revenue.vue`
+  - `docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 新增 `finance:revenue:adjust` 权限、人工调整接口、反向调整接口和 `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT` 配置。
+- 已完成前端能力：平台营收页新增“人工调整”抽屉；支持从流水行关联调整；反向调整自动按原流水金额取反；创建和反向都要求原因、固定二次确认文案和提交前弹窗确认。
+- 边界：人工调整只写平台营收流水和审计，不修改订单、结算、钱包、退款或提现终态；默认单项金额上限 100000 分。
+- 验证：
+  - Dou-Server `node --check src/routes/admin/revenue.routes.js` 通过。
+  - Dou-Server `node --check src/lib/adminPermissions.js` 通过。
+  - Dou-Server 营收路由动态导入通过。
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
+  - 改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步：双仓提交推送；线上回归超管/1 级管理员可调整、2 级管理员 403、审计日志详情和反向调整抵消口径。

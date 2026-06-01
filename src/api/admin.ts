@@ -1180,6 +1180,10 @@ export type PlatformRevenueLedgerItem = {
   provider_trade_no: string;
   fee_rate_bps: number;
   fee_policy_id: string;
+  adjustment_reason: string;
+  adjustment_type: string;
+  related_ledger_id: string;
+  reverse_of: string;
   created_at: string;
   updated_at: string;
 };
@@ -1573,7 +1577,25 @@ export const platformRevenueApi = {
       params,
       responseType: "blob",
       timeout: 60000
-    })
+    }),
+  createAdjustment: (data: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          item: PlatformRevenueLedgerItem;
+          adjust_limit_amount: number;
+        }>
+      >("post", "/finance/revenue/adjustments", { data })
+    ),
+  reverseAdjustment: (ledgerId: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          item: PlatformRevenueLedgerItem;
+          reversed_id: string;
+        }>
+      >("post", `/finance/revenue/adjustments/${ledgerId}/reverse`, { data })
+    )
 };
 
 export const financeReconciliationApi = {

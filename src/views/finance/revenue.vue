@@ -11,6 +11,7 @@ import {
   type PlatformRevenueSummary,
   type PlatformRevenueTypeSummary
 } from "@/api/admin";
+import { hasPerms } from "@/utils/auth";
 
 defineOptions({
   name: "PlatformRevenue"
@@ -50,11 +51,18 @@ const statusMap: Record<string, string> = {
   settled: "已结清"
 };
 
+const ADJUST_CONFIRM_TEXT = "确认人工调整";
+const REVERSE_CONFIRM_TEXT = "确认反向调整";
+
 const loading = ref(false);
 const ledgerLoading = ref(false);
 const previewLoading = ref(false);
 const exportLoading = ref(false);
 const previewVisible = ref(false);
+const adjustmentVisible = ref(false);
+const adjustmentSubmitting = ref(false);
+const adjustmentMode = ref<"create" | "reverse">("create");
+const reverseTarget = ref<PlatformRevenueLedgerItem | null>(null);
 const preview = ref<PlatformRevenueExportPreview | null>(null);
 const summary = ref<PlatformRevenueSummary>({ ...emptySummary });
 const byType = ref<PlatformRevenueTypeSummary[]>([]);
@@ -73,7 +81,24 @@ const filters = reactive({
   page_size: 20
 });
 
+const adjustmentForm = reactive({
+  circle_id: "",
+  related_order_id: "",
+  related_ledger_id: "",
+  gross_yuan: 0,
+  platform_fee_yuan: 0,
+  channel_cost_yuan: 0,
+  reason: "",
+  confirm_text: ""
+});
+
 const trendRows = computed(() => byDay.value.slice(-14).reverse());
+const canAdjust = computed(() => hasPerms("finance:revenue:adjust"));
+const adjustmentNetYuan = computed(
+  () =>
+    (Number(adjustmentForm.platform_fee_yuan) || 0) -
+    (Number(adjustmentForm.channel_cost_yuan) || 0)
+);
 
 function defaultDateRange() {
   const end = new Date();
@@ -123,6 +148,48 @@ function channelText(value?: string) {
 function statusText(value?: string) {
   const key = String(value || "");
   return statusMap[key] || key || "-";
+}
+
+function resetAdjustmentForm() {
+  adjustmentForm.circle_id = "";
+  adjustmentForm.related_order_id = "";
+  adjustmentForm.related_ledger_id = "";
+  adjustmentForm.gross_yuan = 0;
+  adjustmentForm.platform_fee_yuan = 0;
+  adjustmentForm.channel_cost_yuan = 0;
+  adjustmentForm.reason = "";
+  adjustmentForm.confirm_text = "";
+}
+
+function yuanToCents(value: number) {
+  return Math.round((Number(value) || 0) * 100);
+}
+
+function openAdjustment(row?: PlatformRevenueLedgerItem) {
+  adjustmentMode.value = "create";
+  reverseTarget.value = null;
+  resetAdjustmentForm();
+  if (row) {
+    adjustmentForm.circle_id = row.circle_id || "";
+    adjustmentForm.related_order_id = row.order_id || "";
+    adjustmentForm.related_ledger_id = row.id || "";
+  }
+  adjustmentVisible.value = true;
+}
+
+function openReverseAdjustment(row: PlatformRevenueLedgerItem) {
+  adjustmentMode.value = "reverse";
+  reverseTarget.value = row;
+  resetAdjustmentForm();
+  adjustmentForm.circle_id = row.circle_id || "";
+  adjustmentForm.related_order_id = row.order_id || "";
+  adjustmentForm.related_ledger_id = row.id || "";
+  adjustmentForm.gross_yuan = -Number(row.gross_amount || 0) / 100;
+  adjustmentForm.platform_fee_yuan =
+    -Number(row.platform_fee_amount || 0) / 100;
+  adjustmentForm.channel_cost_yuan =
+    -Number(row.channel_cost_amount || 0) / 100;
+  adjustmentVisible.value = true;
 }
 
 function queryParams(includePage = false) {
@@ -223,7 +290,9 @@ async function confirmExport() {
   if (!preview.value) return;
   const exportLimit = preview.value.export_limit || preview.value.limit || 0;
   if (exportLimit && preview.value.total > exportLimit) {
-    ElMessage.error(`匹配流水超过单次导出上限 ${exportLimit} 条，请缩小筛选范围`);
+    ElMessage.error(
+      `匹配流水超过单次导出上限 ${exportLimit} 条，请缩小筛选范围`
+    );
     return;
   }
   try {
@@ -246,9 +315,85 @@ async function confirmExport() {
     downloadBlob(blob, exportFileName());
     ElMessage.success("收入流水 CSV 已生成，导出动作已写入审计");
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : "收入流水导出失败");
+    ElMessage.error(
+      error instanceof Error ? error.message : "收入流水导出失败"
+    );
   } finally {
     exportLoading.value = false;
+  }
+}
+
+async function submitAdjustment() {
+  const confirmText =
+    adjustmentMode.value === "reverse"
+      ? REVERSE_CONFIRM_TEXT
+      : ADJUST_CONFIRM_TEXT;
+  if (adjustmentForm.confirm_text !== confirmText) {
+    ElMessage.warning(`请输入“${confirmText}”`);
+    return;
+  }
+  if (adjustmentForm.reason.trim().length < 8) {
+    ElMessage.warning("请填写不少于 8 个字的调整原因");
+    return;
+  }
+  if (
+    adjustmentMode.value === "create" &&
+    ![
+      adjustmentForm.gross_yuan,
+      adjustmentForm.platform_fee_yuan,
+      adjustmentForm.channel_cost_yuan
+    ].some(value => Number(value) !== 0)
+  ) {
+    ElMessage.warning("请至少填写一项需要调整的金额");
+    return;
+  }
+  if (adjustmentMode.value === "reverse" && !reverseTarget.value) return;
+
+  try {
+    await ElMessageBox.confirm(
+      adjustmentMode.value === "reverse"
+        ? "将创建一条金额相反的人工调整流水，并把原人工调整标记为已冲正。该动作不会修改订单、钱包、退款或提现状态。"
+        : "将创建一条人工调整流水并写入管理员审计。该动作只影响平台营收流水口径，不会修改订单、钱包、退款或提现状态。",
+      adjustmentMode.value === "reverse" ? "确认反向调整" : "确认人工调整",
+      {
+        confirmButtonText: "继续提交",
+        cancelButtonText: "取消",
+        type: "warning"
+      }
+    );
+  } catch {
+    return;
+  }
+
+  adjustmentSubmitting.value = true;
+  try {
+    if (adjustmentMode.value === "reverse" && reverseTarget.value) {
+      await platformRevenueApi.reverseAdjustment(reverseTarget.value.id, {
+        reason: adjustmentForm.reason.trim(),
+        confirm_text: adjustmentForm.confirm_text
+      });
+      ElMessage.success("反向调整流水已创建，原流水已标记为已冲正");
+    } else {
+      await platformRevenueApi.createAdjustment({
+        circle_id: adjustmentForm.circle_id.trim(),
+        related_order_id: adjustmentForm.related_order_id.trim(),
+        related_ledger_id: adjustmentForm.related_ledger_id.trim(),
+        gross_amount: yuanToCents(adjustmentForm.gross_yuan),
+        platform_fee_amount: yuanToCents(adjustmentForm.platform_fee_yuan),
+        channel_cost_amount: yuanToCents(adjustmentForm.channel_cost_yuan),
+        reason: adjustmentForm.reason.trim(),
+        confirm_text: adjustmentForm.confirm_text
+      });
+      ElMessage.success("人工调整流水已创建并写入审计");
+    }
+    adjustmentVisible.value = false;
+    await loadAll();
+  } catch (error) {
+    ElMessage.error(
+      error instanceof Error ? error.message : "人工调整提交失败"
+    );
+  } finally {
+    adjustmentSubmitting.value = false;
   }
 }
 
@@ -310,6 +455,9 @@ onMounted(loadAll);
       <el-button @click="resetSearch">重置</el-button>
       <el-button :loading="previewLoading" @click="openExportPreview">
         导出预览
+      </el-button>
+      <el-button v-if="canAdjust" type="warning" @click="openAdjustment()">
+        人工调整
       </el-button>
     </div>
 
@@ -473,6 +621,29 @@ onMounted(loadAll);
         <el-table-column label="状态" width="110">
           <template #default="{ row }">{{ statusText(row.status) }}</template>
         </el-table-column>
+        <el-table-column
+          v-if="canAdjust"
+          label="操作"
+          width="160"
+          fixed="right"
+        >
+          <template #default="{ row }">
+            <el-button text type="primary" @click="openAdjustment(row)">
+              关联调整
+            </el-button>
+            <el-button
+              v-if="
+                row.business_type === 'manual_adjust' &&
+                row.status !== 'reversed'
+              "
+              text
+              type="warning"
+              @click="openReverseAdjustment(row)"
+            >
+              反向
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <div class="pagination">
         <el-pagination
@@ -517,7 +688,8 @@ onMounted(loadAll);
         </div>
         <div class="preview-action">
           <p class="preview-note">
-            导出将按当前筛选条件生成 CSV 文件，并写入管理员审计日志；该动作不会改变订单、结算、钱包或营收流水状态。
+            导出将按当前筛选条件生成 CSV
+            文件，并写入管理员审计日志；该动作不会改变订单、结算、钱包或营收流水状态。
             单次最多导出 {{ preview.export_limit || preview.limit }} 条。
           </p>
           <el-button
@@ -553,7 +725,9 @@ onMounted(loadAll);
             </template>
           </el-table-column>
           <el-table-column label="渠道" min-width="120">
-            <template #default="{ row }">{{ channelText(row.pay_channel) }}</template>
+            <template #default="{ row }">{{
+              channelText(row.pay_channel)
+            }}</template>
           </el-table-column>
           <el-table-column label="成交金额" min-width="110">
             <template #default="{ row }">{{ yuan(row.gross_amount) }}</template>
@@ -577,6 +751,119 @@ onMounted(loadAll);
           </el-table-column>
         </el-table>
       </template>
+    </el-drawer>
+
+    <el-drawer
+      v-model="adjustmentVisible"
+      :title="
+        adjustmentMode === 'reverse' ? '反向人工调整' : '创建人工调整流水'
+      "
+      size="520px"
+      destroy-on-close
+    >
+      <el-alert
+        :title="
+          adjustmentMode === 'reverse'
+            ? '反向调整会创建金额相反的新流水，并把原人工调整标记为已冲正。'
+            : '人工调整只修正平台营收流水口径，不会修改订单、结算、钱包、退款或提现状态。'
+        "
+        type="warning"
+        :closable="false"
+        class="adjust-alert"
+      />
+      <el-form label-position="top" class="adjust-form">
+        <el-form-item label="圈子 ID">
+          <el-input
+            v-model="adjustmentForm.circle_id"
+            :disabled="adjustmentMode === 'reverse'"
+            clearable
+            placeholder="可留空；关联圈子时填写 circle_id"
+          />
+        </el-form-item>
+        <el-form-item label="关联订单号">
+          <el-input
+            v-model="adjustmentForm.related_order_id"
+            :disabled="adjustmentMode === 'reverse'"
+            clearable
+            placeholder="可留空；用于审计追溯"
+          />
+        </el-form-item>
+        <el-form-item label="关联收入流水 ID">
+          <el-input
+            v-model="adjustmentForm.related_ledger_id"
+            :disabled="adjustmentMode === 'reverse'"
+            clearable
+            placeholder="可留空；从列表关联调整时自动填入"
+          />
+        </el-form-item>
+        <div class="adjust-amount-grid">
+          <el-form-item label="成交金额调整">
+            <el-input-number
+              v-model="adjustmentForm.gross_yuan"
+              :disabled="adjustmentMode === 'reverse'"
+              :precision="2"
+              :step="1"
+              controls-position="right"
+            />
+          </el-form-item>
+          <el-form-item label="平台服务费调整">
+            <el-input-number
+              v-model="adjustmentForm.platform_fee_yuan"
+              :disabled="adjustmentMode === 'reverse'"
+              :precision="2"
+              :step="1"
+              controls-position="right"
+            />
+          </el-form-item>
+          <el-form-item label="通道成本调整">
+            <el-input-number
+              v-model="adjustmentForm.channel_cost_yuan"
+              :disabled="adjustmentMode === 'reverse'"
+              :precision="2"
+              :step="1"
+              controls-position="right"
+            />
+          </el-form-item>
+          <el-form-item label="净收入影响">
+            <el-input
+              :model-value="signedYuan(adjustmentNetYuan * 100)"
+              disabled
+            />
+          </el-form-item>
+        </div>
+        <el-form-item label="调整原因">
+          <el-input
+            v-model="adjustmentForm.reason"
+            type="textarea"
+            :rows="4"
+            maxlength="500"
+            show-word-limit
+            placeholder="至少 8 个字，写清楚来源、对账依据和处理结论"
+          />
+        </el-form-item>
+        <el-form-item
+          :label="
+            adjustmentMode === 'reverse'
+              ? `二次确认：输入“${REVERSE_CONFIRM_TEXT}”`
+              : `二次确认：输入“${ADJUST_CONFIRM_TEXT}”`
+          "
+        >
+          <el-input
+            v-model="adjustmentForm.confirm_text"
+            placeholder="请输入完整确认文案"
+          />
+        </el-form-item>
+        <div class="adjust-actions">
+          <el-button @click="adjustmentVisible = false">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="adjustmentSubmitting"
+            @click="submitAdjustment"
+          >
+            提交
+          </el-button>
+        </div>
+      </el-form>
     </el-drawer>
   </div>
 </template>
@@ -721,6 +1008,30 @@ onMounted(loadAll);
   margin-bottom: 12px;
 }
 
+.adjust-alert {
+  margin-bottom: 14px;
+}
+
+.adjust-form {
+  padding-right: 4px;
+}
+
+.adjust-amount-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.adjust-amount-grid :deep(.el-input-number) {
+  width: 100%;
+}
+
+.adjust-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 @media (width <= 1280px) {
   .summary-strip,
   .panel-grid {
@@ -747,6 +1058,10 @@ onMounted(loadAll);
   .preview-action {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .adjust-amount-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-06-01 00:00 (Asia/Shanghai)
+最后更新时间：2026-06-02 00:00 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -245,3 +245,13 @@
 - 边界：本轮不创建人工调整流水、不释放余额、不重算结算、不同步退款/提现状态；“已处理/忽略”只是运营核对标记，不能代表资金终态已被自动修复。
 - 验证结果：Dou-Server `npm.cmd run migrate` 已应用 `039_finance_reconciliation_marks.sql`；`node --check src/routes/admin/reconciliation.routes.js`、动态导入通过；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）；改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步计划：线上回归详情抽屉、标记审计和权限；之后再设计人工调整流水，必须先补二次确认、差额限制、审计详情和回滚/反向调整方案。
+
+## 2026-06-02 Phase I 人工调整流水
+
+- 当前目标：在对账详情与标记之后，补齐上线前必要但受控的“人工调整流水”闭环；只修正平台营收流水口径，不直接改订单、结算、钱包、退款或提现终态。
+- 已改文件：`src/api/admin.ts`、`src/views/finance/revenue.vue`、`docs/CREATOR_COMMERCE_PLATFORM_REVENUE_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `.env.example`、`src/lib/adminPermissions.js`、`src/routes/admin/revenue.routes.js`。
+- 已完成前端能力：`交易资金 / 平台营收` 增加“人工调整”入口；可从流水行发起关联调整；人工调整和反向调整都要求填写原因、固定二次确认文案，并在提交前再次弹窗确认；手动调整金额以元输入，提交给后端转为分。
+- 协同后端能力：新增 `finance:revenue:adjust` 独立权限；新增人工调整接口和反向调整接口；调整写入 `platform_revenue_ledger(manual_adjust)`，反向调整创建金额相反的新流水并把原人工调整标记为 `reversed`；所有动作写入 `admin_audit_logs`。
+- 风险边界：默认单次调整任一金额绝对值不超过 `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT=100000` 分；人工调整不释放余额、不重算结算、不触发退款/提现同步、不生成持久导出文件。若线上异常，可隐藏前端“人工调整/反向”入口或临时移除 `/finance/revenue/adjustments` 路由，不影响支付和提现主链路。
+- 验证结果：Dou-Server `node --check src/routes/admin/revenue.routes.js`、`node --check src/lib/adminPermissions.js` 和动态导入通过；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；双仓 `git diff --check` 通过（仅 CRLF 转换提示）；改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步计划：分仓提交推送后，线上用超管/1 级管理员回归人工调整、反向调整、审计日志和 2 级管理员无调整权限。

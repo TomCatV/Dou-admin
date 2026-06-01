@@ -285,3 +285,12 @@
 - 风险边界：首版不做多级分销、不做可提现佣金、不做买家领券钱包；优惠券暂按总量和有效期控制，后续再补单买家限制。
 - 验证结果：Dou-Server `node --check` 覆盖运营、支付、H5、租户订单、转化和售后模块；`npm.cmd run migrate` 已应用 `041`；动态导入通过；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过。
 - 下一步计划：提交推送后进入 P5 AI 经营助手；上线前仍需补全最终验收清单和全角色使用手册。
+
+## 2026-06-02 P5 AI 经营助手
+
+- 当前目标：完成 P5，接入服务端 OpenAI Responses API，给圈主后台提供经营日报、活动文案、历史记录和人工确认闭环。
+- 已改文件：`src/api/admin.ts`、`src/router/modules/home.ts`、`src/views/tenant/ai.vue`、`docs/CREATOR_COMMERCE_P5_AI_ASSISTANT_DESIGN.md`、`docs/ADMIN_USER_MANUAL.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `.env.example`、`042_ai_business_assistant.sql`、`src/lib/aiBusinessAssistant.js`、`src/routes/admin/tenantAi.routes.js`、`src/routes/admin/index.js`、`src/lib/adminPermissions.js`。
+- 已完成前端能力：新增一级菜单 `AI 经营 / 经营助手`，展示今日用量、模型、配置状态，支持生成经营日报、活动文案、查看历史、打开结果抽屉、复制候选文案、人工确认或忽略建议。
+- 已完成后端能力：AI 报告、提示词版本、建议确认表；圈主 AI 路由；每日限额；缺少 `OPENAI_API_KEY` 或 OpenAI 请求失败时保存失败报告和兜底摘要；所有生成写管理员审计。
+- 风险边界：AI 只读聚合/脱敏数据，不传聊天私信、卡密、支付密钥、完整 openid/手机号/邮箱/JWT/密码；不自动改价、库存、权限、退款、钱包、优惠券或订单状态。
+- 下一步计划：执行后端迁移和语法检查、前端 typecheck/build、diff 和编码扫描；通过后按 P5 双仓提交推送；最后补上线前验收清单并完成最终使用手册收口。

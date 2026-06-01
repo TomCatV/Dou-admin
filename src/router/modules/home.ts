@@ -347,13 +347,36 @@ export default [
     ]
   },
   {
+    path: "/tenant-ai",
+    name: "TenantAiModule",
+    redirect: "/tenant/ai",
+    meta: {
+      icon: "ep/magic-stick",
+      title: "AI 经营",
+      rank: 7
+    },
+    children: [
+      {
+        path: "/tenant/ai",
+        name: "TenantAiAssistant",
+        component: () => import("@/views/tenant/ai.vue"),
+        meta: {
+          title: "经营助手",
+          icon: "ep/magic-stick",
+          showParent: true,
+          roles: tenantRoles
+        }
+      }
+    ]
+  },
+  {
     path: "/saas-billing",
     name: "SaasBillingModule",
     redirect: "/saas",
     meta: {
       icon: "ep/coin",
       title: "SaaS计费",
-      rank: 7
+      rank: 8
     },
     children: [
       {
@@ -376,7 +399,7 @@ export default [
     meta: {
       icon: "ep/lock",
       title: "系统安全",
-      rank: 8
+      rank: 9
     },
     children: [
       {

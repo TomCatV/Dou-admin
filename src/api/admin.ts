@@ -255,6 +255,32 @@ export type TenantConversionSummary = {
   attribution?: Record<string, number>;
 };
 
+export type TenantAiUsage = {
+  used: number;
+  limit: number;
+  remaining: number;
+  plan_code: string;
+  ai_available: boolean;
+  model: string;
+};
+
+export type TenantAiReport = {
+  id: string;
+  circle_id: string;
+  scene: "daily_report" | "campaign_copy" | string;
+  model: string;
+  prompt_version_id: string;
+  input_digest: Record<string, any>;
+  output: Record<string, any>;
+  status: "generated" | "accepted" | "dismissed" | "failed" | string;
+  failure_reason: string;
+  response_id: string;
+  usage: Record<string, any>;
+  created_by_admin_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export function unwrap<T>(promise: Promise<ApiResult<T>>) {
   return promise.then(res => {
     if (res?.code !== 0) {
@@ -262,6 +288,22 @@ export function unwrap<T>(promise: Promise<ApiResult<T>>) {
     }
     return res.data;
   });
+}
+
+function unwrapAiGeneration(
+  promise: Promise<ApiResult<{ report: TenantAiReport }>>
+) {
+  return promise
+    .then(res => {
+      if (res?.data?.report) return res.data;
+      if (res?.code !== 0) throw new Error(res?.message || "AI 生成失败");
+      return res.data;
+    })
+    .catch(error => {
+      const report = error?.response?.data?.data?.report;
+      if (report) return { report } as { report: TenantAiReport };
+      throw error;
+    });
 }
 
 export const dashboardApi = {
@@ -642,6 +684,39 @@ export const tenantConversionApi = {
         "/tenant/conversion/campaigns",
         { data }
       )
+    )
+};
+
+export const tenantAiApi = {
+  usage: () =>
+    unwrap(http.request<ApiResult<TenantAiUsage>>("get", "/tenant/ai/usage")),
+  reports: (params: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<PageResult<TenantAiReport> & { usage: TenantAiUsage }>
+      >("get", "/tenant/ai/reports", { params })
+    ),
+  generateDailyReport: (data: Record<string, any>) =>
+    unwrapAiGeneration(
+      http.request<ApiResult<{ report: TenantAiReport }>>(
+        "post",
+        "/tenant/ai/reports/daily",
+        { data }
+      )
+    ),
+  generateCampaignCopy: (data: Record<string, any>) =>
+    unwrapAiGeneration(
+      http.request<ApiResult<{ report: TenantAiReport }>>(
+        "post",
+        "/tenant/ai/campaign-copy",
+        { data }
+      )
+    ),
+  confirmReport: (id: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<{ confirmation_id: string; report: TenantAiReport }>
+      >("post", `/tenant/ai/reports/${id}/confirm`, { data })
     )
 };
 

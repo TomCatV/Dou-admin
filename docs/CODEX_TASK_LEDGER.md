@@ -318,6 +318,7 @@
   - `docs/CREATOR_COMMERCE_ADMIN_CAPABILITY_PLAN.md`
   - `docs/CODEX_CONTINUITY_STATE.md`
   - `docs/CODEX_TASK_LEDGER.md`
+  - `docs/GO_LIVE_ACCEPTANCE_CHECKLIST.md`
 - 协同改动：Dou-Server 新增 `/api/shop/*`、商品分类和公开链接接口；H5 买家页改由 Dou-Admin `/shop/*` 公开路由承载，Dou-uniapp 不参与本阶段 H5 购买页。
 - 验证：
   - Dou-Admin `pnpm typecheck` 通过。
@@ -773,3 +774,27 @@
   - Dou-Admin `corepack pnpm typecheck` 通过
   - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示
 - 下一步：双仓提交推送后进入 P5 AI 经营助手；P5 需要先按官方 OpenAI 文档确认接口和数据安全边界。
+
+### P5 AI 经营助手
+
+- 时间：2026-06-02 00:00 (Asia/Shanghai)
+- 任务目标：完成商用多租户后台 P5，给圈主提供 AI 经营日报、活动文案和历史审计，同时确保 AI 只辅助决策，不自动修改交易、资金、库存、权限或优惠券。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/views/tenant/ai.vue`
+  - `docs/CREATOR_COMMERCE_P5_AI_ASSISTANT_DESIGN.md`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server 新增 `042_ai_business_assistant.sql`
+  - 新增 `src/lib/aiBusinessAssistant.js`
+  - 新增 `/api/admin/tenant/ai` 路由
+  - 新增 `tenant:ai:view`、`tenant:ai:generate` 权限
+  - `.env.example` 补充 `OPENAI_API_KEY`、`AI_DEFAULT_MODEL`、每日限额和请求参数
+- 已完成能力：圈主可生成经营日报、生成活动文案、查看历史记录、查看用量、确认或忽略 AI 建议；未配置 OpenAI 密钥时保存失败报告和脱敏摘要，不影响主链路。
+- 数据边界：只传聚合脱敏经营数据、商品公开字段、优惠券和转化汇总；不传聊天私密消息、卡密明文、支付密钥、完整 openid/手机号/邮箱/JWT/密码。
+- 验证：待执行 Dou-Server `node --check`、`npm.cmd run migrate`，Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、双仓 `git diff --check` 和 UTF-8 扫描。
+- 下一步：验证通过后双仓提交推送；随后做上线前验收文档和最终手册收口。

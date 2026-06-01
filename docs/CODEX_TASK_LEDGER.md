@@ -740,3 +740,36 @@
   - Dou-Admin `corepack pnpm typecheck` 通过
   - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示
 - 下一步：完成本阶段双仓提交推送后进入 P4，先做 H5 优惠券领取/使用、订单来源归因和私域转化成交闭环。
+
+### P4 优惠券与邀请码归因闭环
+
+- 时间：2026-06-02 00:00 (Asia/Shanghai)
+- 任务目标：把圈主已有优惠券、邀请码和转化漏斗接入 H5 实际成交，让运营工具能影响订单金额并回流成交归因。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/api/shop.ts`
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `src/views/shop/order.vue`
+  - `src/views/tenant/orders.vue`
+  - `src/views/tenant/conversion-tools.vue`
+  - `src/views/tenant/conversion-funnel.vue`
+  - `docs/CREATOR_COMMERCE_P4_OPERATIONS_DISTRIBUTION_DESIGN.md`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server 新增 `041_commerce_operations_attribution.sql`
+  - 新增 `commerceOperations` 统一处理优惠试算、邀请码归因、订单归因、支付核销和退款反冲
+  - H5 商品、草稿、支付转订单和圈主订单接口补充优惠和归因字段
+  - 转化汇总接口新增归因成交统计
+- 已完成能力：H5 商品页试算优惠；草稿创建时锁定应付金额；草稿转订单时二次校验价格和优惠有效性；支付成功后才增加券码/邀请码使用次数；退款后归因记录标记为 refunded。
+- 边界：首版不做分销佣金入账，不做买家领券钱包，不做单买家领券限制。
+- 验证：
+  - Dou-Server `npm.cmd run migrate` 成功应用 `041_commerce_operations_attribution.sql`
+  - Dou-Server `node --check` 覆盖 `commerceOperations`、`commercePayments`、`shop/index`、`tenant.routes`、`tenantConversion.routes`、`resourceAfterSales`
+  - Dou-Server 路由和运营服务动态导入通过
+  - Dou-Admin `corepack pnpm typecheck` 通过
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示
+- 下一步：双仓提交推送后进入 P5 AI 经营助手；P5 需要先按官方 OpenAI 文档确认接口和数据安全边界。

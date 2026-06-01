@@ -71,6 +71,12 @@ export type OrderDraft = {
   buyer_contact: string;
   source_channel: string;
   product_snapshot: PublicProduct;
+  original_amount: number;
+  discount_amount: number;
+  coupon_code: string;
+  invite_code: string;
+  campaign_name: string;
+  attribution_source: string;
   amount: number;
   status: "draft" | "expired" | string;
   expires_at: string;
@@ -78,8 +84,20 @@ export type OrderDraft = {
   updated_at: string;
 };
 
+export type PromotionQuote = {
+  original_amount: number;
+  discount_amount: number;
+  payable_amount: number;
+  coupon: Record<string, any> | null;
+  invite_code: Record<string, any> | null;
+  campaign: Record<string, any> | null;
+  attribution_source: string;
+  source_channel: string;
+};
+
 export type OrderDraftPayload = {
   order_draft: OrderDraft;
+  quote?: PromotionQuote;
   payment_channels?: Record<string, { enabled: boolean }>;
   next_action?: {
     type: string;
@@ -98,7 +116,14 @@ export type PaymentIntent = {
   out_trade_no: string;
   amount: number;
   currency: string;
-  status: "created" | "qr_issued" | "paid" | "closed" | "failed" | "unknown" | string;
+  status:
+    | "created"
+    | "qr_issued"
+    | "paid"
+    | "closed"
+    | "failed"
+    | "unknown"
+    | string;
   qr_code_url: string;
   expires_at: string;
   paid_at?: string | null;
@@ -121,6 +146,12 @@ export type PublicOrder = {
   circle_id: string;
   resource_card_id: string;
   amount: number;
+  original_amount?: number;
+  discount_amount?: number;
+  coupon_code?: string;
+  invite_code?: string;
+  campaign_name?: string;
+  attribution_source?: string;
   currency: string;
   status: string;
   paid_at?: string | null;
@@ -205,6 +236,13 @@ export const shopApi = {
     unwrap<ShopProductPayload>(
       shopHttp.get(`/products/${encodeURIComponent(productKey)}`)
     ),
+  promotionQuote: (productKey: string, data: Record<string, any>) =>
+    unwrap<{ quote: PromotionQuote }>(
+      shopHttp.post(
+        `/products/${encodeURIComponent(productKey)}/promotion-quote`,
+        data
+      )
+    ),
   createOrderDraft: (productKey: string, data: Record<string, any>) =>
     unwrap<OrderDraftPayload>(
       shopHttp.post(
@@ -224,7 +262,12 @@ export const shopApi = {
     orderId: string,
     data: { channel: PaymentChannel | string }
   ) =>
-    unwrap<{ order: PublicOrder; payment_intent: PaymentIntent; reused: boolean; already_paid?: boolean }>(
+    unwrap<{
+      order: PublicOrder;
+      payment_intent: PaymentIntent;
+      reused: boolean;
+      already_paid?: boolean;
+    }>(
       shopHttp.post(
         `/orders/${encodeURIComponent(orderId)}/payment-intents`,
         data

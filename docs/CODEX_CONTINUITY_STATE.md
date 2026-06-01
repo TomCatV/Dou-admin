@@ -275,3 +275,13 @@
 - 风险边界：补发和换码不改变资金；换码会禁用旧卡密并消耗新卡密库存；退款仍由微信退款请求、回调和查单推进终态；买家风控暂为人工维护，不做自动封禁。
 - 验证结果：Dou-Server `node --check` 覆盖售后、风控、租户路由、平台售后、H5 下单、支付转单和权限模块；`npm.cmd run migrate` 已应用 `040`；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过。
 - 下一步计划：提交推送后继续 P4，优先做 H5 优惠券领取/试用、订单归因和圈主转化工具与实际成交的闭环；最终上线前再做全角色验收和手册收口。
+
+## 2026-06-02 P4 优惠券与邀请码归因闭环
+
+- 当前目标：把已有私域转化工具接入 H5 成交链路，形成优惠券试算、邀请码归因、订单固化和转化漏斗统计的首版闭环。
+- 已改文件：`src/api/admin.ts`、`src/api/shop.ts`、`src/views/shop/product.vue`、`src/views/shop/checkout.vue`、`src/views/shop/order.vue`、`src/views/tenant/orders.vue`、`src/views/tenant/conversion-tools.vue`、`src/views/tenant/conversion-funnel.vue`、`docs/CREATOR_COMMERCE_P4_OPERATIONS_DISTRIBUTION_DESIGN.md`、`docs/ADMIN_USER_MANUAL.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `041_commerce_operations_attribution.sql`、`src/lib/commerceOperations.js`、`src/lib/commercePayments.js`、`src/lib/resourceAfterSales.js`、`src/routes/shop/index.js`、`src/routes/admin/tenant.routes.js`、`src/routes/admin/tenantConversion.routes.js`。
+- 已完成前端能力：H5 商品页可输入或从链接带入优惠券/邀请码并试算优惠；确认页和订单页展示原价、优惠抵扣和成交来源；圈主订单列表展示优惠抵扣和来源；转化工具可复制带券码/邀请码的商品链接模板；转化漏斗展示归因成交、优惠订单、邀请码订单、优惠抵扣和归因成交额。
+- 协同后端能力：订单草稿和订单固化原价、优惠金额、券码、邀请码、活动和归因来源；草稿转订单按最新商品价与优惠规则二次校验；支付成功后才增加优惠券/邀请码使用次数；退款后归因记录标记为 `refunded`。
+- 风险边界：首版不做多级分销、不做可提现佣金、不做买家领券钱包；优惠券暂按总量和有效期控制，后续再补单买家限制。
+- 验证结果：Dou-Server `node --check` 覆盖运营、支付、H5、租户订单、转化和售后模块；`npm.cmd run migrate` 已应用 `041`；动态导入通过；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过。
+- 下一步计划：提交推送后进入 P5 AI 经营助手；上线前仍需补全最终验收清单和全角色使用手册。

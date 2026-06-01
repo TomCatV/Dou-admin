@@ -145,6 +145,18 @@ onMounted(() => {
           <dt>订单金额</dt>
           <dd class="price">{{ yuan(order.amount) }}</dd>
         </div>
+        <div v-if="order.discount_amount">
+          <dt>优惠抵扣</dt>
+          <dd>-{{ yuan(order.discount_amount) }}</dd>
+        </div>
+        <div
+          v-if="order.coupon_code || order.invite_code || order.campaign_name"
+        >
+          <dt>成交来源</dt>
+          <dd>
+            {{ order.coupon_code || order.invite_code || order.campaign_name }}
+          </dd>
+        </div>
         <div>
           <dt>支付时间</dt>
           <dd>{{ order.paid_at || "未支付" }}</dd>
@@ -176,7 +188,11 @@ onMounted(() => {
           <dl>
             <div v-if="delivery.resource_url">
               <dt>资源链接</dt>
-              <dd><a :href="delivery.resource_url" target="_blank">{{ delivery.resource_url }}</a></dd>
+              <dd>
+                <a :href="delivery.resource_url" target="_blank">{{
+                  delivery.resource_url
+                }}</a>
+              </dd>
             </div>
             <div v-if="delivery.resource_access_code">
               <dt>提取码</dt>
@@ -184,11 +200,17 @@ onMounted(() => {
             </div>
             <div v-if="delivery.doc_url">
               <dt>说明链接</dt>
-              <dd><a :href="delivery.doc_url" target="_blank">{{ delivery.doc_url }}</a></dd>
+              <dd>
+                <a :href="delivery.doc_url" target="_blank">{{
+                  delivery.doc_url
+                }}</a>
+              </dd>
             </div>
           </dl>
         </template>
-        <p v-if="delivery.doc_content" class="preline">{{ delivery.doc_content }}</p>
+        <p v-if="delivery.doc_content" class="preline">
+          {{ delivery.doc_content }}
+        </p>
       </div>
       <p v-else class="notice">
         订单支付成功后，这里会展示购买后的资源或卡密。

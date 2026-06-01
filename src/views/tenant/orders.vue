@@ -290,7 +290,12 @@ onMounted(() => {
         }}</template>
       </el-table-column>
       <el-table-column label="金额" width="120">
-        <template #default="{ row }">{{ yuan(row.amount) }}</template>
+        <template #default="{ row }">
+          <div>{{ yuan(row.amount) }}</div>
+          <div v-if="row.discount_amount" class="sub">
+            优惠 {{ yuan(row.discount_amount) }}
+          </div>
+        </template>
       </el-table-column>
       <el-table-column label="平台服务费" width="140">
         <template #default="{ row }">
@@ -304,6 +309,16 @@ onMounted(() => {
         }}</template>
       </el-table-column>
       <el-table-column prop="status" label="状态" width="110" />
+      <el-table-column label="来源" width="150">
+        <template #default="{ row }">
+          <div>
+            {{ row.coupon_code || row.invite_code || row.campaign_name || "-" }}
+          </div>
+          <div class="sub">
+            {{ row.attribution_source || row.source_channel || "-" }}
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="created_at" label="创建时间" width="170" />
     </el-table>
 

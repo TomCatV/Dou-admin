@@ -169,6 +169,13 @@ export type TenantOrder = {
   fee_rate_bps?: number;
   channel_cost_amount?: number;
   platform_net_amount?: number;
+  original_amount?: number;
+  discount_amount?: number;
+  coupon_code?: string;
+  invite_code?: string;
+  campaign_name?: string;
+  attribution_source?: string;
+  source_channel?: string;
   paid_at?: string | null;
   created_at: string;
   updated_at: string;
@@ -245,6 +252,7 @@ export type TenantConversionSummary = {
   leads: Record<string, number>;
   tools: Record<string, number>;
   funnel: Record<string, number>;
+  attribution?: Record<string, number>;
 };
 
 export function unwrap<T>(promise: Promise<ApiResult<T>>) {

@@ -52,7 +52,9 @@ function rememberContact(orderId: string, contact = "") {
 }
 
 function normalizedQueryChannel(): PaymentChannel | "" {
-  const raw = String(route.query.channel || route.query.pay_channel || route.query.pay || "")
+  const raw = String(
+    route.query.channel || route.query.pay_channel || route.query.pay || ""
+  )
     .trim()
     .toLowerCase();
   if (raw.includes("ali")) return "alipay_precreate";
@@ -155,7 +157,8 @@ async function createOrder() {
     rememberContact(data.order.id, draft.value.buyer_contact);
     await createPaymentIntent();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "订单创建失败，请重新下单";
+    error.value =
+      err instanceof Error ? err.message : "订单创建失败，请重新下单";
   } finally {
     creating.value = false;
   }
@@ -256,12 +259,18 @@ onBeforeUnmount(stopTimers);
 <template>
   <main class="checkout-page">
     <section v-if="loading" class="state-panel">正在确认订单...</section>
-    <section v-else-if="error && !draft" class="state-panel error">{{ error }}</section>
+    <section v-else-if="error && !draft" class="state-panel error">
+      {{ error }}
+    </section>
     <template v-else-if="draft && snapshot">
       <section class="checkout-card">
         <h1>确认订单</h1>
         <div class="product-row">
-          <img v-if="shopImage(snapshot.cover_url)" :src="snapshot.cover_url" alt="" />
+          <img
+            v-if="shopImage(snapshot.cover_url)"
+            :src="snapshot.cover_url"
+            alt=""
+          />
           <div v-else class="fallback">{{ snapshot.title.slice(0, 1) }}</div>
           <div>
             <strong>{{ snapshot.title }}</strong>
@@ -278,8 +287,23 @@ onBeforeUnmount(stopTimers);
             <dd>{{ draft.buyer_contact }}</dd>
           </div>
           <div>
-            <dt>锁定金额</dt>
+            <dt>商品原价</dt>
+            <dd>{{ yuan(draft.original_amount || draft.amount) }}</dd>
+          </div>
+          <div v-if="draft.discount_amount > 0">
+            <dt>优惠抵扣</dt>
+            <dd>-{{ yuan(draft.discount_amount) }}</dd>
+          </div>
+          <div>
+            <dt>锁定应付</dt>
             <dd class="price">{{ yuan(draft.amount) }}</dd>
+          </div>
+          <div v-if="draft.coupon_code || draft.invite_code">
+            <dt>优惠/来源</dt>
+            <dd>
+              {{ draft.coupon_code || "无优惠券" }} /
+              {{ draft.invite_code || draft.source_channel }}
+            </dd>
           </div>
           <div>
             <dt>草稿有效期</dt>
@@ -293,14 +317,22 @@ onBeforeUnmount(stopTimers);
         <div class="channel-tabs">
           <button
             :class="{ active: channel === 'wechat_native' }"
-            :disabled="creating || Boolean(paymentIntent) || !isChannelEnabled('wechat_native')"
+            :disabled="
+              creating ||
+              Boolean(paymentIntent) ||
+              !isChannelEnabled('wechat_native')
+            "
             @click="channel = 'wechat_native'"
           >
             微信
           </button>
           <button
             :class="{ active: channel === 'alipay_precreate' }"
-            :disabled="creating || Boolean(paymentIntent) || !isChannelEnabled('alipay_precreate')"
+            :disabled="
+              creating ||
+              Boolean(paymentIntent) ||
+              !isChannelEnabled('alipay_precreate')
+            "
             @click="channel = 'alipay_precreate'"
           >
             支付宝
@@ -315,20 +347,31 @@ onBeforeUnmount(stopTimers);
                 : "当前暂无可用支付渠道，请联系商家。"
             }}
           </p>
-          <button :disabled="creating || !hasEnabledChannels" @click="order ? createPaymentIntent() : createOrder()">
+          <button
+            :disabled="creating || !hasEnabledChannels"
+            @click="order ? createPaymentIntent() : createOrder()"
+          >
             {{ creating ? "正在生成" : "生成支付二维码" }}
           </button>
         </div>
 
         <div v-else class="qr-panel">
           <div class="qr-box">
-            <img v-if="qrDataUrl && paymentReady" :src="qrDataUrl" alt="支付二维码" />
+            <img
+              v-if="qrDataUrl && paymentReady"
+              :src="qrDataUrl"
+              alt="支付二维码"
+            />
             <span v-else>{{ statusLabel(paymentIntent.status) }}</span>
           </div>
           <div class="qr-copy">
             <strong>{{ statusLabel(paymentIntent.status) }}</strong>
             <p class="notice">
-              {{ channel === "wechat_native" ? "请使用微信扫码完成支付。" : "请使用支付宝扫码完成支付。" }}
+              {{
+                channel === "wechat_native"
+                  ? "请使用微信扫码完成支付。"
+                  : "请使用支付宝扫码完成支付。"
+              }}
             </p>
             <p v-if="paymentReady" class="timer">剩余 {{ countdown }} 秒</p>
             <p v-if="paymentIntent.last_error_message" class="inline-error">

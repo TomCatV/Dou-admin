@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { shopApi, type PublicProduct, type PublicStore } from "@/api/shop";
+import {
+  shopApi,
+  type PromotionQuote,
+  type PublicProduct,
+  type PublicStore
+} from "@/api/shop";
 import { shopImage, yuan } from "./format";
 
 defineOptions({ name: "PublicShopProduct" });
@@ -14,12 +19,20 @@ const error = ref("");
 const store = ref<PublicStore | null>(null);
 const product = ref<PublicProduct | null>(null);
 const buyerContact = ref("");
+const couponCode = ref("");
+const inviteCode = ref("");
+const quoteLoading = ref(false);
+const quote = ref<PromotionQuote | null>(null);
 
 const productKey = computed(() =>
   String(route.params.productKey || route.query.id || "").trim()
 );
 const previewImages = computed(() => product.value?.preview_images || []);
 const soldOut = computed(() => product.value?.stock_status === "sold_out");
+const payableAmount = computed(
+  () => quote.value?.payable_amount || product.value?.price || 0
+);
+const discountAmount = computed(() => quote.value?.discount_amount || 0);
 
 async function loadProduct() {
   loading.value = true;
@@ -29,10 +42,44 @@ async function loadProduct() {
     const data = await shopApi.product(productKey.value);
     store.value = data.store;
     product.value = data.product;
+    couponCode.value = String(
+      route.query.coupon || route.query.coupon_code || ""
+    );
+    inviteCode.value = String(
+      route.query.invite || route.query.invite_code || ""
+    );
+    if (couponCode.value || inviteCode.value) await loadQuote();
   } catch (err) {
     error.value = err instanceof Error ? err.message : "商品暂不可访问";
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadQuote() {
+  if (!product.value) return;
+  quoteLoading.value = true;
+  error.value = "";
+  try {
+    const data = await shopApi.promotionQuote(product.value.product_key, {
+      coupon_code: couponCode.value.trim(),
+      invite_code: inviteCode.value.trim(),
+      source_channel: inviteCode.value.trim()
+        ? "invite_code"
+        : "admin_public_h5"
+    });
+    quote.value = data.quote;
+    if (
+      (couponCode.value.trim() || inviteCode.value.trim()) &&
+      !data.quote.coupon &&
+      couponCode.value.trim()
+    ) {
+      error.value = "优惠券不可用或已过期";
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "优惠试算失败";
+  } finally {
+    quoteLoading.value = false;
   }
 }
 
@@ -48,7 +95,11 @@ async function createDraft() {
   try {
     const data = await shopApi.createOrderDraft(product.value.product_key, {
       buyer_contact: contact,
-      source_channel: "admin_public_h5"
+      coupon_code: couponCode.value.trim(),
+      invite_code: inviteCode.value.trim(),
+      source_channel: inviteCode.value.trim()
+        ? "invite_code"
+        : "admin_public_h5"
     });
     window.sessionStorage?.setItem(
       `shop_contact_${data.order_draft.id}`,
@@ -134,6 +185,40 @@ onMounted(loadProduct);
         <p class="muted">
           联系方式会用于后续查询订单、售后沟通和投诉举报核验。
         </p>
+        <div class="promo-grid">
+          <label class="contact-field">
+            <span>优惠券</span>
+            <input
+              v-model="couponCode"
+              maxlength="40"
+              placeholder="输入圈主发放的优惠券编码"
+              @blur="loadQuote"
+            />
+          </label>
+          <label class="contact-field">
+            <span>邀请码</span>
+            <input
+              v-model="inviteCode"
+              maxlength="40"
+              placeholder="输入渠道邀请码"
+              @blur="loadQuote"
+            />
+          </label>
+        </div>
+        <button
+          class="quote-button"
+          :disabled="quoteLoading"
+          @click="loadQuote"
+        >
+          {{ quoteLoading ? "正在试算" : "试算优惠" }}
+        </button>
+        <div v-if="quote" class="quote-box">
+          <span>原价 {{ yuan(quote.original_amount) }}</span>
+          <span v-if="discountAmount > 0"
+            >优惠 -{{ yuan(discountAmount) }}</span
+          >
+          <strong>应付 {{ yuan(payableAmount) }}</strong>
+        </div>
         <p v-if="error" class="inline-error">{{ error }}</p>
       </section>
 
@@ -149,7 +234,7 @@ onMounted(loadProduct);
       <div class="bottom-bar">
         <div>
           <span>应付</span>
-          <strong>{{ yuan(product.price) }}</strong>
+          <strong>{{ yuan(payableAmount) }}</strong>
         </div>
         <button
           :disabled="soldOut || buying || !buyerContact.trim()"
@@ -308,6 +393,40 @@ h1 {
   border-radius: 6px;
 }
 
+.promo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.quote-button {
+  height: 38px;
+  padding: 0 14px;
+  margin-top: 12px;
+  font-weight: 800;
+  color: #2e5148;
+  background: #eef6f2;
+  border: 0;
+  border-radius: 6px;
+}
+
+.quote-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  margin-top: 12px;
+  background: #fff8f0;
+  border: 1px solid #f0ddc8;
+  border-radius: 6px;
+}
+
+.quote-box strong {
+  color: #b64826;
+}
+
 .inline-error,
 .error {
   color: #a33424;
@@ -363,6 +482,10 @@ h1 {
   }
 
   .product-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .promo-grid {
     grid-template-columns: 1fr;
   }
 

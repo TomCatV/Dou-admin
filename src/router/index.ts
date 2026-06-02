@@ -36,6 +36,12 @@ import {
   multipleTabsKey
 } from "@/utils/auth";
 
+function hasRouteAuth(auths?: Array<string>, permissions: Array<string> = []) {
+  if (!Array.isArray(auths) || auths.length === 0) return true;
+  if (permissions.includes("*:*:*")) return true;
+  return auths.some(item => permissions.includes(item));
+}
+
 /** 自动导入全部静态路由，无需再手动引入！匹配 src/router/modules 目录（任何嵌套级别）中具有 .ts 扩展名的所有文件，除了 remaining.ts 文件
  * 如何匹配所有文件请看：https://github.com/mrmlnc/fast-glob#basic-syntax
  * 如何排除文件请看：https://cn.vitejs.dev/guide/features.html#negative-patterns
@@ -158,6 +164,11 @@ router.beforeEach((to: ToRouteType, _from, next) => {
     // 无权限跳转403页面
     if (to.meta?.roles && !isOneOfArray(to.meta?.roles, userInfo?.roles)) {
       next({ path: "/error/403" });
+      return;
+    }
+    if (!hasRouteAuth(to.meta?.auths, userInfo?.permissions ?? [])) {
+      next({ path: "/error/403" });
+      return;
     }
     // 开启隐藏首页后在浏览器地址栏手动输入工作台路由则跳转到404页面
     if (VITE_HIDE_HOME === "true" && to.fullPath === "/dashboard") {

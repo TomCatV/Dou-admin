@@ -85,13 +85,22 @@ function isOneOfArray(a: Array<string>, b: Array<string>) {
 function filterNoPermissionTree(data: RouteComponent[]) {
   const currentRoles =
     storageLocal().getItem<DataInfo<number>>(userKey)?.roles ?? [];
+  const currentPermissions =
+    storageLocal().getItem<DataInfo<number>>(userKey)?.permissions ?? [];
   const newTree = cloneDeep(data).filter((v: any) =>
-    isOneOfArray(v.meta?.roles, currentRoles)
+    isOneOfArray(v.meta?.roles, currentRoles) &&
+    hasMenuAuth(v.meta?.auths, currentPermissions)
   );
   newTree.forEach(
     (v: any) => v.children && (v.children = filterNoPermissionTree(v.children))
   );
   return filterChildrenTree(newTree);
+}
+
+function hasMenuAuth(auths?: Array<string>, permissions: Array<string> = []) {
+  if (!Array.isArray(auths) || auths.length === 0) return true;
+  if (permissions.includes("*:*:*")) return true;
+  return intersection(auths, permissions).length > 0;
 }
 
 /** 通过指定 `key` 获取父级路径集合，默认 `key` 为 `path` */

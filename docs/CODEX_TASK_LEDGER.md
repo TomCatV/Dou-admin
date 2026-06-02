@@ -798,3 +798,22 @@
 - 数据边界：只传聚合脱敏经营数据、商品公开字段、优惠券和转化汇总；不传聊天私密消息、卡密明文、支付密钥、完整 openid/手机号/邮箱/JWT/密码。
 - 验证：待执行 Dou-Server `node --check`、`npm.cmd run migrate`，Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、双仓 `git diff --check` 和 UTF-8 扫描。
 - 下一步：验证通过后双仓提交推送；随后做上线前验收文档和最终手册收口。
+
+### 超级管理员 AI 入口权限修复
+
+- 时间：2026-06-02 (Asia/Shanghai)
+- 任务目标：修复新增 AI 经营助手权限后，平台全局超级管理员看不到 AI 助手入口，并补齐菜单和直达路由的 `meta.auths` 权限判断。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/router/index.ts`
+  - `src/router/modules/home.ts`
+  - `src/router/utils.ts`
+  - `src/views/admin-users/index.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 已完成前端能力：菜单过滤同时检查角色和 `meta.auths`；直达路由缺少权限时进入 403；AI 经营助手入口由 `tenant:ai:view` 控制展示；编辑全局超级管理员时使用后端有效权限，避免旧 `permissions_json` 与实际权限不一致。
+- 实现口径：远端已合入完整 P5 AI 前端页面和 API，本轮 rebase 保留远端完整实现，只叠加权限入口修复。
+- 验证：
+  - `corepack pnpm typecheck` 通过。
+  - `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - `git diff --check` 与 UTF-8 扫描通过。

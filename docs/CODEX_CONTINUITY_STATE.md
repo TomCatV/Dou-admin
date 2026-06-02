@@ -294,3 +294,11 @@
 - 已完成后端能力：AI 报告、提示词版本、建议确认表；圈主 AI 路由；每日限额；缺少 `OPENAI_API_KEY` 或 OpenAI 请求失败时保存失败报告和兜底摘要；所有生成写管理员审计。
 - 风险边界：AI 只读聚合/脱敏数据，不传聊天私信、卡密、支付密钥、完整 openid/手机号/邮箱/JWT/密码；不自动改价、库存、权限、退款、钱包、优惠券或订单状态。
 - 下一步计划：执行后端迁移和语法检查、前端 typecheck/build、diff 和编码扫描；通过后按 P5 双仓提交推送；最后补上线前验收清单并完成最终使用手册收口。
+
+## 2026-06-02 超级管理员 AI 入口权限修复
+
+- 当前目标：修复新增 AI 经营助手权限后，平台全局超级管理员看不到 `AI 经营 / 经营助手` 入口，以及直达路由未校验 `meta.auths` 的问题。
+- 已改文件：`src/router/index.ts`、`src/router/modules/home.ts`、`src/router/utils.ts`、`src/views/admin-users/index.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：菜单过滤同时检查角色与 `meta.auths`；直达路由缺少权限时返回 403；AI 经营助手菜单改为全角色可参与角色判断、再由 `tenant:ai:view` 控制实际展示；编辑全局超级管理员时展示后端返回的有效权限，避免旧 `permissions_json` 造成误判。
+- 实现口径：远端已具备完整 P5 AI 页面和 API，本轮 rebase 保留远端完整 `src/views/tenant/ai.vue` 与 `tenantAiApi` 实现，只叠加权限入口修复。
+- 验证结果：`corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；`git diff --check` 与 UTF-8 扫描通过。

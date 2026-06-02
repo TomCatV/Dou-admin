@@ -153,6 +153,10 @@ function isPlatformRole(role: string) {
   return ["super_admin", "admin_l1", "admin_l2", "admin_l3"].includes(role);
 }
 
+function isGlobalSuperAdminRole(role: string, scopeType: string) {
+  return role === "super_admin" && scopeType === "global";
+}
+
 function accountRole(row: AdminUser) {
   return row.account_type || row.role;
 }
@@ -217,7 +221,11 @@ function openEdit(row: AdminUser) {
     scope_type: row.scope_type,
     scope_circle_id: row.scope_circle_id || "",
     bound_user_id: row.bound_user_id || "",
-    permissions: row.permissions_json?.length ? row.permissions_json : row.permissions,
+    permissions: isGlobalSuperAdminRole(row.account_type || row.role, row.scope_type)
+      ? row.permissions
+      : row.permissions_json?.length
+        ? row.permissions_json
+        : row.permissions,
     password: ""
   });
   if (row.scope_circle_id && row.scope_circle_name) {

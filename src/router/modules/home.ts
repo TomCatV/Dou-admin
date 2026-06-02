@@ -364,7 +364,8 @@ export default [
           title: "经营助手",
           icon: "ep/magic-stick",
           showParent: true,
-          roles: tenantRoles
+          roles: allRoles,
+          auths: ["tenant:ai:view"]
         }
       }
     ]

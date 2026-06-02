@@ -50,6 +50,16 @@ export default [
       public: true
     }
   },
+  {
+    path: "/shop/order/:orderId/report",
+    name: "PublicShopReport",
+    component: () => import("@/views/shop/report.vue"),
+    meta: {
+      title: "投诉举报",
+      showLink: false,
+      public: true
+    }
+  },
   // 全屏403（无权访问）页面
   {
     path: "/access-denied",

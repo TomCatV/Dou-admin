@@ -469,6 +469,30 @@
 - 下一步：提交推送后进入 P2；P2 先按官方微信支付/支付宝文档校准扫码支付接口、回调、查单、关单和白名单约束。
 - 风险与回滚：若 H5 投诉入口异常，可先隐藏订单页投诉表单；后端同单售后接口保留，不影响小程序既有售后接口。
 
+### 支付失败提示与投诉独立页
+
+- 时间：2026-06-03 (Asia/Shanghai)
+- 任务目标：修复支付宝生成二维码失败时的白屏/原始 OpenSSL 报错体验，并把已支付订单页中的投诉表单改为投诉按钮跳转独立页面。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/shop.ts`
+  - `src/router/modules/remaining.ts`
+  - `src/views/shop/checkout.vue`
+  - `src/views/shop/order.vue`
+  - `src/views/shop/report.vue`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/GO_LIVE_ACCEPTANCE_CHECKLIST.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `src/lib/alipayFacePay.js` 收紧支付宝私钥/公钥解析与中文报错，`.env.example` 补充可选 inline key 注释。
+- 已完成前端能力：支付二维码创建失败时优先显示支付意图里的明确错误信息；关闭或失效后的支付单会保留当前状态，并提供“重新生成二维码”入口；订单状态页只保留投诉按钮，独立投诉页负责问题类型、说明和提交。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过。
+  - Dou-Server `node --check src/lib/alipayFacePay.js`、`node --check src/routes/shop/payments.routes.js`、`node --check src/routes/v09/alipayNotify.routes.js` 通过。
+- 下一步：服务器更新双仓并重启后，用真实支付宝小额商品回归私钥错误提示、修正后重新出码、支付成功、订单页投诉按钮和独立投诉页提交。
+- 风险与回滚：若独立投诉页入口异常，可先隐藏订单页投诉按钮；后端同单售后接口与已支付取货链路保持不变。
+
 ### P2 H5 扫码支付首版闭环
 
 - 时间：2026-05-29 11:04 (Asia/Shanghai)

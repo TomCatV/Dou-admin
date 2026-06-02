@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import WarningFilled from "~icons/ep/warning-filled";
 import { shopApi, type PublicOrder } from "@/api/shop";
 import { validateShopContact } from "./contact";
 import { shopImage, statusLabel, yuan } from "./format";
 
-defineOptions({ name: "PublicShopOrder" });
+defineOptions({ name: "PublicShopReport" });
 
 const route = useRoute();
 const router = useRouter();
@@ -14,6 +13,21 @@ const loading = ref(true);
 const error = ref("");
 const order = ref<PublicOrder | null>(null);
 const contact = ref("");
+const reportSubmitting = ref(false);
+const reportMessage = ref("");
+const reportForm = reactive({
+  complaint_type: "invalid_product",
+  description: ""
+});
+
+const complaintOptions = [
+  { label: "资源与描述不符", value: "invalid_product" },
+  { label: "无法获得支持", value: "no_support" },
+  { label: "疑似虚假交易", value: "fraud" },
+  { label: "色情低俗内容", value: "sexual_content" },
+  { label: "赌博抽奖内容", value: "gambling_content" },
+  { label: "其他问题", value: "other" }
+];
 
 const orderTitle = computed(
   () => order.value?.product_title || order.value?.resource_title || "商品"
@@ -22,13 +36,18 @@ const orderSummary = computed(
   () =>
     order.value?.product_summary ||
     order.value?.resource_summary ||
-    "订单已创建，后续交付状态请以页面状态为准。"
+    "请确认订单信息后提交投诉内容。"
 );
 const orderCoverUrl = computed(
   () => order.value?.product_cover_url || order.value?.resource_cover_url || ""
 );
-const delivery = computed(() => order.value?.delivery || null);
-const canReport = computed(() => Boolean(order.value?.can_report));
+const contactValidation = computed(() => validateShopContact(contact.value));
+const canSubmitReport = computed(
+  () =>
+    Boolean(order.value?.can_report) &&
+    contactValidation.value.ok &&
+    Boolean(reportForm.description.trim())
+);
 
 function orderId() {
   return String(route.params.orderId || "").trim();
@@ -61,6 +80,9 @@ async function loadOrder() {
       `shop_order_contact_${id}`,
       validation.normalized
     );
+    if (!data.order.can_report) {
+      error.value = "当前订单暂不支持投诉举报";
+    }
   } catch (err) {
     error.value = err instanceof Error ? err.message : "订单暂不可访问";
   } finally {
@@ -68,10 +90,41 @@ async function loadOrder() {
   }
 }
 
-function openReportPage() {
+async function submitReport() {
   if (!order.value) return;
+  const validation = contactValidation.value;
+  if (!validation.ok) {
+    reportMessage.value = validation.message;
+    return;
+  }
+  if (!reportForm.description.trim()) {
+    reportMessage.value = "请填写投诉举报说明";
+    return;
+  }
+  reportSubmitting.value = true;
+  reportMessage.value = "";
+  try {
+    const data = await shopApi.createOrderAfterSale(order.value.id, {
+      buyer_contact: validation.normalized,
+      complaint_type: reportForm.complaint_type,
+      description: reportForm.description.trim()
+    });
+    reportMessage.value = data.reused
+      ? "该订单已有投诉售后记录，已为你同步展示。"
+      : "投诉举报已提交，小程序同一订单售后记录会同步可见。";
+    reportForm.description = "";
+  } catch (err) {
+    reportMessage.value =
+      err instanceof Error ? err.message : "提交失败，请稍后再试";
+  } finally {
+    reportSubmitting.value = false;
+  }
+}
+
+function backToOrder() {
+  const id = orderId();
   router.push({
-    path: `/shop/order/${encodeURIComponent(order.value.id)}/report`,
+    path: `/shop/order/${encodeURIComponent(id)}`,
     query: contact.value ? { contact: contact.value } : undefined
   });
 }
@@ -87,14 +140,14 @@ onMounted(() => {
     return;
   }
   loading.value = false;
-  error.value = "请输入下单时填写的手机号、QQ号或邮箱查询订单";
+  error.value = "请输入下单时填写的手机号、QQ号或邮箱继续投诉";
 });
 </script>
 
 <template>
-  <main class="order-page">
+  <main class="report-page">
     <section v-if="loading" class="state-panel">正在读取订单...</section>
-    <section v-else-if="error" class="state-panel">
+    <section v-else-if="error && !order" class="state-panel">
       <p class="error">{{ error }}</p>
       <div class="contact-check">
         <input
@@ -107,13 +160,12 @@ onMounted(() => {
           placeholder="输入下单时填写的手机号 / QQ号 / 邮箱"
           @keyup.enter="loadOrder"
         />
-        <button @click="loadOrder">查询订单</button>
+        <button @click="loadOrder">读取订单</button>
       </div>
     </section>
     <template v-else-if="order">
-      <section class="order-card">
-        <p class="eyebrow">订单状态</p>
-        <h1>{{ statusLabel(order.status) }}</h1>
+      <section class="report-card">
+        <h1>投诉举报</h1>
         <div class="product-row">
           <img v-if="shopImage(orderCoverUrl)" :src="orderCoverUrl" alt="" />
           <div v-else class="fallback">{{ orderTitle.slice(0, 1) }}</div>
@@ -124,111 +176,82 @@ onMounted(() => {
         </div>
         <dl>
           <div>
-            <dt>订单编号</dt>
-            <dd>{{ order.id }}</dd>
+            <dt>订单状态</dt>
+            <dd>{{ statusLabel(order.status) }}</dd>
           </div>
           <div>
             <dt>订单金额</dt>
             <dd class="price">{{ yuan(order.amount) }}</dd>
           </div>
-          <div v-if="order.discount_amount">
-            <dt>优惠抵扣</dt>
-            <dd>-{{ yuan(order.discount_amount) }}</dd>
-          </div>
-          <div
-            v-if="order.coupon_code || order.invite_code || order.campaign_name"
-          >
-            <dt>成交来源</dt>
-            <dd>
-              {{
-                order.coupon_code || order.invite_code || order.campaign_name
-              }}
-            </dd>
-          </div>
-          <div>
-            <dt>支付时间</dt>
-            <dd>{{ order.paid_at || "未支付" }}</dd>
-          </div>
           <div>
             <dt>联系方式</dt>
             <dd>{{ order.buyer_contact_hint || "已核验" }}</dd>
           </div>
-          <div>
-            <dt>更新时间</dt>
-            <dd>{{ order.updated_at }}</dd>
-          </div>
         </dl>
       </section>
 
-      <section v-if="delivery" class="order-card delivery-panel">
-        <h2>取货信息</h2>
-        <template v-if="delivery.type === 'code'">
-          <dl>
-            <div>
-              <dt>卡密</dt>
-              <dd>{{ delivery.assigned_code || "正在分配" }}</dd>
-            </div>
-            <div v-if="delivery.assigned_code_at">
-              <dt>发放时间</dt>
-              <dd>{{ delivery.assigned_code_at }}</dd>
-            </div>
-          </dl>
-        </template>
-        <template v-else>
-          <dl>
-            <div v-if="delivery.resource_url">
-              <dt>资源链接</dt>
-              <dd>
-                <a :href="delivery.resource_url" target="_blank">{{
-                  delivery.resource_url
-                }}</a>
-              </dd>
-            </div>
-            <div v-if="delivery.resource_access_code">
-              <dt>提取码</dt>
-              <dd>{{ delivery.resource_access_code }}</dd>
-            </div>
-            <div v-if="delivery.doc_url">
-              <dt>说明链接</dt>
-              <dd>
-                <a :href="delivery.doc_url" target="_blank">{{
-                  delivery.doc_url
-                }}</a>
-              </dd>
-            </div>
-          </dl>
-        </template>
-        <p v-if="delivery.doc_content" class="preline">
-          {{ delivery.doc_content }}
-        </p>
-      </section>
-      <section v-else class="order-card">
-        <p class="notice">订单支付成功后，这里会展示购买后的资源或卡密。</p>
-      </section>
-
-      <section v-if="canReport" class="order-card report-entry">
-        <h2>投诉举报</h2>
+      <section class="report-card">
+        <p v-if="error" class="inline-error">{{ error }}</p>
         <p class="notice">
-          如需投诉商品、售后支持或发起平台介入，请进入独立投诉页填写表单。
+          提交后会进入同一订单售后记录，小程序与 H5 共用这一条处理线。
         </p>
-        <button class="report-button" @click="openReportPage">
-          <IconifyIconOffline :icon="WarningFilled" class="report-icon" />
-          <span>进入投诉页</span>
-        </button>
+        <label class="form-field">
+          <span>下单联系方式</span>
+          <input
+            v-model="contact"
+            maxlength="80"
+            name="buyerContact"
+            autocomplete="on"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="用于核验订单归属，仅支持手机号 / QQ号 / 邮箱"
+          />
+        </label>
+        <label class="form-field">
+          <span>问题类型</span>
+          <select v-model="reportForm.complaint_type">
+            <option
+              v-for="item in complaintOptions"
+              :key="item.value"
+              :value="item.value"
+            >
+              {{ item.label }}
+            </option>
+          </select>
+        </label>
+        <label class="form-field">
+          <span>问题说明</span>
+          <textarea
+            v-model="reportForm.description"
+            maxlength="1000"
+            rows="6"
+            placeholder="请描述遇到的问题、沟通过程或希望平台处理的诉求"
+          />
+        </label>
+        <div class="actions">
+          <button class="secondary" @click="backToOrder">返回订单</button>
+          <button
+            :disabled="reportSubmitting || !canSubmitReport"
+            @click="submitReport"
+          >
+            {{ reportSubmitting ? "正在提交" : "提交投诉举报" }}
+          </button>
+        </div>
+        <p v-if="reportMessage" class="notice">{{ reportMessage }}</p>
       </section>
     </template>
   </main>
 </template>
 
 <style scoped>
-.order-page {
+.report-page {
   min-height: 100vh;
   padding: 18px;
   color: #201b16;
   background: #f7faf8;
 }
 
-.order-card,
+.report-card,
 .state-panel {
   max-width: 760px;
   padding: 22px;
@@ -238,20 +261,9 @@ onMounted(() => {
   border-radius: 8px;
 }
 
-.eyebrow {
-  margin: 0 0 8px;
-  font-weight: 800;
-  color: #327060;
-}
-
 h1 {
   margin: 0 0 18px;
   font-size: 28px;
-}
-
-h2 {
-  margin: 0 0 10px;
-  font-size: 18px;
 }
 
 .product-row {
@@ -286,21 +298,6 @@ h2 {
 .notice {
   line-height: 1.7;
   color: #69736e;
-}
-
-.delivery-panel {
-  background: #fbfcfb;
-}
-
-.delivery-panel a {
-  color: #1f7a64;
-  word-break: break-all;
-}
-
-.preline {
-  line-height: 1.8;
-  color: #3d3731;
-  white-space: pre-wrap;
 }
 
 dl {
@@ -338,7 +335,8 @@ dd {
   text-align: center;
 }
 
-.error {
+.error,
+.inline-error {
   color: #a33424;
 }
 
@@ -350,10 +348,23 @@ dd {
   margin: 14px auto 0;
 }
 
-.contact-check input {
+.form-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.form-field span {
+  font-weight: 700;
+  color: #3d3731;
+}
+
+.contact-check input,
+.form-field input,
+.form-field select,
+.form-field textarea {
   width: 100%;
   min-width: 0;
-  height: 42px;
   padding: 0 12px;
   color: #201b16;
   background: #fbfcfb;
@@ -361,8 +372,21 @@ dd {
   border-radius: 6px;
 }
 
-button {
+.contact-check input,
+.contact-check button,
+.form-field input,
+.form-field select,
+.actions button {
   height: 42px;
+}
+
+.form-field textarea {
+  padding-top: 10px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+button {
   padding: 0 18px;
   font-weight: 800;
   color: #fff;
@@ -371,31 +395,30 @@ button {
   border-radius: 6px;
 }
 
-.report-entry {
-  display: grid;
-  gap: 14px;
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
-.report-button {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  width: fit-content;
-  min-width: 152px;
+.secondary {
+  color: #2e5148;
+  background: #eef6f2;
 }
 
-.report-icon {
-  font-size: 18px;
+button:disabled {
+  background: #a9b6b0;
 }
 
 @media (width <= 620px) {
-  .contact-check {
+  .contact-check,
+  .actions {
     grid-template-columns: 1fr;
   }
 
-  .report-button {
-    width: 100%;
+  .actions {
+    display: grid;
   }
 }
 </style>

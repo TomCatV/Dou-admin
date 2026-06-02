@@ -4,17 +4,17 @@
 
 ## 必填配置
 
-| 模块        | 必填项                                                                             | 负责人确认                              |
-| ----------- | ---------------------------------------------------------------------------------- | --------------------------------------- |
-| 管理后台    | `ADMIN_BOOTSTRAP_USERNAME`、`ADMIN_BOOTSTRAP_PASSWORD`、`ADMIN_JWT_SECRET`         | 上线后立即修改初始密码                  |
-| H5 公开页   | `VITE_SHOP_BASE_URL`、`VITE_SHOP_API_BASE_URL`                                     | 域名、HTTPS、反代和小程序业务域名一致   |
-| 微信支付    | 商户号、API V3 Key、证书序列号、私钥、平台证书、支付/退款回调 URL                  | 未确认前不要开放真实支付                |
-| 支付宝      | AppID、应用私钥、支付宝公钥、回调 URL                                              | 未启用时保持 `ALIPAY_PAY_ENABLED=false` |
-| 结算提现    | `CREATOR_SETTLEMENT_ENABLED`、`CREATOR_WITHDRAW_ENABLED`、冻结天数、最低提现额     | 真实资金动作上线前必须真机联调          |
-| 平台费率    | `PLATFORM_TRADE_FEE_BPS`、`PLATFORM_CHANNEL_COST_BPS`                              | 费率策略上线后只影响新订单              |
-| 人工调账    | `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT`                                               | 建议生产默认不超过 1000 元              |
-| 内容安全    | COS/CI 内容审核密钥、回调 URL、fail-open 策略                                      | 生产建议审核不可用时阻断高风险写入      |
-| AI 经营助手 | `OPENAI_API_KEY`、`AI_DEFAULT_MODEL`、`AI_DAILY_LIMIT_BASIC`、`AI_DAILY_LIMIT_PRO` | Key 只放 Dou-Server 环境变量            |
+| 模块        | 必填项                                                                             | 负责人确认                                                   |
+| ----------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 管理后台    | `ADMIN_BOOTSTRAP_USERNAME`、`ADMIN_BOOTSTRAP_PASSWORD`、`ADMIN_JWT_SECRET`         | 上线后立即修改初始密码                                       |
+| H5 公开页   | `VITE_SHOP_BASE_URL`、`VITE_SHOP_API_BASE_URL`                                     | 域名、HTTPS、反代和小程序业务域名一致                        |
+| 微信支付    | 商户号、API V3 Key、证书序列号、私钥、平台证书、支付/退款回调 URL                  | 未确认前不要开放真实支付                                     |
+| 支付宝      | AppID、应用私钥、支付宝公钥、回调 URL                                              | 私钥/公钥建议用 PEM；未启用时保持 `ALIPAY_PAY_ENABLED=false` |
+| 结算提现    | `CREATOR_SETTLEMENT_ENABLED`、`CREATOR_WITHDRAW_ENABLED`、冻结天数、最低提现额     | 真实资金动作上线前必须真机联调                               |
+| 平台费率    | `PLATFORM_TRADE_FEE_BPS`、`PLATFORM_CHANNEL_COST_BPS`                              | 费率策略上线后只影响新订单                                   |
+| 人工调账    | `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT`                                               | 建议生产默认不超过 1000 元                                   |
+| 内容安全    | COS/CI 内容审核密钥、回调 URL、fail-open 策略                                      | 生产建议审核不可用时阻断高风险写入                           |
+| AI 经营助手 | `OPENAI_API_KEY`、`AI_DEFAULT_MODEL`、`AI_DAILY_LIMIT_BASIC`、`AI_DAILY_LIMIT_PRO` | Key 只放 Dou-Server 环境变量                                 |
 
 ## 角色验收
 
@@ -34,13 +34,14 @@
 2. 圈主账号绑定微信用户 ID 和圈子后，只能访问对应圈子。
 3. 商品创建、分类、上架、H5 链接复制、改价后重新下单金额同步最新价格。
 4. H5 商品页、确认订单、扫码支付、支付成功、订单状态页闭环。
-5. 优惠券和邀请码试算、下单固化、支付成功核销、退款后归因标记 `refunded`。
-6. 售后回复、补发资源、换卡密、发起退款、刷新退款状态。
-7. 买家黑名单阻断 H5 新下单和草稿转订单。
-8. 钱包余额、提现申请、平台审核、微信商家转账、同步状态。
-9. 平台营收列表、CSV 导出、人工调整、反向调整、审计日志。
-10. 对账中心列表、详情、标记处理，不改变资金终态。
-11. AI 经营助手生成日报和活动文案；未配置 Key 时失败可见且不影响交易。
+5. 已支付订单页展示投诉按钮，点击后能打开独立投诉页并提交售后。
+6. 优惠券和邀请码试算、下单固化、支付成功核销、退款后归因标记 `refunded`。
+7. 售后回复、补发资源、换卡密、发起退款、刷新退款状态。
+8. 买家黑名单阻断 H5 新下单和草稿转订单。
+9. 钱包余额、提现申请、平台审核、微信商家转账、同步状态。
+10. 平台营收列表、CSV 导出、人工调整、反向调整、审计日志。
+11. 对账中心列表、详情、标记处理，不改变资金终态。
+12. AI 经营助手生成日报和活动文案；未配置 Key 时失败可见且不影响交易。
 
 ## 技术验收命令
 

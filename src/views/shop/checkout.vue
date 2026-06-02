@@ -36,6 +36,11 @@ const paymentReady = computed(
     Boolean(paymentIntent.value?.qr_code_url) &&
     ["created", "qr_issued"].includes(String(paymentIntent.value?.status))
 );
+const canRegeneratePayment = computed(() =>
+  ["closed", "failed", "expired"].includes(
+    String(paymentIntent.value?.status || "")
+  )
+);
 const hasEnabledChannels = computed(() =>
   ["alipay_precreate", "wechat_native"].some(item =>
     isChannelEnabled(item as PaymentChannel)
@@ -85,6 +90,12 @@ function chooseDefaultChannel(channels = paymentChannels.value) {
 function applyPaymentChannels(channels?: Record<string, { enabled: boolean }>) {
   paymentChannels.value = channels || {};
   if (!paymentIntent.value) chooseDefaultChannel(paymentChannels.value);
+}
+
+function resetPaymentView() {
+  stopTimers();
+  paymentIntent.value = null;
+  qrDataUrl.value = "";
 }
 
 function stopTimers() {
@@ -175,15 +186,23 @@ async function createPaymentIntent() {
   }
   creating.value = true;
   error.value = "";
+  resetPaymentView();
   try {
     const data = await shopApi.createPaymentIntent(order.value.id, {
       channel: channel.value
     });
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
+    if (!data.payment_intent?.qr_code_url) {
+      throw new Error(
+        data.payment_intent?.last_error_message ||
+          "支付二维码创建失败，请检查支付配置"
+      );
+    }
     await renderQr();
     startPolling();
   } catch (err) {
+    resetPaymentView();
     error.value =
       err instanceof Error ? err.message : "支付二维码创建失败，请稍后重试";
   } finally {
@@ -222,9 +241,9 @@ async function closeIntent() {
   closing.value = true;
   try {
     const data = await shopApi.closePaymentIntent(paymentIntent.value.id);
-    paymentIntent.value = data.payment_intent;
     order.value = data.order;
     stopTimers();
+    paymentIntent.value = data.payment_intent;
   } catch (err) {
     error.value = err instanceof Error ? err.message : "关闭支付单失败";
   } finally {
@@ -380,6 +399,14 @@ onBeforeUnmount(stopTimers);
             <div class="actions">
               <button :disabled="syncing" @click="syncPaymentStatus">
                 {{ syncing ? "正在刷新" : "刷新支付状态" }}
+              </button>
+              <button
+                v-if="canRegeneratePayment"
+                class="secondary"
+                :disabled="creating"
+                @click="resetPaymentView"
+              >
+                重新生成二维码
               </button>
               <button
                 class="secondary"

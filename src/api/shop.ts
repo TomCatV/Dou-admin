@@ -205,6 +205,15 @@ function isHtmlResponse(data: unknown) {
   );
 }
 
+function extractBizMessage(payload: any) {
+  return (
+    payload?.data?.payment_intent?.last_error_message ||
+    payload?.data?.payment_intent?.last_error_code ||
+    payload?.message ||
+    "请求失败"
+  );
+}
+
 function unwrap<T>(promise: Promise<AxiosResponse<ShopApiResult<T> | string>>) {
   return promise
     .then(res => {
@@ -215,7 +224,7 @@ function unwrap<T>(promise: Promise<AxiosResponse<ShopApiResult<T> | string>>) {
         throw new Error("公开页面接口返回异常，请稍后再试");
       }
       if (res.data.code !== 0) {
-        throw new Error(res.data.message || "请求失败");
+        throw new Error(extractBizMessage(res.data));
       }
       return res.data.data;
     })

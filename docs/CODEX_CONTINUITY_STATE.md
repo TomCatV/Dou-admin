@@ -311,3 +311,12 @@
 - 协同后端口径：Dou-Server 已移除 `buyer_contact` 的内容安全送审；服务端继续负责订单归属核验、黑名单风控与同单售后复用，前端负责 H5 联系方式格式拦截。
 - 风险边界：本轮不改支付、订单、售后主链路，不新增新的联系方式类型；旧的微信号填写会在前端直接提示改填手机号、QQ号或邮箱。
 - 下一步计划：部署后重点回归 H5 商品下单、订单查询、投诉举报三条链路，覆盖手机号、含空格手机号、QQ号、大小写邮箱和微信号误填提示。
+
+## 2026-06-03 支付失败提示与投诉独立页
+
+- 当前目标：修复支付宝点击“生成支付二维码”后因私钥格式异常导致的白屏/生硬报错体验，并把已支付订单页的投诉表单收口为“投诉按钮 -> 独立投诉页”。
+- 已改文件：`src/api/shop.ts`、`src/router/modules/remaining.ts`、`src/views/shop/checkout.vue`、`src/views/shop/order.vue`、`src/views/shop/report.vue`、`docs/ADMIN_USER_MANUAL.md`、`docs/GO_LIVE_ACCEPTANCE_CHECKLIST.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：支付意图创建失败时不再保留错误二维码视图，优先展示后端返回的明确失败原因；已支付订单页只展示投诉按钮和图标，点击后跳转独立 `/shop/order/:orderId/report` 页面填写投诉表单；关闭或失效后的支付单会保留当前状态，并提供“重新生成二维码”入口。
+- 协同后端能力：Dou-Server 已把支付宝私钥/公钥解析改为更稳的 PEM 规范化和 `createPrivateKey/createPublicKey` 校验，`DECODER routines::unsupported` 这类 OpenSSL 原始报错会收敛成可读中文提示。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；本轮构建产物已包含新的 `report` 独立页面与更新后的 `checkout`/`order` chunk。
+- 下一步计划：服务器更新双仓后，用真实支付宝小额商品重点回归“生成二维码失败提示、修正私钥后重新生成、支付成功跳订单页、投诉按钮跳转投诉页并提交售后”四步。

@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import { shopApi, type PublicOrder } from "@/api/shop";
+import { validateShopContact } from "./contact";
 import { shopImage, statusLabel, yuan } from "./format";
 
 defineOptions({ name: "PublicShopOrder" });
@@ -37,10 +38,11 @@ const orderSummary = computed(
 const orderCoverUrl = computed(
   () => order.value?.product_cover_url || order.value?.resource_cover_url || ""
 );
+const contactValidation = computed(() => validateShopContact(contact.value));
 const canSubmitReport = computed(
   () =>
     Boolean(order.value?.can_report) &&
-    Boolean(contact.value.trim()) &&
+    contactValidation.value.ok &&
     Boolean(reportForm.description.trim())
 );
 const delivery = computed(() => order.value?.delivery || null);
@@ -50,19 +52,32 @@ function orderId() {
 }
 
 async function loadOrder() {
+  const id = orderId();
+  if (!id) {
+    loading.value = false;
+    order.value = null;
+    error.value = "订单不存在";
+    return;
+  }
+
+  const validation = validateShopContact(contact.value);
+  if (!validation.ok) {
+    loading.value = false;
+    order.value = null;
+    error.value = validation.message;
+    return;
+  }
+
   loading.value = true;
   error.value = "";
+  contact.value = validation.normalized;
   try {
-    const id = orderId();
-    if (!id) throw new Error("订单不存在");
-    const data = await shopApi.order(id, contact.value.trim());
+    const data = await shopApi.order(id, validation.normalized);
     order.value = data.order;
-    if (contact.value.trim()) {
-      window.sessionStorage?.setItem(
-        `shop_order_contact_${id}`,
-        contact.value.trim()
-      );
-    }
+    window.sessionStorage?.setItem(
+      `shop_order_contact_${id}`,
+      validation.normalized
+    );
   } catch (err) {
     error.value = err instanceof Error ? err.message : "订单暂不可访问";
   } finally {
@@ -72,8 +87,9 @@ async function loadOrder() {
 
 async function submitReport() {
   if (!order.value) return;
-  if (!contact.value.trim()) {
-    reportMessage.value = "请先填写下单时的联系方式";
+  const validation = contactValidation.value;
+  if (!validation.ok) {
+    reportMessage.value = validation.message;
     return;
   }
   if (!reportForm.description.trim()) {
@@ -84,7 +100,7 @@ async function submitReport() {
   reportMessage.value = "";
   try {
     const data = await shopApi.createOrderAfterSale(order.value.id, {
-      buyer_contact: contact.value.trim(),
+      buyer_contact: validation.normalized,
       complaint_type: reportForm.complaint_type,
       description: reportForm.description.trim()
     });
@@ -106,7 +122,12 @@ onMounted(() => {
     String(route.query.contact || route.query.buyer_contact || "") ||
     window.sessionStorage?.getItem(`shop_order_contact_${id}`) ||
     "";
-  loadOrder();
+  if (contact.value.trim()) {
+    loadOrder();
+    return;
+  }
+  loading.value = false;
+  error.value = "请输入下单时填写的手机号、QQ号或邮箱查询订单";
 });
 </script>
 
@@ -119,7 +140,11 @@ onMounted(() => {
         <input
           v-model="contact"
           maxlength="80"
-          placeholder="输入下单时填写的微信号 / 手机号 / 邮箱"
+          name="buyerContact"
+          autocomplete="on"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="输入下单时填写的手机号 / QQ号 / 邮箱"
           @keyup.enter="loadOrder"
         />
         <button @click="loadOrder">查询订单</button>
@@ -227,7 +252,11 @@ onMounted(() => {
         <input
           v-model="contact"
           maxlength="80"
-          placeholder="用于核验订单归属"
+          name="buyerContact"
+          autocomplete="on"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="用于核验订单归属，仅支持手机号 / QQ号 / 邮箱"
         />
       </label>
       <label class="form-field">

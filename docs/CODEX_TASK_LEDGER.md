@@ -445,6 +445,24 @@
   - Dou-Admin `corepack pnpm typecheck` 通过。
   - Dou-Admin `corepack pnpm build` 通过。
   - Dou-Server `node --check src/routes/shop/index.js`、`node --check src/lib/resourceAfterSales.js` 通过。
+
+### H5 联系方式前端校验与记忆
+
+- 时间：2026-06-03 (Asia/Shanghai)
+- 任务目标：按最新线上反馈，把 H5 联系方式输入收敛为手机号、QQ号、邮箱三类，在前端统一校验格式并补浏览器记忆，减少误填带来的下单失败和查单失败。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/views/shop/contact.ts`
+  - `src/views/shop/product.vue`
+  - `src/views/shop/order.vue`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server 已同步修复 H5 联系方式被内容安全误拦截的问题，后端不再把 `buyer_contact` 送入内容安全审核，继续保留订单归属核验与买家风控。
+- 已完成前端能力：下单、查单、投诉三处联系方式输入统一支持手机号、QQ号、邮箱；手机号支持自动去空格和 `+86` 规范化；邮箱统一转小写；输入框补 `autocomplete` 和同名字段，浏览器可辅助记忆。
+- 验证：待执行 `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check`。
+- 下一步：部署后回归手机号、QQ号、邮箱三类正常下单，以及微信号误填时的前端提示。
   - Dou-Server 路由和售后库动态导入通过。
   - Dou-Server `npm.cmd run migrate` 通过并应用到 `035`。
   - 双仓 `git diff --check` 通过（仅 CRLF 转换提示）。

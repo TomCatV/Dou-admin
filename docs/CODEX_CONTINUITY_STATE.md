@@ -302,3 +302,12 @@
 - 已完成前端能力：菜单过滤同时检查角色与 `meta.auths`；直达路由缺少权限时返回 403；AI 经营助手菜单改为全角色可参与角色判断、再由 `tenant:ai:view` 控制实际展示；编辑全局超级管理员时展示后端返回的有效权限，避免旧 `permissions_json` 造成误判。
 - 实现口径：远端已具备完整 P5 AI 页面和 API，本轮 rebase 保留远端完整 `src/views/tenant/ai.vue` 与 `tenantAiApi` 实现，只叠加权限入口修复。
 - 验证结果：`corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；`git diff --check` 与 UTF-8 扫描通过。
+
+## 2026-06-03 H5 联系方式前端校验与记忆
+
+- 当前目标：把 H5 买家联系方式收敛为手机号、QQ号、邮箱三类，前端提交前统一校验合法性，并补浏览器自动记忆，减少下单与查单误填。
+- 已改文件：`src/views/shop/contact.ts`、`src/views/shop/product.vue`、`src/views/shop/order.vue`、`docs/ADMIN_USER_MANUAL.md`、`docs/CREATOR_COMMERCE_P1_PRODUCT_H5_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：商品详情页下单前只接受手机号、QQ号或邮箱；订单查询和投诉举报沿用同一规则；校验通过后会规范化联系方式再发请求；输入框补 `autocomplete`、统一 `name` 并保留 sessionStorage 兜底记忆。
+- 协同后端口径：Dou-Server 已移除 `buyer_contact` 的内容安全送审；服务端继续负责订单归属核验、黑名单风控与同单售后复用，前端负责 H5 联系方式格式拦截。
+- 风险边界：本轮不改支付、订单、售后主链路，不新增新的联系方式类型；旧的微信号填写会在前端直接提示改填手机号、QQ号或邮箱。
+- 下一步计划：部署后重点回归 H5 商品下单、订单查询、投诉举报三条链路，覆盖手机号、含空格手机号、QQ号、大小写邮箱和微信号误填提示。

@@ -7,6 +7,7 @@ import {
   type PublicProduct,
   type PublicStore
 } from "@/api/shop";
+import { validateShopContact } from "./contact";
 import { shopImage, yuan } from "./format";
 
 defineOptions({ name: "PublicShopProduct" });
@@ -29,6 +30,9 @@ const productKey = computed(() =>
 );
 const previewImages = computed(() => product.value?.preview_images || []);
 const soldOut = computed(() => product.value?.stock_status === "sold_out");
+const contactValidation = computed(() =>
+  validateShopContact(buyerContact.value)
+);
 const payableAmount = computed(
   () => quote.value?.payable_amount || product.value?.price || 0
 );
@@ -85,11 +89,13 @@ async function loadQuote() {
 
 async function createDraft() {
   if (!product.value || soldOut.value) return;
-  const contact = buyerContact.value.trim();
-  if (!contact) {
-    error.value = "请填写联系方式，后续查询订单需要使用";
+  const validation = contactValidation.value;
+  if (!validation.ok) {
+    error.value = validation.message;
     return;
   }
+  const contact = validation.normalized;
+  buyerContact.value = contact;
   buying.value = true;
   error.value = "";
   try {
@@ -178,12 +184,16 @@ onMounted(loadProduct);
           <input
             v-model="buyerContact"
             maxlength="80"
+            name="buyerContact"
+            autocomplete="on"
+            autocapitalize="off"
             required
-            placeholder="微信号 / 手机号 / 邮箱，便于订单沟通"
+            spellcheck="false"
+            placeholder="手机号 / QQ号 / 邮箱，便于订单沟通"
           />
         </label>
         <p class="muted">
-          联系方式会用于后续查询订单、售后沟通和投诉举报核验。
+          仅支持手机号、QQ号或邮箱。浏览器会尽量记住此项，便于后续下单和查单。
         </p>
         <div class="promo-grid">
           <label class="contact-field">
@@ -237,7 +247,7 @@ onMounted(loadProduct);
           <strong>{{ yuan(payableAmount) }}</strong>
         </div>
         <button
-          :disabled="soldOut || buying || !buyerContact.trim()"
+          :disabled="soldOut || buying || !contactValidation.ok"
           @click="createDraft"
         >
           {{ soldOut ? "已售罄" : buying ? "正在锁单" : "立即购买" }}

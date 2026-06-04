@@ -350,3 +350,14 @@
 - 验证结果：Dou-Server `node --check src/lib/alipayFacePay.js`、`node --check src/lib/commercePayments.js` 通过；本地 RSA 2048 URL 烟测确认 `biz_content` 不再包含 `qr_pay_mode` / `qrcode_width`，且保留 `method=alipay.trade.page.pay`、`sign_type=RSA2`、`product_code=FAST_INSTANT_TRADE_PAY` 和签名；Dou-Admin / Dou-Server `git diff --check` 与改动文件 UTF-8 扫描通过。
 - 下一步计划：服务器拉取 Dou-Server 并重启后，用 0.01 元真实订单回归支付宝标准收银台；若手机扫码仍提示 `AE150003030`，继续按支付宝电脑网站支付终端限制、应用状态和风控排查，移动端直付另走 WAP/App 支付接入。
 - 风险与回滚：Admin 本轮只更新设计和续航文档；实际支付行为由 Dou-Server 参数修复控制，异常时可临时关闭支付宝通道或回退确认页站内二维码模式。
+
+## 2026-06-04 H5 站内扫码与卡密库存兜底
+
+- 当前目标：根据线上成功支付后的反馈，修复支付宝仍外跳极简二维码页、支付按钮可重复点击、支付宝 return_url 命中后端健康检查、微信扫码页首次空白、卡密售罄仍可继续支付，以及圈主资源卡管理入口不明显的问题。
+- 已改文件：`src/views/shop/product.vue`、`src/views/shop/checkout.vue`、`src/views/shop/order.vue`、`src/router/modules/home.ts`、`src/views/tenant/resources.vue`、`docs/CREATOR_COMMERCE_P2_P5_PAYMENT_OVERVIEW_FIX_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/lib/commercePayments.js`、`src/lib/orderFulfill.js`、`src/lib/resourceCards.js`、`src/routes/shop/index.js`。
+- 已完成前端能力：H5 商品页微信和支付宝都统一进入 Dou 站内 `/shop/checkout/:draftId?autopay=1&channel=...`，不再默认创建 `mode=cashier` 支付单或外跳支付宝页面；购买按钮与生成二维码按钮增加 loading / `aria-busy` / 并发锁；确认页增加自动支付一次性锁、二维码渲染异常兜底和初始化错误兜底；支付成功继续依赖站内轮询跳转订单页，不再依赖支付宝 `return_url`。
+- 资源卡入口：圈主后台菜单从“圈内资源”改为“资源卡管理”，页面标题、主按钮和弹窗文案改为“资源卡管理 / 发布资源卡 / 编辑资源卡”，保留已有分类、H5 链接、资源交付、卡密库存和订单入口。
+- 订单展示：卡密型已支付订单若仍缺少卡密，前端不再显示“正在分配”，改为“卡密发放异常，请联系商家补货或处理退款”，避免用户误以为系统仍会自动发放。
+- 验证结果：Dou-Admin `corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；后续最终 `git diff --check` 与 UTF-8 扫描待提交前统一执行。
+- 下一步计划：提交推送后服务器拉取双仓并重启；线上回归支付宝和微信均进入站内二维码页、按钮防重复点击、扫码后轮询跳订单页、售罄卡密无法创建支付意图、资源卡管理入口可见。
+- 风险与回滚：若支付宝站内二维码异常，可暂时设置 `ALIPAY_PAY_ENABLED=false` 隐藏支付宝通道；微信异常可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 隐藏微信通道；资源卡入口文案可单独回退，不影响交易接口。

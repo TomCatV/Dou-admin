@@ -215,7 +215,7 @@ export default [
         name: "TenantResources",
         component: () => import("@/views/tenant/resources.vue"),
         meta: {
-          title: "圈内资源",
+          title: "资源卡管理",
           icon: "ep/goods",
           roles: tenantRoles
         }

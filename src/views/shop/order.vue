@@ -166,7 +166,12 @@ onMounted(() => {
           <dl>
             <div>
               <dt>卡密</dt>
-              <dd>{{ delivery.assigned_code || "正在分配" }}</dd>
+              <dd>
+                {{
+                  delivery.assigned_code ||
+                  "卡密发放异常，请联系商家补货或处理退款"
+                }}
+              </dd>
             </div>
             <div v-if="delivery.assigned_code_at">
               <dt>发放时间</dt>

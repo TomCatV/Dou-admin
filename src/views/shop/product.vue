@@ -50,7 +50,7 @@ const buyButtonText = computed(() => {
   if (buying.value) {
     return selectedChannel.value === "wechat_native"
       ? "正在生成微信支付"
-      : "正在调起支付宝";
+      : "正在生成支付宝";
   }
   return "立即购买";
 });
@@ -144,6 +144,7 @@ async function loadQuote() {
 }
 
 async function createDraft() {
+  if (buying.value) return;
   if (!product.value || soldOut.value) return;
   const validation = contactValidation.value;
   if (!validation.ok) {
@@ -176,33 +177,12 @@ async function createDraft() {
       });
       return;
     }
-    if (selectedChannel.value === "wechat_native") {
-      await router.push({
-        path: `/shop/checkout/${encodeURIComponent(data.order_draft.id)}`,
-        query: { autopay: "1", channel: "wechat" }
-      });
-      return;
-    }
-    const orderData = await shopApi.createOrderFromDraft(data.order_draft.id);
-    window.sessionStorage?.setItem(
-      `shop_order_contact_${orderData.order.id}`,
-      contact
-    );
-    const payData = await shopApi.createPaymentIntent(orderData.order.id, {
-      channel: "alipay_precreate",
-      mode: "cashier"
-    });
-    const cashierUrl = payData.payment_intent?.cashier_url;
-    if (cashierUrl) {
-      window.location.assign(cashierUrl);
-      return;
-    }
     await router.push({
       path: `/shop/checkout/${encodeURIComponent(data.order_draft.id)}`,
       query: {
         autopay: "1",
-        channel: "alipay",
-        intent_id: payData.payment_intent?.id || undefined
+        channel:
+          selectedChannel.value === "wechat_native" ? "wechat" : "alipay"
       }
     });
   } catch (err) {
@@ -358,7 +338,7 @@ onMounted(loadProduct);
               hasEnabledChannels
                 ? selectedChannel === "wechat_native"
                   ? "将进入确认页并自动生成微信支付二维码。"
-                  : "将直接打开支付宝收银台扫码付款。"
+                  : "将进入确认页并自动生成支付宝扫码二维码。"
                 : "当前暂无可用支付渠道，请联系商家。"
             }}
           </p>
@@ -384,6 +364,7 @@ onMounted(loadProduct);
           :disabled="
             soldOut || buying || !contactValidation.ok || !hasEnabledChannels
           "
+          :aria-busy="buying"
           @click="createDraft"
         >
           {{ buyButtonText }}

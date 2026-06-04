@@ -925,3 +925,31 @@
 - 验证：Dou-Server `node --check src/lib/alipayFacePay.js`、`node --check src/lib/commercePayments.js` 通过；本地 RSA 2048 URL 烟测确认 `biz_content` 不含 `qr_pay_mode` / `qrcode_width`，且保留 `method=alipay.trade.page.pay`、`sign_type=RSA2`、`product_code=FAST_INSTANT_TRADE_PAY` 和签名；双仓 `git diff --check` 与改动文件 UTF-8 扫描通过。
 - 下一步：服务器拉取重启后，用真实 0.01 元支付宝订单回归标准收银台；若手机扫码仍提示 `AE150003030`，继续按支付宝电脑网站支付终端限制、应用上线状态和风控排查。
 - 风险与回滚：Admin 本轮只更新文档；支付异常时可禁用支付宝或恢复确认页站内二维码兜底。
+
+### H5 站内扫码与卡密库存兜底
+
+- 时间：2026-06-04 (Asia/Shanghai)
+- 任务目标：修复 H5 支付体验和库存竞态：支付宝不再外跳极简二维码页，支付按钮防重复点击，支付成功不依赖 return_url，微信自动出码不空白，卡密售罄支付前拦截，并让圈主资源卡管理入口更明显。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `src/views/shop/order.vue`
+  - `src/router/modules/home.ts`
+  - `src/views/tenant/resources.vue`
+  - `docs/CREATOR_COMMERCE_P2_P5_PAYMENT_OVERVIEW_FIX_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `src/lib/commercePayments.js`
+  - Dou-Server `src/lib/orderFulfill.js`
+  - Dou-Server `src/lib/resourceCards.js`
+  - Dou-Server `src/routes/shop/index.js`
+- 已完成前端能力：商品页两种支付方式都进入站内确认页自动出码；确认页加自动支付锁、生成二维码 loading、二维码渲染错误兜底和初始化异常兜底；订单页缺卡密时展示发放异常提示；圈主菜单和页面显性改为“资源卡管理 / 发布资源卡”。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - Dou-Server 支付和履约关键文件 `node --check` 通过。
+  - 后续提交前统一执行最终 `git diff --check` 和 UTF-8 扫描。
+- 下一步：服务器拉取双仓并重启后，线上回归微信/支付宝站内扫码、按钮防重复、扫码后轮询跳订单页、售罄卡密支付前拦截和资源卡管理入口。
+- 风险与回滚：支付通道可通过 `ALIPAY_PAY_ENABLED=false` / `WECHAT_NATIVE_PAY_ENABLED=false` 暂停；资源卡入口文案可单独回退；库存兜底只加强支付前和履约安全，不改变已成功交付订单。

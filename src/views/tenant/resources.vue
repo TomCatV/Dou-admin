@@ -69,15 +69,15 @@ const form = reactive({
 });
 
 const canManage = computed(() => hasPerms("tenant:resource:manage"));
-const dialogTitle = computed(() => (form.id ? "编辑商品" : "新建商品"));
+const dialogTitle = computed(() => (form.id ? "编辑资源卡" : "发布资源卡"));
 const activeCategories = computed(() =>
   categories.value.filter(item => item.status === "active")
 );
 
 const rules: FormRules = {
-  title: [{ required: true, message: "请输入商品标题", trigger: "blur" }],
-  summary: [{ required: true, message: "请输入商品简介", trigger: "blur" }],
-  price_yuan: [{ required: true, message: "请输入商品价格", trigger: "blur" }]
+  title: [{ required: true, message: "请输入资源卡标题", trigger: "blur" }],
+  summary: [{ required: true, message: "请输入资源卡简介", trigger: "blur" }],
+  price_yuan: [{ required: true, message: "请输入资源卡价格", trigger: "blur" }]
 };
 
 const statusText: Record<string, string> = {
@@ -265,7 +265,7 @@ async function openEdit(row: ManagedResourceCard) {
 
 function buildPayload() {
   const amount = toFen(form.price_yuan);
-  if (amount < 1) throw new Error("商品价格不能低于 0.01 元");
+  if (amount < 1) throw new Error("资源卡价格不能低于 0.01 元");
   const payload: Record<string, any> = {
     title: form.title.trim(),
     summary: form.summary.trim(),
@@ -303,10 +303,10 @@ async function saveResource() {
     const payload = buildPayload();
     if (form.id) {
       await tenantApi.updateResourceCard(form.id, payload);
-      ElMessage.success("商品已保存");
+      ElMessage.success("资源卡已保存");
     } else {
       await tenantApi.createResourceCard(payload);
-      ElMessage.success("商品已创建");
+      ElMessage.success("资源卡已创建");
     }
     dialogVisible.value = false;
     await loadList();
@@ -319,14 +319,14 @@ async function saveResource() {
 
 async function changeStatus(row: ManagedResourceCard, target: "publish" | "offline") {
   const verb = target === "publish" ? "上架" : "下架";
-  await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, `${verb}商品`, {
+  await ElMessageBox.confirm(`确认${verb}「${row.title}」？`, `${verb}资源卡`, {
     type: "warning"
   });
   actionLoading.value = `${target}:${row.id}`;
   try {
     if (target === "publish") await tenantApi.publishResourceCard(row.id);
     else await tenantApi.offlineResourceCard(row.id);
-    ElMessage.success(`商品已${verb}`);
+    ElMessage.success(`资源卡已${verb}`);
     await loadList();
   } finally {
     actionLoading.value = "";
@@ -334,13 +334,13 @@ async function changeStatus(row: ManagedResourceCard, target: "publish" | "offli
 }
 
 async function deleteResource(row: ManagedResourceCard) {
-  await ElMessageBox.confirm(`确认删除「${row.title}」？删除后小程序端也不可见。`, "删除商品", {
+  await ElMessageBox.confirm(`确认删除「${row.title}」？删除后小程序端也不可见。`, "删除资源卡", {
     type: "warning"
   });
   actionLoading.value = `delete:${row.id}`;
   try {
     await tenantApi.deleteResourceCard(row.id);
-    ElMessage.success("商品已删除");
+    ElMessage.success("资源卡已删除");
     await loadList();
   } finally {
     actionLoading.value = "";
@@ -368,7 +368,7 @@ async function copyLink(row: ManagedResourceCard) {
     document.execCommand("copy");
     document.body.removeChild(textarea);
   }
-  ElMessage.success("商品链接已复制");
+  ElMessage.success("资源卡链接已复制");
 }
 
 function viewOrders(row: ManagedResourceCard) {
@@ -382,13 +382,13 @@ onMounted(loadPageData);
   <div class="tenant-list-page">
     <div class="page-head">
       <div>
-        <h1>商品中心</h1>
-        <p>管理资源交付和卡密交付商品，订单与售后会同步进入交易资金模块。</p>
+        <h1>资源卡管理</h1>
+        <p>发布和管理资源卡，支持资源交付、卡密交付、分类、H5 链接、订单和售后联动。</p>
       </div>
       <div class="head-actions">
         <el-button :icon="Refresh" @click="loadList">刷新</el-button>
         <el-button v-if="canManage" @click="openCategoryDialog">分类管理</el-button>
-        <el-button v-if="canManage" type="primary" :icon="Plus" @click="openCreate">新建商品</el-button>
+        <el-button v-if="canManage" type="primary" :icon="Plus" @click="openCreate">发布资源卡</el-button>
       </div>
     </div>
 
@@ -398,7 +398,7 @@ onMounted(loadPageData);
       type="info"
       show-icon
       :closable="false"
-      title="当前账号为只读权限，可查看商品与经营数据，不能创建或修改商品。"
+      title="当前账号为只读权限，可查看资源卡与经营数据，不能创建或修改资源卡。"
     />
 
     <div class="filter-bar">
@@ -406,7 +406,7 @@ onMounted(loadPageData);
         v-model="filters.keyword"
         class="keyword"
         clearable
-        placeholder="搜索商品标题或简介"
+        placeholder="搜索资源卡标题或简介"
         @keyup.enter="search"
       />
       <el-select v-model="filters.delivery_type" class="filter-item" clearable placeholder="交付方式">
@@ -431,7 +431,7 @@ onMounted(loadPageData);
     </div>
 
     <el-table v-loading="loading" :data="rows" border>
-      <el-table-column label="商品" min-width="280">
+      <el-table-column label="资源卡" min-width="280">
         <template #default="{ row }">
           <div class="product-cell">
             <el-image v-if="row.cover_url" class="cover" :src="row.cover_url" fit="cover" />
@@ -535,13 +535,13 @@ onMounted(loadPageData);
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="780px" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
-        <el-form-item label="商品标题" prop="title">
+        <el-form-item label="资源卡标题" prop="title">
           <el-input v-model="form.title" maxlength="40" show-word-limit />
         </el-form-item>
-        <el-form-item label="商品简介" prop="summary">
+        <el-form-item label="资源卡简介" prop="summary">
           <el-input v-model="form.summary" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
-        <el-form-item label="商品分类">
+        <el-form-item label="资源卡分类">
           <el-select v-model="form.category_id" clearable placeholder="选择分类">
             <el-option
               v-for="item in activeCategories"
@@ -636,7 +636,7 @@ onMounted(loadPageData);
       </div>
       <el-table :data="categories" border>
         <el-table-column prop="name" label="分类" />
-        <el-table-column prop="product_count" label="商品数" width="90" />
+        <el-table-column prop="product_count" label="资源卡数" width="100" />
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'info'">

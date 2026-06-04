@@ -27,6 +27,7 @@ const channel = ref<PaymentChannel>("alipay_precreate");
 const paymentChannels = ref<Record<string, { enabled: boolean }>>({});
 const countdown = ref(0);
 const qrDataUrl = ref("");
+const autoStarted = ref(false);
 let pollTimer: number | undefined;
 let countdownTimer: number | undefined;
 
@@ -46,6 +47,14 @@ const hasEnabledChannels = computed(() =>
     isChannelEnabled(item as PaymentChannel)
   )
 );
+const channelLabel = computed(() =>
+  channel.value === "wechat_native" ? "微信" : "支付宝"
+);
+const payStartButtonText = computed(() => {
+  if (!creating.value) return "生成支付二维码";
+  if (!order.value) return "正在创建订单";
+  return `正在生成${channelLabel.value}二维码`;
+});
 
 function draftId() {
   return String(route.params.draftId || "").trim();
@@ -142,11 +151,16 @@ async function renderQr() {
   qrDataUrl.value = "";
   const qr = paymentIntent.value?.qr_code_url || "";
   if (!qr) return;
-  qrDataUrl.value = await QRCode.toDataURL(qr, {
-    width: 220,
-    margin: 1,
-    errorCorrectionLevel: "M"
-  });
+  try {
+    qrDataUrl.value = await QRCode.toDataURL(qr, {
+      width: 220,
+      margin: 1,
+      errorCorrectionLevel: "M"
+    });
+  } catch {
+    qrDataUrl.value = "";
+    throw new Error("支付二维码渲染失败，请刷新页面后重试");
+  }
 }
 
 function applyDraftOrder() {
@@ -208,6 +222,7 @@ async function loadDraft() {
 }
 
 async function createOrder() {
+  if (creating.value) return;
   if (!draft.value) return;
   creating.value = true;
   error.value = "";
@@ -217,7 +232,7 @@ async function createOrder() {
     if (data.order_draft) draft.value = data.order_draft;
     applyPaymentChannels(data.payment_channels);
     rememberContact(data.order.id, draft.value.buyer_contact);
-    await createPaymentIntent();
+    await createPaymentIntent({ nested: true });
   } catch (err) {
     error.value =
       err instanceof Error ? err.message : "订单创建失败，请重新下单";
@@ -226,7 +241,8 @@ async function createOrder() {
   }
 }
 
-async function createPaymentIntent() {
+async function createPaymentIntent(options: { nested?: boolean } = {}) {
+  if (creating.value && !options.nested) return;
   if (!order.value) return;
   if (!isChannelEnabled(channel.value)) {
     chooseDefaultChannel();
@@ -235,7 +251,7 @@ async function createPaymentIntent() {
       return;
     }
   }
-  creating.value = true;
+  if (!options.nested) creating.value = true;
   error.value = "";
   resetPaymentView();
   try {
@@ -245,10 +261,6 @@ async function createPaymentIntent() {
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
     if (!data.payment_intent?.qr_code_url) {
-      if (data.payment_intent?.cashier_url) {
-        window.location.assign(data.payment_intent.cashier_url);
-        return;
-      }
       throw new Error(
         data.payment_intent?.last_error_message ||
           "支付二维码创建失败，请检查支付配置"
@@ -261,7 +273,7 @@ async function createPaymentIntent() {
     error.value =
       err instanceof Error ? err.message : "支付二维码创建失败，请稍后重试";
   } finally {
-    creating.value = false;
+    if (!options.nested) creating.value = false;
   }
 }
 
@@ -315,14 +327,22 @@ function backToProduct() {
 }
 
 onMounted(async () => {
-  await loadDraft();
-  if (!draft.value) return;
-  applyDraftOrder();
-  const loadedIntent = await loadPaymentIntentFromQuery();
-  if (loadedIntent) return;
-  if (shouldAutoPay()) {
-    if (order.value) await createPaymentIntent();
-    else await createOrder();
+  try {
+    await loadDraft();
+    if (!draft.value) return;
+    applyDraftOrder();
+    const loadedIntent = await loadPaymentIntentFromQuery();
+    if (loadedIntent) return;
+    if (shouldAutoPay() && !autoStarted.value) {
+      autoStarted.value = true;
+      if (order.value) await createPaymentIntent();
+      else await createOrder();
+    }
+  } catch (err) {
+    error.value =
+      err instanceof Error ? err.message : "订单确认失败，请刷新后重试";
+  } finally {
+    loading.value = false;
   }
 });
 
@@ -422,9 +442,10 @@ onBeforeUnmount(stopTimers);
           </p>
           <button
             :disabled="creating || !hasEnabledChannels"
+            :aria-busy="creating"
             @click="order ? createPaymentIntent() : createOrder()"
           >
-            {{ creating ? "正在生成" : "生成支付二维码" }}
+            {{ payStartButtonText }}
           </button>
         </div>
 

@@ -908,3 +908,20 @@
   - Dou-Server `node --check src/routes/shop/index.js` 和 `git diff --check` 已通过。
 - 下一步：提交推送后服务器拉取重启；支付宝应用上线前优先回归微信 Native，支付宝上线后再回归 0.01 元收银台真实支付。
 - 风险与回滚：本轮只改 H5 公开支付入口和只读渠道字段；如前端异常，可回滚商品页渠道选择改动，确认页原扫码支付链路仍可保留。
+
+### 支付宝标准收银台页面修复
+
+- 时间：2026-06-04 (Asia/Shanghai)
+- 任务目标：根据支付宝电脑网站支付官方文档，排查 PC 网页端支付宝支付只显示极简二维码页的问题，恢复标准收银台体验。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`
+  - `docs/CREATOR_COMMERCE_P2_P5_PAYMENT_OVERVIEW_FIX_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `src/lib/alipayFacePay.js` 删除 `qr_pay_mode` / `qrcode_width`。
+- 根因判断：`alipay.trade.page.pay` 传 `qr_pay_mode=4` 会进入嵌入式二维码/极简二维码展示模式，不是标准 PC 收银台。
+- 已完成文档能力：P2 支付设计补充支付宝电脑网站支付官方链接和标准字段；P2-P5 修复设计记录 `qr_pay_mode=4` 的边界与回滚口径。
+- 验证：Dou-Server `node --check src/lib/alipayFacePay.js`、`node --check src/lib/commercePayments.js` 通过；本地 RSA 2048 URL 烟测确认 `biz_content` 不含 `qr_pay_mode` / `qrcode_width`，且保留 `method=alipay.trade.page.pay`、`sign_type=RSA2`、`product_code=FAST_INSTANT_TRADE_PAY` 和签名；双仓 `git diff --check` 与改动文件 UTF-8 扫描通过。
+- 下一步：服务器拉取重启后，用真实 0.01 元支付宝订单回归标准收银台；若手机扫码仍提示 `AE150003030`，继续按支付宝电脑网站支付终端限制、应用上线状态和风控排查。
+- 风险与回滚：Admin 本轮只更新文档；支付异常时可禁用支付宝或恢复确认页站内二维码兜底。

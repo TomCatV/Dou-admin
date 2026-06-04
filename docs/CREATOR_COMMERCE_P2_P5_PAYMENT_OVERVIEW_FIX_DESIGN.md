@@ -34,6 +34,9 @@
 
 - 支付宝当面付预创建：`https://opendocs.alipay.com/apis/api_1/alipay.trade.precreate`
 - 支付宝电脑网站支付收银台：`https://opendocs.alipay.com/apis/api_1/alipay.trade.page.pay`
+- 支付宝电脑网站支付接入指引：`https://opendocs.alipay.com/open/repo-0038oa`
+
+本轮收银台直达按支付宝电脑网站支付标准接入：`alipay.trade.page.pay` 只传 `product_code=FAST_INSTANT_TRADE_PAY` 等标准下单字段，默认不传 `qr_pay_mode` / `qrcode_width`。`qr_pay_mode=4` 属于嵌入式二维码展示模式，会让支付宝页面变成只有二维码的极简页，不符合 PC 标准收银台体验。
 
 1. 买家在商品页填写联系方式和优惠信息。
 2. 前端创建订单草稿。

@@ -340,3 +340,13 @@
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 和 UTF-8 扫描通过；构建产物与源码均确认包含 `支付方式`、`微信扫码`、`支付宝` 文案。因本机 bundled Playwright 缺 `playwright-core`，未完成截图级浏览器验证。
 - 下一步计划：提交推送后服务器拉取并重启；线上用 0.01 元商品分别回归微信扫码、支付宝收银台、支付宝应用上线后的支付通知/查单和订单交付。
 - 风险与回滚：若支付宝应用尚未上线，先使用微信 Native 通道验证交易闭环；如微信配置异常，可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 暂停微信通道，商品页会按后端渠道表隐藏不可用入口。
+
+## 2026-06-04 支付宝标准收银台页面修复
+
+- 当前目标：根据支付宝电脑网站支付官方文档，排查 PC 网页端支付宝支付只显示极简二维码页的问题，恢复标准收银台体验。
+- 已改文件：`docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`、`docs/CREATOR_COMMERCE_P2_P5_PAYMENT_OVERVIEW_FIX_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/lib/alipayFacePay.js`。
+- 根因判断：后端旧 `alipay.trade.page.pay` 的 `biz_content` 传了 `qr_pay_mode=4` 和 `qrcode_width=260`，会进入支付宝嵌入式二维码/极简二维码展示模式；标准 PC 收银台默认不传这两个字段。
+- 已完成文档能力：P2 支付设计和 P2-P5 修复设计均补充支付宝电脑网站支付官方链接、标准字段口径和 `qr_pay_mode=4` 的边界说明。
+- 验证结果：Dou-Server `node --check src/lib/alipayFacePay.js`、`node --check src/lib/commercePayments.js` 通过；本地 RSA 2048 URL 烟测确认 `biz_content` 不再包含 `qr_pay_mode` / `qrcode_width`，且保留 `method=alipay.trade.page.pay`、`sign_type=RSA2`、`product_code=FAST_INSTANT_TRADE_PAY` 和签名；Dou-Admin / Dou-Server `git diff --check` 与改动文件 UTF-8 扫描通过。
+- 下一步计划：服务器拉取 Dou-Server 并重启后，用 0.01 元真实订单回归支付宝标准收银台；若手机扫码仍提示 `AE150003030`，继续按支付宝电脑网站支付终端限制、应用状态和风控排查，移动端直付另走 WAP/App 支付接入。
+- 风险与回滚：Admin 本轮只更新设计和续航文档；实际支付行为由 Dou-Server 参数修复控制，异常时可临时关闭支付宝通道或回退确认页站内二维码模式。

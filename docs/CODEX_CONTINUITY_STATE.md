@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-06-02 00:00 (Asia/Shanghai)
+最后更新时间：2026-06-04 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -330,3 +330,13 @@
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；Dou-Server `node --check` 覆盖支付宝封装、支付服务、支付路由和租户路由通过。后端动态导入命令在本机被外层命令转义截断，本轮未把该项作为通过结果记录。
 - 下一步计划：提交推送后服务器拉取并重启；确认 `SHOP_H5_BASE_URL` 或 `PUBLIC_ADMIN_BASE_URL` 可生成支付宝 return_url；用真实支付宝小额商品回归“立即购买 -> 支付宝收银台扫码 -> 异步通知/查单 -> 订单交付”，并从宝塔日志检索 `[alipay-pay]` 定位失败原因。
 - 风险与回滚：若支付宝收银台异常，可设置 `ALIPAY_PAY_ENABLED=false` 暂停支付宝；前端可临时恢复跳转确认页二维码模式；经营总览新增 `owner_overview` 为只读聚合字段，不改变订单、结算、售后、钱包或 AI 写入主链路。
+
+## 2026-06-04 H5 支付渠道选择恢复
+
+- 当前目标：根据线上回归反馈，修复 H5 商品详情页只剩支付宝的问题，恢复微信扫码和支付宝两种支付渠道选择；同时确认支付宝 `not-online-app` 属于支付宝开放平台应用状态问题。
+- 已改文件：`src/api/shop.ts`、`src/views/shop/product.vue`、`src/views/shop/checkout.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/shop/index.js`。
+- 已完成前端能力：商品详情页购买信息新增支付方式选择，默认微信扫码；选择微信时创建订单草稿后进入确认页并自动生成微信 Native 二维码；选择支付宝时继续直达支付宝收银台扫码；确认页按后端渠道表禁用不可用通道，老接口未返回渠道表时保持兼容。
+- 支付宝结论：生产网关返回 `not-online-app` / 应用未上线时，不是前端跳转、私钥格式或签名串问题；需要在支付宝开放平台把当前 AppID 对应应用提交审核并上线后，生产网关才会受理交易。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 和 UTF-8 扫描通过；构建产物与源码均确认包含 `支付方式`、`微信扫码`、`支付宝` 文案。因本机 bundled Playwright 缺 `playwright-core`，未完成截图级浏览器验证。
+- 下一步计划：提交推送后服务器拉取并重启；线上用 0.01 元商品分别回归微信扫码、支付宝收银台、支付宝应用上线后的支付通知/查单和订单交付。
+- 风险与回滚：若支付宝应用尚未上线，先使用微信 Native 通道验证交易闭环；如微信配置异常，可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 暂停微信通道，商品页会按后端渠道表隐藏不可用入口。

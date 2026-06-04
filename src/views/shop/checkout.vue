@@ -81,21 +81,23 @@ function normalizedQueryChannel(): PaymentChannel | "" {
 }
 
 function isChannelEnabled(name: PaymentChannel) {
+  const hasChannelMap = Object.keys(paymentChannels.value).length > 0;
+  if (!hasChannelMap) return true;
   const state = paymentChannels.value[name];
-  return state ? state.enabled !== false : true;
+  return state?.enabled === true;
 }
 
 function chooseDefaultChannel(channels = paymentChannels.value) {
   const preferred = normalizedQueryChannel();
-  if (preferred && channels[preferred]?.enabled !== false) {
+  if (preferred && isChannelEnabled(preferred)) {
     channel.value = preferred;
     return;
   }
-  if (channels.alipay_precreate?.enabled) {
+  if (!Object.keys(channels).length || channels.alipay_precreate?.enabled === true) {
     channel.value = "alipay_precreate";
     return;
   }
-  if (channels.wechat_native?.enabled) {
+  if (channels.wechat_native?.enabled === true) {
     channel.value = "wechat_native";
   }
 }

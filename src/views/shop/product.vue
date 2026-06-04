@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   shopApi,
+  type PaymentChannel,
   type PromotionQuote,
   type PublicProduct,
   type PublicStore
@@ -24,6 +25,8 @@ const couponCode = ref("");
 const inviteCode = ref("");
 const quoteLoading = ref(false);
 const quote = ref<PromotionQuote | null>(null);
+const paymentChannels = ref<Record<string, { enabled: boolean }>>({});
+const selectedChannel = ref<PaymentChannel>("wechat_native");
 
 const productKey = computed(() =>
   String(route.params.productKey || route.query.id || "").trim()
@@ -37,6 +40,58 @@ const payableAmount = computed(
   () => quote.value?.payable_amount || product.value?.price || 0
 );
 const discountAmount = computed(() => quote.value?.discount_amount || 0);
+const hasEnabledChannels = computed(() =>
+  ["wechat_native", "alipay_precreate"].some(item =>
+    isChannelEnabled(item as PaymentChannel)
+  )
+);
+const buyButtonText = computed(() => {
+  if (soldOut.value) return "已售罄";
+  if (buying.value) {
+    return selectedChannel.value === "wechat_native"
+      ? "正在生成微信支付"
+      : "正在调起支付宝";
+  }
+  return "立即购买";
+});
+
+function normalizedQueryChannel(): PaymentChannel | "" {
+  const raw = String(
+    route.query.channel || route.query.pay_channel || route.query.pay || ""
+  )
+    .trim()
+    .toLowerCase();
+  if (raw.includes("ali")) return "alipay_precreate";
+  if (raw.includes("wechat") || raw.includes("wx")) return "wechat_native";
+  return "";
+}
+
+function isChannelEnabled(name: PaymentChannel) {
+  const hasChannelMap = Object.keys(paymentChannels.value).length > 0;
+  if (!hasChannelMap) return true;
+  const state = paymentChannels.value[name];
+  return state?.enabled === true;
+}
+
+function chooseDefaultChannel(channels = paymentChannels.value) {
+  const preferred = normalizedQueryChannel();
+  if (preferred && isChannelEnabled(preferred)) {
+    selectedChannel.value = preferred;
+    return;
+  }
+  if (!Object.keys(channels).length || channels.wechat_native?.enabled === true) {
+    selectedChannel.value = "wechat_native";
+    return;
+  }
+  if (channels.alipay_precreate?.enabled === true) {
+    selectedChannel.value = "alipay_precreate";
+  }
+}
+
+function applyPaymentChannels(channels?: Record<string, { enabled: boolean }>) {
+  paymentChannels.value = channels || {};
+  if (!isChannelEnabled(selectedChannel.value)) chooseDefaultChannel();
+}
 
 async function loadProduct() {
   loading.value = true;
@@ -46,6 +101,7 @@ async function loadProduct() {
     const data = await shopApi.product(productKey.value);
     store.value = data.store;
     product.value = data.product;
+    applyPaymentChannels(data.payment_channels);
     couponCode.value = String(
       route.query.coupon || route.query.coupon_code || ""
     );
@@ -108,11 +164,25 @@ async function createDraft() {
         ? "invite_code"
         : "admin_public_h5"
     });
+    applyPaymentChannels(data.payment_channels);
     createdDraftId = data.order_draft.id;
     window.sessionStorage?.setItem(
       `shop_contact_${data.order_draft.id}`,
       contact
     );
+    if (!hasEnabledChannels.value) {
+      await router.push({
+        path: `/shop/checkout/${encodeURIComponent(data.order_draft.id)}`
+      });
+      return;
+    }
+    if (selectedChannel.value === "wechat_native") {
+      await router.push({
+        path: `/shop/checkout/${encodeURIComponent(data.order_draft.id)}`,
+        query: { autopay: "1", channel: "wechat" }
+      });
+      return;
+    }
     const orderData = await shopApi.createOrderFromDraft(data.order_draft.id);
     window.sessionStorage?.setItem(
       `shop_order_contact_${orderData.order.id}`,
@@ -139,7 +209,11 @@ async function createDraft() {
     if (createdDraftId) {
       await router.push({
         path: `/shop/checkout/${encodeURIComponent(createdDraftId)}`,
-        query: { autopay: "1", channel: "alipay" }
+        query: {
+          autopay: "1",
+          channel:
+            selectedChannel.value === "wechat_native" ? "wechat" : "alipay"
+        }
       });
       return;
     }
@@ -259,6 +333,36 @@ onMounted(loadProduct);
           >
           <strong>应付 {{ yuan(payableAmount) }}</strong>
         </div>
+        <div class="payment-methods">
+          <span class="payment-title">支付方式</span>
+          <div class="channel-tabs">
+            <button
+              :class="{ active: selectedChannel === 'wechat_native' }"
+              :disabled="!isChannelEnabled('wechat_native') || buying"
+              type="button"
+              @click="selectedChannel = 'wechat_native'"
+            >
+              微信扫码
+            </button>
+            <button
+              :class="{ active: selectedChannel === 'alipay_precreate' }"
+              :disabled="!isChannelEnabled('alipay_precreate') || buying"
+              type="button"
+              @click="selectedChannel = 'alipay_precreate'"
+            >
+              支付宝
+            </button>
+          </div>
+          <p class="muted">
+            {{
+              hasEnabledChannels
+                ? selectedChannel === "wechat_native"
+                  ? "将进入确认页并自动生成微信支付二维码。"
+                  : "将直接打开支付宝收银台扫码付款。"
+                : "当前暂无可用支付渠道，请联系商家。"
+            }}
+          </p>
+        </div>
         <p v-if="error" class="inline-error">{{ error }}</p>
       </section>
 
@@ -277,10 +381,12 @@ onMounted(loadProduct);
           <strong>{{ yuan(payableAmount) }}</strong>
         </div>
         <button
-          :disabled="soldOut || buying || !contactValidation.ok"
+          :disabled="
+            soldOut || buying || !contactValidation.ok || !hasEnabledChannels
+          "
           @click="createDraft"
         >
-          {{ soldOut ? "已售罄" : buying ? "正在调起支付宝" : "立即购买" }}
+          {{ buyButtonText }}
         </button>
       </div>
     </template>
@@ -465,6 +571,44 @@ h1 {
 
 .quote-box strong {
   color: #b64826;
+}
+
+.payment-methods {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.payment-title {
+  font-weight: 800;
+}
+
+.channel-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.channel-tabs button {
+  height: 38px;
+  padding: 0 16px;
+  font-weight: 800;
+  color: #2e5148;
+  background: #eef6f2;
+  border: 1px solid #d7e8e1;
+  border-radius: 6px;
+}
+
+.channel-tabs button.active {
+  color: #fff;
+  background: #1f7a64;
+  border-color: #1f7a64;
+}
+
+.channel-tabs button:disabled {
+  color: #88958f;
+  background: #f1f4f2;
+  border-color: #e0e7e3;
 }
 
 .inline-error,

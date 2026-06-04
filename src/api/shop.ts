@@ -61,6 +61,7 @@ export type ShopStorePayload = {
 export type ShopProductPayload = {
   store: PublicStore;
   product: PublicProduct;
+  payment_channels?: Record<string, { enabled: boolean }>;
 };
 
 export type OrderDraft = {

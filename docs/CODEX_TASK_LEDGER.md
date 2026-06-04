@@ -886,3 +886,25 @@
   - Dou-Server 支付与租户路由 `node --check` 通过。
 - 下一步：服务器拉取双仓并重启后，确认 `SHOP_H5_BASE_URL` 或 `PUBLIC_ADMIN_BASE_URL` 可生成支付宝回跳地址，用真实小额支付宝订单回归收银台扫码、异步通知/查单、订单交付和经营总览聚合。
 - 风险与回滚：若收银台直达异常，可回退到确认页站内二维码模式或设置 `ALIPAY_PAY_ENABLED=false` 暂停支付宝；经营总览新增数据为只读聚合，异常时可隐藏新增面板，保留旧工作台指标。
+
+### H5 支付渠道选择恢复
+
+- 时间：2026-06-04 (Asia/Shanghai)
+- 任务目标：恢复 H5 商品详情页微信扫码和支付宝支付渠道选择，避免购买入口只剩支付宝；记录支付宝 `not-online-app` 为应用未上线状态。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `src/api/shop.ts`
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `src/routes/shop/index.js` 在公开商品详情和订单草稿创建响应中返回 `payment_channels`。
+- 已完成前端能力：商品详情页展示“微信扫码 / 支付宝”两种方式；微信路径进入确认页并 `autopay=1&channel=wechat` 自动生成微信二维码；支付宝路径保持直达收银台；确认页按后端渠道表禁用不可用通道。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - Dou-Admin `git diff --check` 和 UTF-8 扫描通过。
+  - 构建产物与源码均确认包含 `支付方式`、`微信扫码`、`支付宝` 文案；因本机 bundled Playwright 缺 `playwright-core`，未完成截图级浏览器验证。
+  - Dou-Server `node --check src/routes/shop/index.js` 和 `git diff --check` 已通过。
+- 下一步：提交推送后服务器拉取重启；支付宝应用上线前优先回归微信 Native，支付宝上线后再回归 0.01 元收银台真实支付。
+- 风险与回滚：本轮只改 H5 公开支付入口和只读渠道字段；如前端异常，可回滚商品页渠道选择改动，确认页原扫码支付链路仍可保留。

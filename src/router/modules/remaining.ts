@@ -35,7 +35,7 @@ export default [
     name: "PublicShopCheckout",
     component: () => import("@/views/shop/checkout.vue"),
     meta: {
-      title: "确认订单",
+      title: "支付订单",
       showLink: false,
       public: true
     }

@@ -372,3 +372,14 @@
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 已通过；构建仅有 Browserslist/baseline 数据陈旧提示；双仓 UTF-8 扫描无 U+FFFD，`git diff --check` 仅有 CRLF 转换提示。
 - 下一步计划：部署后用当前超级管理员绑定 Dou 用户并重新登录，回归 `圈主后台 / 资源卡管理` 的发布、编辑、删除、分类、卡密库存和多圈切换；同时确认 `平台治理 / 资源卡治理` 只做审核、下架、禁用和 H5 验收。
 - 风险与回滚：本轮不新增迁移；如入口异常，可回滚本次 Admin 改动，已有圈主范围账号仍可按旧路径进入租户资源卡管理。
+
+## 2026-06-05 H5 商品页直付与支付宝权限错误收口
+
+- 当前目标：按线上反馈恢复“商品页选好支付方式后点击立即购买即发起支付”的体验，避免跳入确认页后首屏白屏；微信直接生成支付意图后进入支付页展示二维码，支付宝直接打开官方 `alipay.trade.page.pay` 收银台。
+- 已改文件：`src/views/shop/product.vue`、`src/views/shop/checkout.vue`、`src/router/modules/remaining.ts`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/lib/commercePayments.js`。
+- 已完成前端能力：商品页创建订单草稿后立即固化订单；选择微信时先创建 `wechat_native` 支付意图，再带 `intent_id` 进入 `/shop/checkout/:draftId` 展示已生成二维码和轮询状态；选择支付宝时以 `mode=cashier` 创建 `alipay_precreate` 支付意图并直接跳转 `cashier_url`，不再默认进入订单确认页。
+- 兼容处理：旧的 `/shop/checkout/:draftId?autopay=1&channel=alipay` 链接会请求支付宝官方收银台模式；支付页标题改为“支付订单”，保留微信二维码、刷新状态、关闭支付单和失败重试入口。
+- 支付宝结论：生产日志里的 `ACQ.ACCESS_FORBIDDEN` / `ACCESS_FORBIDDEN` 是支付宝网关业务拒绝，说明当前 AppID/商户没有被允许调用对应支付能力，优先检查支付宝开放平台应用是否上线、电脑网站支付/当面付是否签约开通、商户与应用是否匹配；不是前端白屏或签名串导致的错误。
+- 验证结果：`corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；本地 in-app Browser 冒烟打开商品页和支付页假 ID，Vue 应用正常挂载并显示接口兜底错误，无前端 console error；Dou-Server `node --check src/lib/commercePayments.js` 和支付路由语法检查通过；双仓 `git diff --check` 仅有 CRLF 转换提示。
+- 下一步计划：服务器拉取双仓并重启后，用真实 0.01 元商品回归微信“立即购买 -> 支付页二维码 -> 扫码付款 -> 订单交付”；支付宝需先确认开放平台应用上线和支付产品签约，之后回归“立即购买 -> 官方收银台 -> 异步通知/查单 -> 订单交付”。
+- 风险与回滚：支付宝仍返回 `ACCESS_FORBIDDEN` 时先关闭 `ALIPAY_PAY_ENABLED=false`，保留微信通道交易；如微信 Native 配置异常，可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 隐藏微信通道；前端可回退到站内二维码模式，但不能解决支付宝官方权限拒绝。

@@ -983,3 +983,27 @@
   - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示；UTF-8 扫描无 U+FFFD。
 - 下一步：部署后编辑当前超级管理员后台账号，绑定自己的 Dou 用户并重新登录；回归 `圈主后台 / 资源卡管理` 的发布、编辑、删除、分类、卡密库存和多圈切换。
 - 风险与回滚：无迁移；如双身份入口异常，可回滚本次前端入口和后端租户上下文改动，旧圈主范围账号仍可按原路径使用。
+
+### H5 商品页直付与支付宝权限错误收口
+
+- 时间：2026-06-05 (Asia/Shanghai)
+- 任务目标：修复线上 H5 商品页点击“立即购买”后进入 `/shop/checkout/:draftId?autopay=1&channel=...` 首屏白屏的问题，并按最新产品口径让支付宝直接打开官方支付页，微信直接生成二维码。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `src/router/modules/remaining.ts`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `src/lib/commercePayments.js`。
+- 已完成前端能力：商品页提交联系方式后直接创建草稿、固化订单和支付意图；微信通道把已生成的 `intent_id` 带入支付页，首屏直接渲染二维码；支付宝通道创建 `mode=cashier` 支付意图后直接跳转 `cashier_url`，不再默认进入确认页。
+- 兼容能力：旧 `autopay=1&channel=alipay` 支付页链接会转向官方收银台模式；支付页路由标题与页面标题改为“支付订单”，保留微信二维码页的状态刷新、取消支付和失败重试。
+- 支付宝结论：线上 `ACQ.ACCESS_FORBIDDEN` / `ACCESS_FORBIDDEN` 是支付宝官方业务拒绝，优先检查开放平台应用上线状态、电脑网站支付/当面付签约开通状态、AppID 与商户绑定关系；代码侧只能把错误明确展示和记录，不能绕过支付宝产品权限。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - 本地 in-app Browser 冒烟打开商品页和支付页假 ID，Vue 应用正常挂载并显示接口兜底错误，无前端 console error。
+  - Dou-Server `node --check src/lib/commercePayments.js` 和 `node --check src/routes/shop/payments.routes.js` 通过。
+  - 双仓 `git diff --check` 仅有 CRLF 转换提示。
+- 下一步：服务器拉取双仓并重启后，先用微信 Native 回归真实 0.01 元支付闭环；支付宝需先处理开放平台权限，再回归官方收银台、通知/查单和订单交付。
+- 风险与回滚：如支付宝仍拒绝，设置 `ALIPAY_PAY_ENABLED=false` 暂停支付宝；微信异常时设置 `WECHAT_NATIVE_PAY_ENABLED=false`；前端可回退站内二维码承接页，但支付宝权限拒绝仍需在开放平台处理。

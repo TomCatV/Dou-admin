@@ -51,9 +51,15 @@ const channelLabel = computed(() =>
   channel.value === "wechat_native" ? "微信" : "支付宝"
 );
 const payStartButtonText = computed(() => {
-  if (!creating.value) return "生成支付二维码";
+  if (!creating.value) {
+    return channel.value === "alipay_precreate"
+      ? "打开支付宝官方支付页"
+      : "生成微信支付二维码";
+  }
   if (!order.value) return "正在创建订单";
-  return `正在生成${channelLabel.value}二维码`;
+  return channel.value === "alipay_precreate"
+    ? "正在打开支付宝"
+    : `正在生成${channelLabel.value}二维码`;
 });
 
 function draftId() {
@@ -102,7 +108,10 @@ function chooseDefaultChannel(channels = paymentChannels.value) {
     channel.value = preferred;
     return;
   }
-  if (!Object.keys(channels).length || channels.alipay_precreate?.enabled === true) {
+  if (
+    !Object.keys(channels).length ||
+    channels.alipay_precreate?.enabled === true
+  ) {
     channel.value = "alipay_precreate";
     return;
   }
@@ -147,6 +156,13 @@ function startPolling() {
   pollTimer = window.setInterval(syncPaymentStatus, 4000);
 }
 
+function openCashierIfNeeded(intent: PaymentIntent | null | undefined) {
+  if (channel.value !== "alipay_precreate") return false;
+  if (!intent?.cashier_url) return false;
+  window.location.assign(intent.cashier_url);
+  return true;
+}
+
 async function renderQr() {
   qrDataUrl.value = "";
   const qr = paymentIntent.value?.qr_code_url || "";
@@ -188,6 +204,7 @@ async function loadPaymentIntentFromQuery() {
     } else if (data.payment_intent.channel === "alipay_precreate") {
       channel.value = "alipay_precreate";
     }
+    if (openCashierIfNeeded(data.payment_intent)) return true;
     await renderQr();
     startPolling();
     await syncPaymentStatus();
@@ -256,14 +273,18 @@ async function createPaymentIntent(options: { nested?: boolean } = {}) {
   resetPaymentView();
   try {
     const data = await shopApi.createPaymentIntent(order.value.id, {
-      channel: channel.value
+      channel: channel.value,
+      ...(channel.value === "alipay_precreate" ? { mode: "cashier" } : {})
     });
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
+    if (openCashierIfNeeded(data.payment_intent)) return;
     if (!data.payment_intent?.qr_code_url) {
       throw new Error(
         data.payment_intent?.last_error_message ||
-          "支付二维码创建失败，请检查支付配置"
+          (channel.value === "alipay_precreate"
+            ? "支付宝官方支付页创建失败，请检查支付配置"
+            : "支付二维码创建失败，请检查支付配置")
       );
     }
     await renderQr();
@@ -287,10 +308,7 @@ async function syncPaymentStatus() {
     );
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
-    if (
-      data.order.status === "paid" ||
-      data.payment_intent.status === "paid"
-    ) {
+    if (data.order.status === "paid" || data.payment_intent.status === "paid") {
       stopTimers();
       router.push({
         path: `/shop/order/${encodeURIComponent(data.order.id)}`,
@@ -340,7 +358,7 @@ onMounted(async () => {
     }
   } catch (err) {
     error.value =
-      err instanceof Error ? err.message : "订单确认失败，请刷新后重试";
+      err instanceof Error ? err.message : "支付页打开失败，请刷新后重试";
   } finally {
     loading.value = false;
   }
@@ -351,13 +369,13 @@ onBeforeUnmount(stopTimers);
 
 <template>
   <main class="checkout-page">
-    <section v-if="loading" class="state-panel">正在确认订单...</section>
+    <section v-if="loading" class="state-panel">正在打开支付页...</section>
     <section v-else-if="error && !draft" class="state-panel error">
       {{ error }}
     </section>
     <template v-else-if="draft && snapshot">
       <section class="checkout-card">
-        <h1>确认订单</h1>
+        <h1>支付订单</h1>
         <div class="product-row">
           <img
             v-if="shopImage(snapshot.cover_url)"
@@ -436,7 +454,9 @@ onBeforeUnmount(stopTimers);
           <p class="notice">
             {{
               hasEnabledChannels
-                ? "点击生成二维码后，请用对应 App 扫码付款。"
+                ? channel === "alipay_precreate"
+                  ? "点击后将打开支付宝官方支付页。"
+                  : "点击生成二维码后，请用微信扫码付款。"
                 : "当前暂无可用支付渠道，请联系商家。"
             }}
           </p>

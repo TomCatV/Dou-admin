@@ -49,8 +49,8 @@ const buyButtonText = computed(() => {
   if (soldOut.value) return "已售罄";
   if (buying.value) {
     return selectedChannel.value === "wechat_native"
-      ? "正在生成微信支付"
-      : "正在生成支付宝";
+      ? "正在生成微信二维码"
+      : "正在打开支付宝";
   }
   return "立即购买";
 });
@@ -79,7 +79,10 @@ function chooseDefaultChannel(channels = paymentChannels.value) {
     selectedChannel.value = preferred;
     return;
   }
-  if (!Object.keys(channels).length || channels.wechat_native?.enabled === true) {
+  if (
+    !Object.keys(channels).length ||
+    channels.wechat_native?.enabled === true
+  ) {
     selectedChannel.value = "wechat_native";
     return;
   }
@@ -91,6 +94,26 @@ function chooseDefaultChannel(channels = paymentChannels.value) {
 function applyPaymentChannels(channels?: Record<string, { enabled: boolean }>) {
   paymentChannels.value = channels || {};
   if (!isChannelEnabled(selectedChannel.value)) chooseDefaultChannel();
+}
+
+function channelQueryValue(name: PaymentChannel) {
+  return name === "wechat_native" ? "wechat" : "alipay";
+}
+
+async function openCheckoutPayment(
+  draftId: string,
+  contact: string,
+  intentId = ""
+) {
+  const query: Record<string, string> = {
+    channel: channelQueryValue(selectedChannel.value)
+  };
+  if (intentId) query.intent_id = intentId;
+  window.sessionStorage?.setItem(`shop_contact_${draftId}`, contact);
+  await router.push({
+    path: `/shop/checkout/${encodeURIComponent(draftId)}`,
+    query
+  });
 }
 
 async function loadProduct() {
@@ -155,48 +178,62 @@ async function createDraft() {
   buyerContact.value = contact;
   buying.value = true;
   error.value = "";
-  let createdDraftId = "";
   try {
-    const data = await shopApi.createOrderDraft(product.value.product_key, {
-      buyer_contact: contact,
-      coupon_code: couponCode.value.trim(),
-      invite_code: inviteCode.value.trim(),
-      source_channel: inviteCode.value.trim()
-        ? "invite_code"
-        : "admin_public_h5"
-    });
-    applyPaymentChannels(data.payment_channels);
-    createdDraftId = data.order_draft.id;
-    window.sessionStorage?.setItem(
-      `shop_contact_${data.order_draft.id}`,
-      contact
-    );
-    if (!hasEnabledChannels.value) {
-      await router.push({
-        path: `/shop/checkout/${encodeURIComponent(data.order_draft.id)}`
-      });
-      return;
-    }
-    await router.push({
-      path: `/shop/checkout/${encodeURIComponent(data.order_draft.id)}`,
-      query: {
-        autopay: "1",
-        channel:
-          selectedChannel.value === "wechat_native" ? "wechat" : "alipay"
+    const draftData = await shopApi.createOrderDraft(
+      product.value.product_key,
+      {
+        buyer_contact: contact,
+        coupon_code: couponCode.value.trim(),
+        invite_code: inviteCode.value.trim(),
+        source_channel: inviteCode.value.trim()
+          ? "invite_code"
+          : "admin_public_h5"
       }
+    );
+    applyPaymentChannels(draftData.payment_channels);
+    const createdDraftId = draftData.order_draft.id;
+    window.sessionStorage?.setItem(`shop_contact_${createdDraftId}`, contact);
+    if (!hasEnabledChannels.value) {
+      await openCheckoutPayment(createdDraftId, contact);
+      return;
+    }
+    if (!isChannelEnabled(selectedChannel.value)) chooseDefaultChannel();
+    if (!isChannelEnabled(selectedChannel.value)) {
+      throw new Error("当前暂无可用支付渠道，请联系商家。");
+    }
+    const orderData = await shopApi.createOrderFromDraft(createdDraftId);
+    const order = orderData.order;
+    window.sessionStorage?.setItem(`shop_order_contact_${order.id}`, contact);
+    const paymentData = await shopApi.createPaymentIntent(order.id, {
+      channel: selectedChannel.value,
+      ...(selectedChannel.value === "alipay_precreate"
+        ? { mode: "cashier" }
+        : {})
     });
-  } catch (err) {
-    if (createdDraftId) {
+    const intent = paymentData.payment_intent;
+    if (paymentData.already_paid || paymentData.order.status === "paid") {
       await router.push({
-        path: `/shop/checkout/${encodeURIComponent(createdDraftId)}`,
-        query: {
-          autopay: "1",
-          channel:
-            selectedChannel.value === "wechat_native" ? "wechat" : "alipay"
-        }
+        path: `/shop/order/${encodeURIComponent(paymentData.order.id)}`,
+        query: { contact }
       });
       return;
     }
+    if (selectedChannel.value === "alipay_precreate") {
+      if (intent.cashier_url) {
+        window.location.assign(intent.cashier_url);
+        return;
+      }
+      throw new Error(
+        intent.last_error_message || "支付宝官方支付页创建失败，请稍后重试"
+      );
+    }
+    if (!intent.qr_code_url) {
+      throw new Error(
+        intent.last_error_message || "微信支付二维码创建失败，请稍后重试"
+      );
+    }
+    await openCheckoutPayment(createdDraftId, contact, intent.id);
+  } catch (err) {
     error.value = err instanceof Error ? err.message : "下单失败，请稍后再试";
   } finally {
     buying.value = false;
@@ -337,8 +374,8 @@ onMounted(loadProduct);
             {{
               hasEnabledChannels
                 ? selectedChannel === "wechat_native"
-                  ? "将进入确认页并自动生成微信支付二维码。"
-                  : "将进入确认页并自动生成支付宝扫码二维码。"
+                  ? "点击立即购买后直接生成微信支付二维码。"
+                  : "点击立即购买后直接打开支付宝官方支付页。"
                 : "当前暂无可用支付渠道，请联系商家。"
             }}
           </p>

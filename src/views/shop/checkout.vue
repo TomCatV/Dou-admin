@@ -51,6 +51,19 @@ function draftId() {
   return String(route.params.draftId || "").trim();
 }
 
+function queryText(name: string) {
+  const value = route.query[name];
+  return String(Array.isArray(value) ? value[0] || "" : value || "").trim();
+}
+
+function shouldAutoPay() {
+  return ["1", "true", "yes"].includes(queryText("autopay").toLowerCase());
+}
+
+function queryIntentId() {
+  return queryText("intent_id") || queryText("intentId");
+}
+
 function rememberContact(orderId: string, contact = "") {
   if (!contact) return;
   window.sessionStorage?.setItem(`shop_order_contact_${orderId}`, contact);
@@ -134,6 +147,42 @@ async function renderQr() {
   });
 }
 
+function applyDraftOrder() {
+  if (!draft.value?.order_id) return;
+  order.value = {
+    id: draft.value.order_id,
+    circle_id: draft.value.circle_id,
+    resource_card_id: draft.value.resource_card_id,
+    amount: draft.value.amount,
+    currency: "CNY",
+    status: "created",
+    created_at: draft.value.created_at,
+    updated_at: draft.value.updated_at
+  };
+}
+
+async function loadPaymentIntentFromQuery() {
+  const intentId = queryIntentId();
+  if (!intentId) return false;
+  try {
+    const data = await shopApi.paymentIntent(intentId);
+    paymentIntent.value = data.payment_intent;
+    if (data.payment_intent.channel === "wechat_native") {
+      channel.value = "wechat_native";
+    } else if (data.payment_intent.channel === "alipay_precreate") {
+      channel.value = "alipay_precreate";
+    }
+    await renderQr();
+    startPolling();
+    await syncPaymentStatus();
+    return true;
+  } catch (err) {
+    error.value =
+      err instanceof Error ? err.message : "支付单读取失败，请重新生成二维码";
+    return false;
+  }
+}
+
 async function loadDraft() {
   loading.value = true;
   error.value = "";
@@ -194,6 +243,10 @@ async function createPaymentIntent() {
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
     if (!data.payment_intent?.qr_code_url) {
+      if (data.payment_intent?.cashier_url) {
+        window.location.assign(data.payment_intent.cashier_url);
+        return;
+      }
       throw new Error(
         data.payment_intent?.last_error_message ||
           "支付二维码创建失败，请检查支付配置"
@@ -220,7 +273,10 @@ async function syncPaymentStatus() {
     );
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
-    if (data.order.status === "paid" || data.payment_intent.status === "paid") {
+    if (
+      data.order.status === "paid" ||
+      data.payment_intent.status === "paid"
+    ) {
       stopTimers();
       router.push({
         path: `/shop/order/${encodeURIComponent(data.order.id)}`,
@@ -258,17 +314,13 @@ function backToProduct() {
 
 onMounted(async () => {
   await loadDraft();
-  if (draft.value?.order_id) {
-    order.value = {
-      id: draft.value.order_id,
-      circle_id: draft.value.circle_id,
-      resource_card_id: draft.value.resource_card_id,
-      amount: draft.value.amount,
-      currency: "CNY",
-      status: "created",
-      created_at: draft.value.created_at,
-      updated_at: draft.value.updated_at
-    };
+  if (!draft.value) return;
+  applyDraftOrder();
+  const loadedIntent = await loadPaymentIntentFromQuery();
+  if (loadedIntent) return;
+  if (shouldAutoPay()) {
+    if (order.value) await createPaymentIntent();
+    else await createOrder();
   }
 });
 

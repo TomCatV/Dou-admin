@@ -320,3 +320,13 @@
 - 协同后端能力：Dou-Server 已把支付宝私钥/公钥解析改为更稳的 PEM 规范化和 `createPrivateKey/createPublicKey` 校验，`DECODER routines::unsupported` 这类 OpenSSL 原始报错会收敛成可读中文提示。
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；本轮构建产物已包含新的 `report` 独立页面与更新后的 `checkout`/`order` chunk。
 - 下一步计划：服务器更新双仓后，用真实支付宝小额商品重点回归“生成二维码失败提示、修正私钥后重新生成、支付成功跳订单页、投诉按钮跳转投诉页并提交售后”四步。
+
+## 2026-06-04 支付宝收银台直达与经营总览增强
+
+- 当前目标：继续排查支付宝支付失败，服务端补充 `[alipay-pay]` 脱敏日志；H5 商品页点击购买后直接调起支付宝收银台扫码页；圈主工作台升级为经营总览，覆盖圈主名下全部圈子的资源分类、付费用户排行、收益类型、趋势图、搜索、AI 分析入口和经营工具入口。
+- 已改文件：`src/api/admin.ts`、`src/api/shop.ts`、`src/views/shop/product.vue`、`src/views/shop/checkout.vue`、`src/views/tenant/dashboard.vue`、`docs/CREATOR_COMMERCE_P2_P5_PAYMENT_OVERVIEW_FIX_DESIGN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/lib/alipayFacePay.js`、`src/lib/commercePayments.js`、`src/routes/shop/payments.routes.js`、`src/routes/admin/tenant.routes.js`。
+- 已完成前端能力：商品页下单后直接创建草稿、固化订单并请求 `alipay_precreate + mode=cashier`，优先跳转支付宝收银台；失败时进入确认页 `autopay=1` 生成站内二维码兜底；确认页支持 `intent_id` 回跳加载和自动轮询。圈主经营总览新增全圈指标、7 日成交趋势、全圈搜索、全部圈子列表、资源卡按类别、付费用户排行榜、收益类型面板、经营建议、AI 分析和经营工具入口。
+- 协同后端能力：支付宝请求开始、HTTP 失败、业务失败、成功、页面支付 URL 签发、支付意图创建失败均输出 `[alipay-pay]` 日志；支付意图接口支持 `mode=cashier` 返回实时签名 `cashier_url`；租户工作台返回 `owner_overview`，只聚合当前圈主 owner 名下活跃且审核通过的圈子数据。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；Dou-Server `node --check` 覆盖支付宝封装、支付服务、支付路由和租户路由通过。后端动态导入命令在本机被外层命令转义截断，本轮未把该项作为通过结果记录。
+- 下一步计划：提交推送后服务器拉取并重启；确认 `SHOP_H5_BASE_URL` 或 `PUBLIC_ADMIN_BASE_URL` 可生成支付宝 return_url；用真实支付宝小额商品回归“立即购买 -> 支付宝收银台扫码 -> 异步通知/查单 -> 订单交付”，并从宝塔日志检索 `[alipay-pay]` 定位失败原因。
+- 风险与回滚：若支付宝收银台异常，可设置 `ALIPAY_PAY_ENABLED=false` 暂停支付宝；前端可临时恢复跳转确认页二维码模式；经营总览新增 `owner_overview` 为只读聚合字段，不改变订单、结算、售后、钱包或 AI 写入主链路。

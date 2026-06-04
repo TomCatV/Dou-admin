@@ -72,6 +72,79 @@ export type DashboardSummary = {
   };
 };
 
+export type TenantOwnerCircle = {
+  id: string;
+  name: string;
+  circle_code: string;
+  member_count: number;
+  resource_count: number;
+  status: string;
+  audit_status: string;
+};
+
+export type TenantOwnerResourceCategory = {
+  category_id: string;
+  category_name: string;
+  delivery_type: string;
+  delivery_label: string;
+  status: string;
+  resource_count: number;
+  published_count: number;
+  paid_orders: number;
+  revenue_amount: number;
+};
+
+export type TenantOwnerPaidUser = {
+  user_id: string;
+  nickname: string;
+  dxq_id: string;
+  paid_orders: number;
+  paid_amount: number;
+  last_paid_at: string;
+};
+
+export type TenantOwnerIncomeType = {
+  key: string;
+  label: string;
+  pay_channel: string;
+  pay_channel_label: string;
+  settlement_status: string;
+  settlement_label: string;
+  delivery_type: string;
+  delivery_label: string;
+  order_count: number;
+  gross_amount: number;
+  creator_amount: number;
+  platform_fee_amount: number;
+  channel_cost_amount: number;
+};
+
+export type TenantOwnerRevenueTrend = {
+  date: string;
+  paid_orders: number;
+  revenue_amount: number;
+};
+
+export type TenantOwnerSuggestion = {
+  key: string;
+  title: string;
+  description: string;
+  action_label: string;
+  route_path: string;
+  priority: "high" | "medium" | "low" | string;
+};
+
+export type TenantOwnerOverview = {
+  owner_user_id: string;
+  circles: TenantOwnerCircle[];
+  metrics: Record<string, number>;
+  resource_categories: TenantOwnerResourceCategory[];
+  paid_user_leaderboard: TenantOwnerPaidUser[];
+  income_types: TenantOwnerIncomeType[];
+  revenue_trend: TenantOwnerRevenueTrend[];
+  suggestions: TenantOwnerSuggestion[];
+};
+
 export type TenantDashboard = {
   circle: ManagedCircle;
   main_room: { id: string; name: string } | null;
@@ -87,6 +160,7 @@ export type TenantDashboard = {
   fee_policy?: TenantFeePolicy | null;
   fee_policy_upgrade?: TenantFeeUpgradeOption | null;
   fee_policy_options?: TenantFeeUpgradeOption[];
+  owner_overview?: TenantOwnerOverview | null;
 };
 
 export type TenantFeePolicy = {

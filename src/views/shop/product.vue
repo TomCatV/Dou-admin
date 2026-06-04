@@ -98,6 +98,7 @@ async function createDraft() {
   buyerContact.value = contact;
   buying.value = true;
   error.value = "";
+  let createdDraftId = "";
   try {
     const data = await shopApi.createOrderDraft(product.value.product_key, {
       buyer_contact: contact,
@@ -107,12 +108,41 @@ async function createDraft() {
         ? "invite_code"
         : "admin_public_h5"
     });
+    createdDraftId = data.order_draft.id;
     window.sessionStorage?.setItem(
       `shop_contact_${data.order_draft.id}`,
       contact
     );
-    router.push(`/shop/checkout/${encodeURIComponent(data.order_draft.id)}`);
+    const orderData = await shopApi.createOrderFromDraft(data.order_draft.id);
+    window.sessionStorage?.setItem(
+      `shop_order_contact_${orderData.order.id}`,
+      contact
+    );
+    const payData = await shopApi.createPaymentIntent(orderData.order.id, {
+      channel: "alipay_precreate",
+      mode: "cashier"
+    });
+    const cashierUrl = payData.payment_intent?.cashier_url;
+    if (cashierUrl) {
+      window.location.assign(cashierUrl);
+      return;
+    }
+    await router.push({
+      path: `/shop/checkout/${encodeURIComponent(data.order_draft.id)}`,
+      query: {
+        autopay: "1",
+        channel: "alipay",
+        intent_id: payData.payment_intent?.id || undefined
+      }
+    });
   } catch (err) {
+    if (createdDraftId) {
+      await router.push({
+        path: `/shop/checkout/${encodeURIComponent(createdDraftId)}`,
+        query: { autopay: "1", channel: "alipay" }
+      });
+      return;
+    }
     error.value = err instanceof Error ? err.message : "下单失败，请稍后再试";
   } finally {
     buying.value = false;
@@ -250,7 +280,7 @@ onMounted(loadProduct);
           :disabled="soldOut || buying || !contactValidation.ok"
           @click="createDraft"
         >
-          {{ soldOut ? "已售罄" : buying ? "正在锁单" : "立即购买" }}
+          {{ soldOut ? "已售罄" : buying ? "正在调起支付宝" : "立即购买" }}
         </button>
       </div>
     </template>

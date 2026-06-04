@@ -125,6 +125,7 @@ export type PaymentIntent = {
     | "unknown"
     | string;
   qr_code_url: string;
+  cashier_url: string;
   expires_at: string;
   paid_at?: string | null;
   closed_at?: string | null;
@@ -269,7 +270,7 @@ export const shopApi = {
     ),
   createPaymentIntent: (
     orderId: string,
-    data: { channel: PaymentChannel | string }
+    data: { channel: PaymentChannel | string; mode?: "cashier" | string }
   ) =>
     unwrap<{
       order: PublicOrder;

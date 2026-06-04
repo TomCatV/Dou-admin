@@ -859,3 +859,30 @@
   - `corepack pnpm typecheck` 通过。
   - `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
   - `git diff --check` 与 UTF-8 扫描通过。
+
+### 支付宝收银台直达与经营总览增强
+
+- 时间：2026-06-04 (Asia/Shanghai)
+- 任务目标：继续排查支付宝支付失败，补服务端定位日志；H5 点击购买直达支付宝扫码收银台；圈主经营总览补全全部圈子、资源分类、付费用户排行、收益类型、搜索、趋势图、建议、AI 分析和经营工具入口。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/api/shop.ts`
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `src/views/tenant/dashboard.vue`
+  - `docs/CREATOR_COMMERCE_P2_P5_PAYMENT_OVERVIEW_FIX_DESIGN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `src/lib/alipayFacePay.js`
+  - Dou-Server `src/lib/commercePayments.js`
+  - Dou-Server `src/routes/shop/payments.routes.js`
+  - Dou-Server `src/routes/admin/tenant.routes.js`
+- 已完成前端能力：商品页购买主路径直接创建草稿、固化订单、创建支付宝收银台支付意图并跳转；确认页支持 `autopay=1` 自动站内二维码兜底和 `intent_id` 回跳查单；圈主工作台升级为带全圈指标、趋势图、搜索过滤、资源分类、付费用户排行、收益类型、经营建议和入口按钮的经营总览。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - Dou-Server 支付与租户路由 `node --check` 通过。
+- 下一步：服务器拉取双仓并重启后，确认 `SHOP_H5_BASE_URL` 或 `PUBLIC_ADMIN_BASE_URL` 可生成支付宝回跳地址，用真实小额支付宝订单回归收银台扫码、异步通知/查单、订单交付和经营总览聚合。
+- 风险与回滚：若收银台直达异常，可回退到确认页站内二维码模式或设置 `ALIPAY_PAY_ENABLED=false` 暂停支付宝；经营总览新增数据为只读聚合，异常时可隐藏新增面板，保留旧工作台指标。

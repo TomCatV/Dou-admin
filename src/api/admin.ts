@@ -145,6 +145,14 @@ export type TenantOwnerOverview = {
   suggestions: TenantOwnerSuggestion[];
 };
 
+export type TenantContext = {
+  can_enter: boolean;
+  message: string;
+  selected_circle_id: string;
+  current_circle: TenantOwnerCircle | null;
+  circles: TenantOwnerCircle[];
+};
+
 export type TenantDashboard = {
   circle: ManagedCircle;
   main_room: { id: string; name: string } | null;
@@ -409,6 +417,8 @@ export const notificationsApi = {
 };
 
 export const tenantApi = {
+  context: () =>
+    unwrap(http.request<ApiResult<TenantContext>>("get", "/tenant/context")),
   dashboard: () =>
     unwrap(
       http.request<ApiResult<TenantDashboard>>("get", "/tenant/dashboard")

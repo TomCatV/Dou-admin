@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { CopyDocument, Link, View } from "@element-plus/icons-vue";
-import { managedResourceCardsApi, type ManagedResourceCard } from "@/api/admin";
+import { CopyDocument, Link, Operation, View } from "@element-plus/icons-vue";
+import {
+  managedResourceCardsApi,
+  tenantApi,
+  type ManagedResourceCard,
+  type TenantContext
+} from "@/api/admin";
 import {
   auditStatusMap,
   deliveryTypeLabels,
@@ -10,6 +16,7 @@ import {
   resourceCardStatusMap
 } from "@/utils/labels";
 import { hasPerms } from "@/utils/auth";
+import { setSelectedTenantCircleId } from "@/utils/tenantContext";
 
 defineOptions({
   name: "ManagedResourceCards"
@@ -17,10 +24,12 @@ defineOptions({
 
 type TagType = "primary" | "success" | "warning" | "danger" | "info";
 
+const router = useRouter();
 const loading = ref(false);
 const detailLoading = ref(false);
 const actionLoading = ref(false);
 const rows = ref<ManagedResourceCard[]>([]);
+const tenantContext = ref<TenantContext | null>(null);
 const total = ref(0);
 const detailVisible = ref(false);
 const current = ref<ManagedResourceCard | null>(null);
@@ -44,6 +53,10 @@ const actionForm = reactive({
 });
 
 const canManage = computed(() => hasPerms("resource_card:manage"));
+const canEnterTenant = computed(() => hasPerms("tenant:dashboard:view"));
+const ownerCircleIds = computed(
+  () => new Set((tenantContext.value?.circles || []).map(item => item.id))
+);
 
 function metaOf<T extends Record<string, { label: string; type: string }>>(
   map: T,
@@ -115,6 +128,20 @@ async function copyShopLink(row: ManagedResourceCard) {
   ElMessage.success("H5 商品链接已复制");
 }
 
+function canOperateAsTenant(row: ManagedResourceCard) {
+  return ownerCircleIds.value.has(row.circle_id);
+}
+
+function openTenantResourceManager(row?: ManagedResourceCard) {
+  const circleId =
+    row?.circle_id ||
+    tenantContext.value?.selected_circle_id ||
+    tenantContext.value?.circles?.[0]?.id ||
+    "";
+  if (circleId) setSelectedTenantCircleId(circleId);
+  router.push("/tenant/resources");
+}
+
 async function loadList() {
   loading.value = true;
   try {
@@ -124,6 +151,11 @@ async function loadList() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadTenantContext() {
+  if (!canEnterTenant.value) return;
+  tenantContext.value = await tenantApi.context().catch(() => null);
 }
 
 function resetSearch() {
@@ -202,11 +234,22 @@ async function setStatus(row: ManagedResourceCard, status: string) {
   await loadList();
 }
 
-onMounted(loadList);
+onMounted(async () => {
+  await Promise.all([loadList(), loadTenantContext()]);
+});
 </script>
 
 <template>
   <div class="resource-cards-page">
+    <el-alert
+      class="page-tip"
+      type="info"
+      show-icon
+      :closable="false"
+      title="当前为平台治理视图"
+      description="这里用于审核、下架、禁用和 H5 验收；资源卡新增、编辑、删除和卡密库存请进入圈主后台的资源卡管理。"
+    />
+
     <div class="filter-bar">
       <el-input
         v-model="filters.keyword"
@@ -255,6 +298,13 @@ onMounted(loadList);
       </el-select>
       <el-button type="primary" @click="loadList">查询</el-button>
       <el-button @click="resetSearch">重置</el-button>
+      <el-button
+        v-if="tenantContext?.circles?.length"
+        :icon="Operation"
+        @click="openTenantResourceManager()"
+      >
+        去圈主资源卡管理
+      </el-button>
     </div>
 
     <el-table v-loading="loading" :data="rows" border>
@@ -364,6 +414,15 @@ onMounted(loadList);
             @click="copyShopLink(row)"
           >
             复制H5
+          </el-button>
+          <el-button
+            v-if="canOperateAsTenant(row)"
+            link
+            type="success"
+            :icon="Operation"
+            @click="openTenantResourceManager(row)"
+          >
+            经营管理
           </el-button>
           <el-button link type="primary" @click="openDetail(row)"
             >查看</el-button
@@ -525,6 +584,10 @@ onMounted(loadList);
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  margin-bottom: 12px;
+}
+
+.page-tip {
   margin-bottom: 12px;
 }
 

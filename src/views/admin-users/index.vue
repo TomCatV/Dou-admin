@@ -157,6 +157,10 @@ function isGlobalSuperAdminRole(role: string, scopeType: string) {
   return role === "super_admin" && scopeType === "global";
 }
 
+function canBindGlobalOwner(role = form.role, scopeType = form.scope_type) {
+  return role === "super_admin" && scopeType === "global";
+}
+
 function accountRole(row: AdminUser) {
   return row.account_type || row.role;
 }
@@ -295,7 +299,7 @@ watch(
     if (value === "global" && isTenantRole(form.role)) {
       form.role = "admin_l3";
     }
-    if (value === "global") {
+    if (value === "global" && !canBindGlobalOwner()) {
       form.scope_circle_id = "";
       form.bound_user_id = "";
     } else if (value === "circle" && isPlatformRole(form.role)) {
@@ -312,6 +316,9 @@ watch(
     if (syncingRoleScope) return;
     syncingRoleScope = true;
     form.scope_type = isTenantRole(value) ? "circle" : "global";
+    if (!canBindGlobalOwner(value, form.scope_type) && form.scope_type === "global") {
+      form.bound_user_id = "";
+    }
     applyRoleDefault();
     syncingRoleScope = false;
   }
@@ -348,12 +355,21 @@ async function submit() {
       status: form.status,
       scope_type: form.scope_type,
       scope_circle_id: form.scope_type === "circle" ? form.scope_circle_id : "",
-      bound_user_id: form.scope_type === "circle" ? form.bound_user_id : "",
+      bound_user_id:
+        form.scope_type === "circle" || canBindGlobalOwner()
+          ? form.bound_user_id
+          : "",
       permissions: form.permissions,
       password: form.password
     };
     if (isEdit.value) {
       await adminUsersApi.update(form.id, payload);
+      if (form.username === userStore.username) {
+        ElMessage.success("账号已更新，请重新登录以刷新权限");
+        dialogVisible.value = false;
+        userStore.logOut();
+        return;
+      }
       ElMessage.success("账号已更新");
     } else {
       await adminUsersApi.create(payload);
@@ -573,6 +589,29 @@ onMounted(async () => {
             <el-radio-button label="circle">指定圈子</el-radio-button>
           </el-radio-group>
         </el-form-item>
+        <el-form-item v-if="canBindGlobalOwner()" label="绑定 Dou 用户">
+          <el-select
+            v-model="form.bound_user_id"
+            class="full"
+            clearable
+            filterable
+            remote
+            reserve-keyword
+            :remote-method="remoteUserSearch"
+            :loading="userLoading"
+            placeholder="绑定你自己的 Dou 用户后，可进入自己名下圈子的圈主后台"
+          >
+            <el-option
+              v-for="item in userOptions"
+              :key="item.id"
+              :label="`${item.nickname || item.dxq_id} / ${item.dxq_id || item.id}`"
+              :value="item.id"
+            />
+          </el-select>
+          <div class="form-tip">
+            仅用于超级管理员的双身份经营入口，不改变平台超级管理员权限。
+          </div>
+        </el-form-item>
         <template v-if="form.scope_type === 'circle'">
           <el-form-item label="授权圈子" prop="scope_circle_id">
             <el-select
@@ -737,6 +776,12 @@ onMounted(async () => {
 .perm-desc {
   margin-left: 6px;
   color: #9b8d80;
+  font-size: 12px;
+}
+
+.form-tip {
+  margin-top: 6px;
+  color: #8f8276;
   font-size: 12px;
 }
 

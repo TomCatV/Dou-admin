@@ -19,8 +19,13 @@ import { hasPerms } from "@/utils/auth";
 import {
   tenantApi,
   type ManagedResourceCard,
-  type ProductCategory
+  type ProductCategory,
+  type TenantContext
 } from "@/api/admin";
+import {
+  getSelectedTenantCircleId,
+  setSelectedTenantCircleId
+} from "@/utils/tenantContext";
 
 defineOptions({ name: "TenantResources" });
 
@@ -32,6 +37,8 @@ const saving = ref(false);
 const actionLoading = ref("");
 const rows = ref<ManagedResourceCard[]>([]);
 const categories = ref<ProductCategory[]>([]);
+const tenantContext = ref<TenantContext | null>(null);
+const selectedCircleId = ref(getSelectedTenantCircleId());
 const total = ref(0);
 const dialogVisible = ref(false);
 const categoryDialogVisible = ref(false);
@@ -70,6 +77,7 @@ const form = reactive({
 
 const canManage = computed(() => hasPerms("tenant:resource:manage"));
 const dialogTitle = computed(() => (form.id ? "编辑资源卡" : "发布资源卡"));
+const currentCircle = computed(() => tenantContext.value?.current_circle || null);
 const activeCategories = computed(() =>
   categories.value.filter(item => item.status === "active")
 );
@@ -167,6 +175,41 @@ function canPublish(row: ManagedResourceCard) {
   return row.status === "draft" || row.status === "offline";
 }
 
+async function loadTenantContext() {
+  try {
+    const data = await tenantApi.context();
+    const circles = data.circles || [];
+    let nextSelected = selectedCircleId.value || data.selected_circle_id;
+    if (!circles.some(item => item.id === nextSelected)) {
+      nextSelected = data.selected_circle_id || circles[0]?.id || "";
+    }
+    if (nextSelected) {
+      setSelectedTenantCircleId(nextSelected);
+      selectedCircleId.value = nextSelected;
+    }
+    const nextCircle =
+      circles.find(item => item.id === nextSelected) ||
+      data.current_circle ||
+      null;
+    tenantContext.value = {
+      ...data,
+      can_enter: Boolean(nextCircle),
+      selected_circle_id: nextSelected,
+      current_circle: nextCircle
+    };
+    return Boolean(nextCircle);
+  } catch (error) {
+    tenantContext.value = {
+      can_enter: false,
+      message: error instanceof Error ? error.message : "无法进入圈主后台",
+      selected_circle_id: "",
+      current_circle: null,
+      circles: []
+    };
+    return false;
+  }
+}
+
 async function loadCategories() {
   const data = await tenantApi.productCategories();
   categories.value = data.items;
@@ -184,7 +227,16 @@ async function loadList() {
 }
 
 async function loadPageData() {
+  const canEnter = await loadTenantContext();
+  if (!canEnter) return;
   await Promise.all([loadCategories(), loadList()]);
+}
+
+async function switchTenantCircle(value: string) {
+  setSelectedTenantCircleId(value);
+  selectedCircleId.value = value;
+  filters.page = 1;
+  await loadPageData();
 }
 
 function search() {
@@ -386,11 +438,45 @@ onMounted(loadPageData);
         <p>发布和管理资源卡，支持资源交付、卡密交付、分类、H5 链接、订单和售后联动。</p>
       </div>
       <div class="head-actions">
-        <el-button :icon="Refresh" @click="loadList">刷新</el-button>
+        <el-select
+          v-if="tenantContext?.circles?.length"
+          v-model="selectedCircleId"
+          class="circle-switch"
+          placeholder="选择经营圈子"
+          @change="switchTenantCircle"
+        >
+          <el-option
+            v-for="item in tenantContext.circles"
+            :key="item.id"
+            :label="item.name || item.circle_code || item.id"
+            :value="item.id"
+          />
+        </el-select>
+        <el-button :icon="Refresh" @click="loadPageData">刷新</el-button>
         <el-button v-if="canManage" @click="openCategoryDialog">分类管理</el-button>
         <el-button v-if="canManage" type="primary" :icon="Plus" @click="openCreate">发布资源卡</el-button>
       </div>
     </div>
+
+    <el-alert
+      v-if="tenantContext && !tenantContext.can_enter"
+      class="mb"
+      type="warning"
+      show-icon
+      :closable="false"
+      :title="tenantContext.message || '当前账号还没有可经营的圈子上下文。'"
+      description="超级管理员需要先在账号与权限中给自己绑定 Dou 用户；绑定后可进入自己名下圈子的资源卡管理。"
+    />
+
+    <el-alert
+      v-else-if="currentCircle"
+      class="mb"
+      type="info"
+      show-icon
+      :closable="false"
+      :title="`当前经营圈子：${currentCircle.name || currentCircle.circle_code || currentCircle.id}`"
+      description="新增、编辑、删除和卡密库存操作都会作用于当前选中的圈子。"
+    />
 
     <el-alert
       v-if="!canManage"
@@ -702,6 +788,10 @@ onMounted(loadPageData);
 
 .filter-item {
   width: 140px;
+}
+
+.circle-switch {
+  width: 220px;
 }
 
 .product-cell {

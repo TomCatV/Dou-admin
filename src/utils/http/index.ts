@@ -12,6 +12,7 @@ import type {
 import { stringify } from "qs";
 import { getToken, formatToken } from "@/utils/auth";
 import { useUserStoreHook } from "@/store/modules/user";
+import { getSelectedTenantCircleId } from "@/utils/tenantContext";
 
 // 相关配置请参考：www.axios-js.com/zh-cn/docs/#axios-request-config-1
 const defaultConfig: AxiosRequestConfig = {
@@ -52,6 +53,7 @@ class PureHttp {
     return new Promise(resolve => {
       PureHttp.requests.push((token: string) => {
         config.headers["Authorization"] = formatToken(token);
+        attachTenantCircleHeader(config);
         resolve(config);
       });
     });
@@ -88,6 +90,7 @@ class PureHttp {
                       .then(res => {
                         const token = res.data.accessToken;
                         config.headers["Authorization"] = formatToken(token);
+                        attachTenantCircleHeader(config);
                         PureHttp.requests.forEach(cb => cb(token));
                         PureHttp.requests = [];
                       })
@@ -100,6 +103,7 @@ class PureHttp {
                   config.headers["Authorization"] = formatToken(
                     data.accessToken
                   );
+                  attachTenantCircleHeader(config);
                   resolve(config);
                 }
               } else {
@@ -193,6 +197,17 @@ class PureHttp {
     config?: PureHttpRequestConfig
   ): Promise<T> {
     return this.request<T>("get", url, params, config);
+  }
+}
+
+function attachTenantCircleHeader(config: PureHttpRequestConfig) {
+  const tenantCircleId = getSelectedTenantCircleId();
+  if (
+    tenantCircleId &&
+    String(config.url || "").startsWith("/tenant/")
+  ) {
+    config.headers = config.headers || {};
+    config.headers["X-Tenant-Circle-Id"] = tenantCircleId;
   }
 }
 

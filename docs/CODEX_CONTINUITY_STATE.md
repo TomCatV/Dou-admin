@@ -358,6 +358,17 @@
 - 已完成前端能力：H5 商品页微信和支付宝都统一进入 Dou 站内 `/shop/checkout/:draftId?autopay=1&channel=...`，不再默认创建 `mode=cashier` 支付单或外跳支付宝页面；购买按钮与生成二维码按钮增加 loading / `aria-busy` / 并发锁；确认页增加自动支付一次性锁、二维码渲染异常兜底和初始化错误兜底；支付成功继续依赖站内轮询跳转订单页，不再依赖支付宝 `return_url`。
 - 资源卡入口：圈主后台菜单从“圈内资源”改为“资源卡管理”，页面标题、主按钮和弹窗文案改为“资源卡管理 / 发布资源卡 / 编辑资源卡”，保留已有分类、H5 链接、资源交付、卡密库存和订单入口。
 - 订单展示：卡密型已支付订单若仍缺少卡密，前端不再显示“正在分配”，改为“卡密发放异常，请联系商家补货或处理退款”，避免用户误以为系统仍会自动发放。
-- 验证结果：Dou-Admin `corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；后续最终 `git diff --check` 与 UTF-8 扫描待提交前统一执行。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 通过；构建仅有 Browserslist/baseline 数据陈旧提示；双仓 UTF-8 扫描无 U+FFFD，`git diff --check` 仅有 CRLF 转换提示。
 - 下一步计划：提交推送后服务器拉取双仓并重启；线上回归支付宝和微信均进入站内二维码页、按钮防重复点击、扫码后轮询跳订单页、售罄卡密无法创建支付意图、资源卡管理入口可见。
 - 风险与回滚：若支付宝站内二维码异常，可暂时设置 `ALIPAY_PAY_ENABLED=false` 隐藏支付宝通道；微信异常可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 隐藏微信通道；资源卡入口文案可单独回退，不影响交易接口。
+
+## 2026-06-04 超级管理员圈主双身份入口
+
+- 当前目标：解决超级管理员本人也是圈主时看不到资源卡新增、编辑、删除和卡密库存入口的问题，把平台全局身份与 Dou 用户圈主身份打通。
+- 已改文件：`src/api/admin.ts`、`src/router/modules/home.ts`、`src/utils/auth.ts`、`src/utils/http/index.ts`、`src/utils/tenantContext.ts`、`src/views/admin-users/index.vue`、`src/views/resource-cards/index.vue`、`src/views/tenant/resources.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/middleware/requireTenantScope.js`、`src/routes/admin/adminUsers.routes.js`、`src/routes/admin/tenant.routes.js`。
+- 已完成前端能力：租户后台菜单允许 `super_admin` 进入，但仍由 `auths` 权限和后端租户上下文兜底；新增 `tenantContext` 本地选择当前经营圈子，租户请求自动带 `X-Tenant-Circle-Id`；登出会清理已选圈子；账号与权限页面支持给全局超级管理员绑定 Dou 用户；平台资源卡页改名为 `资源卡治理` 并提示新增/编辑/库存入口在圈主后台；圈主资源卡管理页支持当前经营圈子提示和切换。
+- 用户操作口径：不需要把超级管理员降级或改成租户账号；只需要在 `账号与权限 / 后台账号` 编辑自己的 admin 账号，绑定自己的 Dou 用户。绑定后重新登录，进入 `圈主后台 / 资源卡管理` 即可管理自己名下圈子的资源卡。
+- 安全边界：前端仅展示入口，真实圈子归属由 Dou-Server 校验；超级管理员只能以绑定 Dou 用户 owner 的活跃圈子进入租户写接口，不能越权经营平台内任意圈子。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build`、`git diff --check` 已通过；构建仅有 Browserslist/baseline 数据陈旧提示；双仓 UTF-8 扫描无 U+FFFD，`git diff --check` 仅有 CRLF 转换提示。
+- 下一步计划：部署后用当前超级管理员绑定 Dou 用户并重新登录，回归 `圈主后台 / 资源卡管理` 的发布、编辑、删除、分类、卡密库存和多圈切换；同时确认 `平台治理 / 资源卡治理` 只做审核、下架、禁用和 H5 验收。
+- 风险与回滚：本轮不新增迁移；如入口异常，可回滚本次 Admin 改动，已有圈主范围账号仍可按旧路径进入租户资源卡管理。

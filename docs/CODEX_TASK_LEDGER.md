@@ -950,6 +950,36 @@
   - Dou-Admin `corepack pnpm typecheck` 通过。
   - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
   - Dou-Server 支付和履约关键文件 `node --check` 通过。
-  - 后续提交前统一执行最终 `git diff --check` 和 UTF-8 扫描。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示；UTF-8 扫描无 U+FFFD。
 - 下一步：服务器拉取双仓并重启后，线上回归微信/支付宝站内扫码、按钮防重复、扫码后轮询跳订单页、售罄卡密支付前拦截和资源卡管理入口。
 - 风险与回滚：支付通道可通过 `ALIPAY_PAY_ENABLED=false` / `WECHAT_NATIVE_PAY_ENABLED=false` 暂停；资源卡入口文案可单独回退；库存兜底只加强支付前和履约安全，不改变已成功交付订单。
+
+### 超级管理员圈主双身份入口
+
+- 时间：2026-06-04 (Asia/Shanghai)
+- 任务目标：解决超级管理员本人也是圈主时看不到资源卡新增、编辑、删除、卡密库存入口的问题。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/utils/auth.ts`
+  - `src/utils/http/index.ts`
+  - `src/utils/tenantContext.ts`
+  - `src/views/admin-users/index.vue`
+  - `src/views/resource-cards/index.vue`
+  - `src/views/tenant/resources.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `src/middleware/requireTenantScope.js`
+  - Dou-Server `src/routes/admin/adminUsers.routes.js`
+  - Dou-Server `src/routes/admin/tenant.routes.js`
+- 已完成前端能力：`super_admin` 可看到圈主后台菜单；账号与权限页可给全局超级管理员绑定 Dou 用户；租户请求自动携带当前经营圈子 `X-Tenant-Circle-Id`；平台 `资源卡治理` 页提示经营入口；圈主 `资源卡管理` 页支持当前经营圈子展示和切换。
+- 权限口径：超级管理员不需要降级为租户账号；绑定 Dou 用户后，按自己名下活跃圈子进入圈主后台。平台资源卡页仍只做治理，不承担新增、编辑、卡密库存等经营写操作。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 已通过。
+  - Dou-Admin `corepack pnpm build` 已通过。
+  - Dou-Server 租户 scope、后台账号和租户路由 `node --check` 已通过。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示；UTF-8 扫描无 U+FFFD。
+- 下一步：部署后编辑当前超级管理员后台账号，绑定自己的 Dou 用户并重新登录；回归 `圈主后台 / 资源卡管理` 的发布、编辑、删除、分类、卡密库存和多圈切换。
+- 风险与回滚：无迁移；如双身份入口异常，可回滚本次前端入口和后端租户上下文改动，旧圈主范围账号仍可按原路径使用。

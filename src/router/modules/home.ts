@@ -23,13 +23,19 @@ const platformRoles = [
 ];
 
 const tenantRoles = [
+  "super_admin",
   "tenant_owner",
   "tenant_staff",
   "tenant_viewer",
   "circle_admin"
 ];
 
-const tenantManageRoles = ["tenant_owner", "tenant_staff", "circle_admin"];
+const tenantManageRoles = [
+  "super_admin",
+  "tenant_owner",
+  "tenant_staff",
+  "circle_admin"
+];
 
 export default [
   {
@@ -101,7 +107,7 @@ export default [
         name: "ManagedResourceCards",
         component: () => import("@/views/resource-cards/index.vue"),
         meta: {
-          title: "资源卡管理",
+          title: "资源卡治理",
           icon: "ep/goods",
           roles: allRoles
         }
@@ -187,7 +193,8 @@ export default [
         meta: {
           title: "圈主工作台",
           icon: "ep/monitor",
-          roles: tenantRoles
+          roles: tenantRoles,
+          auths: ["tenant:dashboard:view"]
         }
       },
       {
@@ -197,7 +204,8 @@ export default [
         meta: {
           title: "店铺资料",
           icon: "ep/connection",
-          roles: tenantRoles
+          roles: tenantRoles,
+          auths: ["circle:view"]
         }
       },
       {
@@ -207,7 +215,8 @@ export default [
         meta: {
           title: "圈内成员",
           icon: "ep/user",
-          roles: tenantRoles
+          roles: tenantRoles,
+          auths: ["circle:member:view"]
         }
       },
       {
@@ -217,7 +226,8 @@ export default [
         meta: {
           title: "资源卡管理",
           icon: "ep/goods",
-          roles: tenantRoles
+          roles: tenantRoles,
+          auths: ["circle:content:view"]
         }
       }
     ]
@@ -239,7 +249,8 @@ export default [
         meta: {
           title: "私域线索",
           icon: "ep/user-filled",
-          roles: tenantManageRoles
+          roles: tenantManageRoles,
+          auths: ["tenant:dashboard:view"]
         }
       },
       {
@@ -249,7 +260,8 @@ export default [
         meta: {
           title: "转化工具",
           icon: "ep/promotion",
-          roles: tenantManageRoles
+          roles: tenantManageRoles,
+          auths: ["tenant:dashboard:view"]
         }
       },
       {
@@ -259,7 +271,8 @@ export default [
         meta: {
           title: "转化漏斗",
           icon: "ep/data-analysis",
-          roles: tenantRoles
+          roles: tenantRoles,
+          auths: ["tenant:dashboard:view"]
         }
       }
     ]
@@ -281,7 +294,8 @@ export default [
         meta: {
           title: "订单售后",
           icon: "ep/tickets",
-          roles: tenantRoles
+          roles: tenantRoles,
+          auths: ["circle:content:view"]
         }
       },
       {
@@ -291,7 +305,8 @@ export default [
         meta: {
           title: "钱包提现",
           icon: "ep/wallet",
-          roles: tenantManageRoles
+          roles: tenantManageRoles,
+          auths: ["tenant:dashboard:view"]
         }
       },
       {

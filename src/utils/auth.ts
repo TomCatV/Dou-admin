@@ -1,6 +1,7 @@
 import Cookies from "js-cookie";
 import { useUserStoreHook } from "@/store/modules/user";
 import { storageLocal, isString, isIncludeAllChildren } from "@pureadmin/utils";
+import { clearSelectedTenantCircleId } from "@/utils/tenantContext";
 
 export interface DataInfo<T> {
   /** token */
@@ -137,6 +138,7 @@ export function removeToken() {
   Cookies.remove(TokenKey);
   Cookies.remove(multipleTabsKey);
   storageLocal().removeItem(userKey);
+  clearSelectedTenantCircleId();
 }
 
 /** 格式化token（jwt格式） */

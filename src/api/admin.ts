@@ -406,6 +406,56 @@ export type ProductCategory = {
   updated_at: string;
 };
 
+export type ResourceImportBatch = {
+  id: string;
+  circle_id: string;
+  admin_id: string;
+  source_filename: string;
+  source_type: "xlsx" | "xls" | "csv" | string;
+  status: "parsed" | "failed" | string;
+  total_count: number;
+  candidate_count: number;
+  isolated_count: number;
+  converted_count: number;
+  duplicate_count: number;
+  error_message: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ResourceImportItem = {
+  id: string;
+  batch_id: string;
+  circle_id: string;
+  row_index: number;
+  sheet_name: string;
+  title: string;
+  link: string;
+  note: string;
+  platform: string;
+  target_audience: string;
+  risk_level: "low" | "medium" | "high" | string;
+  risk_reason: string;
+  resource_pool: string;
+  commercial_action: string;
+  snake_judgement: string;
+  commercial_score: number;
+  display_value: number;
+  conversion_value: number;
+  reuse_value: number;
+  private_domain_value: number;
+  risk_penalty: number;
+  status: "candidate" | "isolated" | "converted" | "ignored" | string;
+  converted_resource_card_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ResourceImportStats = {
+  risk_distribution: Array<{ risk_level: string; count: number }>;
+  pool_distribution: Array<{ resource_pool: string; count: number }>;
+};
+
 export const notificationsApi = {
   summary: () =>
     unwrap(
@@ -492,6 +542,57 @@ export const tenantApi = {
         "delete",
         `/tenant/product-categories/${id}`
       )
+    ),
+  resourceImportBatches: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ResourceImportBatch>>>(
+        "get",
+        "/tenant/resource-imports",
+        { params }
+      )
+    ),
+  uploadResourceImport: (file: File) => {
+    const data = new FormData();
+    data.append("file", file);
+    return unwrap(
+      http.request<
+        ApiResult<{
+          batch: ResourceImportBatch;
+          preview_items: ResourceImportItem[];
+          truncated: boolean;
+        }>
+      >("post", "/tenant/resource-imports/upload", {
+        data,
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 30000
+      })
+    );
+  },
+  resourceImportDetail: (batchId: string) =>
+    unwrap(
+      http.request<
+        ApiResult<{ batch: ResourceImportBatch; stats: ResourceImportStats }>
+      >("get", `/tenant/resource-imports/${batchId}`)
+    ),
+  resourceImportItems: (batchId: string, params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<PageResult<ResourceImportItem>>>(
+        "get",
+        `/tenant/resource-imports/${batchId}/items`,
+        { params }
+      )
+    ),
+  convertResourceImportItem: (itemId: string, data: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          item: ResourceImportItem;
+          resource_card: Pick<
+            ManagedResourceCard,
+            "id" | "title" | "status" | "h5_status"
+          >;
+        }>
+      >("post", `/tenant/resource-imports/items/${itemId}/convert`, { data })
     ),
   resourceCardPublicLink: (id: string) =>
     unwrap(

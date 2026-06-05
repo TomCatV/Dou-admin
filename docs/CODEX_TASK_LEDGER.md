@@ -1007,3 +1007,32 @@
   - 双仓 `git diff --check` 仅有 CRLF 转换提示。
 - 下一步：服务器拉取双仓并重启后，先用微信 Native 回归真实 0.01 元支付闭环；支付宝需先处理开放平台权限，再回归官方收银台、通知/查单和订单交付。
 - 风险与回滚：如支付宝仍拒绝，设置 `ALIPAY_PAY_ENABLED=false` 暂停支付宝；微信异常时设置 `WECHAT_NATIVE_PAY_ENABLED=false`；前端可回退站内二维码承接页，但支付宝权限拒绝仍需在开放平台处理。
+
+### 资源库导入解析 P0 管理后台
+
+- 时间：2026-06-05 (Asia/Shanghai)
+- 任务目标：新增圈主后台资源库导入页面，支持上传 Excel/CSV、查看解析批次和明细、筛选候选/隔离资源，并把低/中风险候选转为资源卡草稿。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `docs/RESOURCE_LIBRARY_IMPORT_P0_UI_DESIGN.md`
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/utils/http/index.ts`
+  - `src/views/tenant/resource-library.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `docs/RESOURCE_LIBRARY_IMPORT_P0_DESIGN.md`
+  - Dou-Server `src/db/migrations/043_resource_library_imports.sql`
+  - Dou-Server `src/lib/resourceLibraryImports.js`
+  - Dou-Server `src/routes/admin/tenantResourceImports.routes.js`
+  - Dou-Server `src/routes/admin/index.js`
+- 已完成前端能力：新增 `/tenant/resource-library` 菜单和页面；复用当前经营圈子选择器；支持上传 `.xlsx/.xls/.csv`、批次列表、批次摘要、风险分布、明细关键词/风险/状态筛选、资源链接检查、隔离原因查看和转资源卡草稿弹窗。
+- 权限边界：查看要求 `circle:content:view`；上传和转草稿要求 `tenant:resource:manage`；只读账号隐藏写按钮；转草稿默认 `h5_status='hidden'`，后续仍在“资源卡管理”人工补充和上架。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck` 通过。
+  - Dou-Admin `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - Dou-Server 新增路由和解析库 `node --check`、动态导入、迁移 smoke、CSV 解析 smoke 通过。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
+- 下一步：部署后用圈主 owner/staff 上传真实资源表，确认高风险隔离、候选转草稿和资源卡管理可见；viewer 账号确认只能查看。
+- 风险与回滚：如线上需止血，可隐藏 `/tenant/resource-library` 菜单；已转出资源卡只是草稿，可在资源卡管理中删除，不影响既有交易链路。

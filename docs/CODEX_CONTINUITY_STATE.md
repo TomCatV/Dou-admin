@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-06-04 (Asia/Shanghai)
+最后更新时间：2026-06-05 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -383,3 +383,15 @@
 - 验证结果：`corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；本地 in-app Browser 冒烟打开商品页和支付页假 ID，Vue 应用正常挂载并显示接口兜底错误，无前端 console error；Dou-Server `node --check src/lib/commercePayments.js` 和支付路由语法检查通过；双仓 `git diff --check` 仅有 CRLF 转换提示。
 - 下一步计划：服务器拉取双仓并重启后，用真实 0.01 元商品回归微信“立即购买 -> 支付页二维码 -> 扫码付款 -> 订单交付”；支付宝需先确认开放平台应用上线和支付产品签约，之后回归“立即购买 -> 官方收银台 -> 异步通知/查单 -> 订单交付”。
 - 风险与回滚：支付宝仍返回 `ACCESS_FORBIDDEN` 时先关闭 `ALIPAY_PAY_ENABLED=false`，保留微信通道交易；如微信 Native 配置异常，可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 隐藏微信通道；前端可回退到站内二维码模式，但不能解决支付宝官方权限拒绝。
+
+## 2026-06-05 资源库导入解析 P0 管理后台
+
+- 当前目标：把外部资源 Excel/CSV 接入 `圈主后台 / 资源库导入`，让圈主在后台上传资源表、查看批次、筛选候选/隔离资源，并把低/中风险候选转为资源卡草稿。
+- 已改文件：`docs/RESOURCE_LIBRARY_IMPORT_P0_UI_DESIGN.md`、`src/api/admin.ts`、`src/router/modules/home.ts`、`src/utils/http/index.ts`、`src/views/tenant/resource-library.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：新增 `/tenant/resource-library` 菜单和页面；复用当前经营圈子选择器；支持上传 `.xlsx/.xls/.csv`、批次列表、批次摘要、风险分布、明细关键词/风险/状态筛选、链接检查、隔离原因查看和候选资源转资源卡草稿弹窗。
+- 权限边界：页面进入要求 `circle:content:view`；上传和转草稿按钮要求 `tenant:resource:manage`；只读账号可看批次与明细但不能上传或转换；转换默认 `h5_status='hidden'`，生成后回到现有“资源卡管理”继续补封面、预览、价格和上架。
+- 上传兼容：`src/utils/http/index.ts` 对 `FormData` 请求移除默认 JSON `Content-Type`，让浏览器自动设置 multipart boundary。
+- 协同后端：Dou-Server 新增 `043_resource_library_imports.sql`、`resourceLibraryImports.js` 和 `/api/admin/tenant/resource-imports` 系列接口；P0 不留存原始表格到 COS，只保存结构化批次和明细。
+- 验证结果：`corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；协同 Dou-Server `node --check`、迁移 smoke、CSV 解析 smoke 和双仓 `git diff --check` 通过。
+- 下一步计划：部署后用圈主 owner/staff 上传真实资源表，确认高风险隔离、低/中风险转草稿、转完后“资源卡管理”可搜索到草稿。
+- 风险与回滚：如线上需止血，可隐藏 `/tenant/resource-library` 菜单；已转出的资源卡只是草稿，可在资源卡管理中删除，不影响小程序和 H5 既有资源卡交易链路。

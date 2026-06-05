@@ -229,6 +229,17 @@ export default [
           roles: tenantRoles,
           auths: ["circle:content:view"]
         }
+      },
+      {
+        path: "/tenant/resource-library",
+        name: "TenantResourceLibrary",
+        component: () => import("@/views/tenant/resource-library.vue"),
+        meta: {
+          title: "资源库导入",
+          icon: "ep/upload",
+          roles: tenantRoles,
+          auths: ["circle:content:view"]
+        }
       }
     ]
   },

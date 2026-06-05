@@ -201,6 +201,9 @@ class PureHttp {
 }
 
 function attachTenantCircleHeader(config: PureHttpRequestConfig) {
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    delete config.headers?.["Content-Type"];
+  }
   const tenantCircleId = getSelectedTenantCircleId();
   if (
     tenantCircleId &&

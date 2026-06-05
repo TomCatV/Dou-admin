@@ -1036,3 +1036,31 @@
   - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
 - 下一步：部署后用圈主 owner/staff 上传真实资源表，确认高风险隔离、候选转草稿和资源卡管理可见；viewer 账号确认只能查看。
 - 风险与回滚：如线上需止血，可隐藏 `/tenant/resource-library` 菜单；已转出资源卡只是草稿，可在资源卡管理中删除，不影响既有交易链路。
+
+### AI 经营助手线上中转站协议兼容
+
+- 时间：2026-06-06 (Asia/Shanghai)
+- 任务目标：补充 Admin 上线手册和 P5 设计，说明 AI 助手线上不可用时应排查 Dou-Server 出网和中转站协议，而不是要求本地浏览器开 VPN。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `docs/CREATOR_COMMERCE_P5_AI_ASSISTANT_DESIGN.md`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/GO_LIVE_ACCEPTANCE_CHECKLIST.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `src/lib/aiBusinessAssistant.js`
+  - Dou-Server `.env.example`
+  - Dou-Server `docs/CODEX_CONTINUITY_STATE.md`
+  - Dou-Server `docs/CODEX_TASK_LEDGER.md`
+- 文档结论：AI 经营助手调用发生在 Dou-Server；Admin 只是展示和触发后端接口。本地 VPN 对线上服务端出网没有帮助，除非实际部署拓扑让 Dou-Server 也走了同一代理。
+- 配置口径：官方 OpenAI 用 `OPENAI_API_PROTOCOL=responses`；中转站不确定用 `auto`；只支持 Chat Completions 的中转站用 `chat_completions`，并按需设置 `OPENAI_CHAT_COMPLETIONS_URL`。
+- 验证：
+  - Admin 本轮为文档改动，未跑前端构建。
+  - Dou-Server `node --check` 覆盖 AI helper、AI 路由和 Admin 路由通过。
+  - Dou-Server AI helper、AI 路由和 Admin 路由动态导入通过。
+  - Dou-Server 临时库全量迁移到 `043` 成功。
+  - mock smoke 覆盖 Chat Completions 直连和 `auto` 回退，均生成 `generated` 报告。
+  - Dou-Admin / Dou-Server / 外层续航文档 UTF-8 扫描无 U+FFFD。
+  - Dou-Admin / Dou-Server `git diff --check` 通过，仅有 CRLF 转换提示。
+- 风险与回滚：文档变更不影响运行；如后端协议配置异常，固定回 `responses` 或临时关闭 AI Key 保留失败兜底。

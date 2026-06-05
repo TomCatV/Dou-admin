@@ -191,18 +191,29 @@
 | 售后策略 | 售后 SLA、高频退款阈值、已提现订单退款策略                                                     | 默认售后 24 小时；已提现订单建议走平台人工退款                        |
 | 风控策略 | 黑名单维护负责人、封禁到期规则                                                                 | 黑名单会阻断 H5 新下单                                                |
 | 私域转化 | 优惠券默认上限、邀请码和活动使用规范                                                           | 避免圈主误发无限额优惠                                                |
-| AI 助手  | `OPENAI_API_KEY`、`AI_DEFAULT_MODEL`、套餐每日额度、数据留存期                                 | P5 开放前必填                                                         |
+| AI 助手  | `OPENAI_API_KEY`、`OPENAI_API_PROTOCOL`、`AI_DEFAULT_MODEL`、套餐每日额度、数据留存期           | P5 开放前必填；由 Dou-Server 出网，不依赖 Admin 浏览器 VPN            |
 
 AI 经营助手必填建议：
 
 | 配置                    | 是否必填 | 建议值/说明                                      |
 | ----------------------- | -------- | ------------------------------------------------ |
 | `OPENAI_API_KEY`        | 生产必填 | 只放 Dou-Server 环境变量，不写入前端、不提交仓库 |
+| `OPENAI_API_PROTOCOL`   | 建议填   | 官方 OpenAI 用 `responses`；中转站不确定用 `auto`；只支持 Chat Completions 用 `chat_completions` |
+| `OPENAI_BASE_URL`       | 按需填   | 第三方 OpenAI 兼容中转站 baseurl，例如 `https://relay.example.com/v1` |
+| `OPENAI_RESPONSES_URL`  | 按需填   | 中转站提供完整 `/responses` 地址时填写            |
+| `OPENAI_CHAT_COMPLETIONS_URL` | 按需填 | 中转站提供完整 `/chat/completions` 地址时填写     |
 | `AI_DEFAULT_MODEL`      | 必填     | 默认 `gpt-5.5`；上线前按 OpenAI 官方模型文档复核 |
 | `AI_DAILY_LIMIT_BASIC`  | 必填     | 入门套餐建议 3-5 次/天                           |
 | `AI_DAILY_LIMIT_PRO`    | 必填     | 专业套餐建议 30 次/天                            |
 | `AI_REQUEST_TIMEOUT_MS` | 建议填   | 默认 30000；超时只影响 AI 结果                   |
 | `AI_MAX_OUTPUT_TOKENS`  | 建议填   | 默认 1800；用于控制成本和响应长度                |
+
+线上排障口径：
+
+1. Admin 页面只调用 Dou-Server，不直接访问 OpenAI；因此线上 AI 助手不应该要求运营电脑开 VPN。
+2. 如果页面生成失败，先看 Dou-Server 日志里的 `[ai-business] generation failed`。
+3. 如果日志提示 `OpenAI 返回内容不是可解析 JSON`，优先检查中转站协议是否配置正确；可尝试 `OPENAI_API_PROTOCOL=auto` 或 `chat_completions`。
+4. 如果日志提示未配置 `OPENAI_API_KEY`，补服务端环境变量并重启 Dou-Server。
 
 运营建议：
 

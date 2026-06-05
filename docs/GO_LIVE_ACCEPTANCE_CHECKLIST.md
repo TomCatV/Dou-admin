@@ -14,7 +14,7 @@
 | 平台费率    | `PLATFORM_TRADE_FEE_BPS`、`PLATFORM_CHANNEL_COST_BPS`                              | 费率策略上线后只影响新订单                                   |
 | 人工调账    | `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT`                                               | 建议生产默认不超过 1000 元                                   |
 | 内容安全    | COS/CI 内容审核密钥、回调 URL、fail-open 策略                                      | 生产建议审核不可用时阻断高风险写入                           |
-| AI 经营助手 | `OPENAI_API_KEY`、`AI_DEFAULT_MODEL`、`AI_DAILY_LIMIT_BASIC`、`AI_DAILY_LIMIT_PRO` | Key 只放 Dou-Server 环境变量                                 |
+| AI 经营助手 | `OPENAI_API_KEY`、`OPENAI_API_PROTOCOL`、`AI_DEFAULT_MODEL`、`AI_DAILY_LIMIT_BASIC`、`AI_DAILY_LIMIT_PRO` | Key 只放 Dou-Server 环境变量；Admin 浏览器 VPN 不影响线上生成 |
 
 ## 角色验收
 
@@ -41,7 +41,7 @@
 9. 钱包余额、提现申请、平台审核、微信商家转账、同步状态。
 10. 平台营收列表、CSV 导出、人工调整、反向调整、审计日志。
 11. 对账中心列表、详情、标记处理，不改变资金终态。
-12. AI 经营助手生成日报和活动文案；未配置 Key 时失败可见且不影响交易。
+12. AI 经营助手生成日报和活动文案；未配置 Key 时失败可见且不影响交易；使用中转站时确认 `OPENAI_API_PROTOCOL` 与中转站协议匹配。
 
 ## 技术验收命令
 

@@ -200,13 +200,18 @@ git diff --check
 
 ## 2026-06-02 实装说明
 
-本阶段已按 OpenAI Responses API 方式接入服务端 AI 经营助手。调用只发生在 Dou-Server，`OPENAI_API_KEY` 只允许放在服务端环境变量；Dou-admin 不保存、不透传密钥。接口请求使用 `/v1/responses`，并用 JSON Schema 约束输出，便于前端结构化展示和后续审计。
+本阶段已按 OpenAI Responses API 方式接入服务端 AI 经营助手。调用只发生在 Dou-Server，`OPENAI_API_KEY` 只允许放在服务端环境变量；Dou-admin 不保存、不透传密钥。接口默认请求 `/v1/responses`，并用 JSON Schema 约束输出，便于前端结构化展示和后续审计。
+
+线上可用性边界：AI 经营助手不是由 Admin 浏览器直接请求 OpenAI，因此本地电脑或浏览器是否开启 VPN 不决定线上是否可用。线上必须保证 Dou-Server 所在机器能访问官方 OpenAI 或配置的中转站。如果中转站只兼容 Chat Completions 而不兼容 Responses，需要在服务端配置 `OPENAI_API_PROTOCOL=chat_completions`；不确定中转站协议时可先配置 `OPENAI_API_PROTOCOL=auto`，让服务端先试 Responses，再按协议不匹配错误回退到 Chat Completions。
+
+中转站排障日志：生成失败时 Dou-Server 会输出 `[ai-business] generation failed`，包含场景、圈子、协议、错误码和脱敏响应摘要；`auto` 回退时会输出 `[ai-business] responses fallback to chat_completions`。日志不打印 API Key、提示词全文、密钥或敏感业务明文。
 
 官方约束参考：
 
 | 领域               | 官方资料                                                   | P5 实装结论                                                   |
 | ------------------ | ---------------------------------------------------------- | ------------------------------------------------------------- |
 | Responses API      | https://platform.openai.com/docs/api-reference/responses   | 后端通过 Responses API 生成结构化经营日报和活动文案           |
+| Chat Completions   | https://platform.openai.com/docs/api-reference/chat        | 中转站只支持 `/v1/chat/completions` 时使用兼容模式             |
 | Text generation    | https://platform.openai.com/docs/guides/text-generation    | 用 `instructions` 固定安全边界，用 `input` 传聚合脱敏经营数据 |
 | Structured Outputs | https://platform.openai.com/docs/guides/structured-outputs | 输出限定为 JSON Schema，前端按字段渲染，不解析自由长文本      |
 | Models             | https://platform.openai.com/docs/models                    | 默认 `AI_DEFAULT_MODEL=gpt-5.5`，上线前可按官方模型页调整     |
@@ -220,3 +225,17 @@ git diff --check
 5. 新增前端页面 `AI 经营 / 经营助手`：展示今日用量、模型、配置状态、日报生成、活动文案生成、历史记录、结果抽屉、人工确认。
 
 失败策略：如果未配置 `OPENAI_API_KEY` 或 OpenAI 请求失败，系统仍会把本次输入摘要和兜底结果写入 `ai_insight_reports(status='failed')`，并向前端返回明确提示；不会影响商品、订单、支付、售后、钱包、优惠券或权限链路。
+
+## 2026-06-06 线上中转站兼容说明
+
+本轮针对线上日报显示 `OpenAI 返回内容不是可解析 JSON` 的问题补充服务端协议兼容。根因方向不是 Admin 前端需要开 VPN，而是 Dou-Server 调用的官方接口或中转站返回结构与当前解析器不一致：原实现只解析 Responses API 的 `output_text/output`，如果中转站返回 Chat Completions 的 `choices[0].message.content`，即使内容里是 JSON，也会被判定为不可解析。
+
+服务端现已支持：
+
+1. `OPENAI_API_PROTOCOL=responses`：默认模式，调用 `/v1/responses`。
+2. `OPENAI_API_PROTOCOL=chat_completions`：调用 `/v1/chat/completions`，适合只兼容传统 Chat Completions 的中转站。
+3. `OPENAI_API_PROTOCOL=auto`：先调用 Responses；遇到协议不支持、未知参数、非 JSON 响应等中转站兼容问题时，自动回退到 Chat Completions。
+4. `OPENAI_CHAT_COMPLETIONS_URL`：当中转站给的是完整 Chat Completions 地址时显式填写；否则由 `OPENAI_BASE_URL` 自动拼接。
+5. `OPENAI_CHAT_MAX_TOKENS_FIELD`：默认 `max_tokens`；部分模型或中转站要求 `max_completion_tokens` 时可切换。
+
+上线推荐：如果生产使用官方 OpenAI，保持 `OPENAI_API_PROTOCOL=responses`；如果生产使用第三方中转站且不确定协议，先用 `auto`；如果已确认中转站只支持 Chat Completions，直接配置 `chat_completions`。

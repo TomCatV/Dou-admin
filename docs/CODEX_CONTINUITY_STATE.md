@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-06-05 (Asia/Shanghai)
+最后更新时间：2026-06-06 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -395,3 +395,13 @@
 - 验证结果：`corepack pnpm typecheck` 通过；`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；协同 Dou-Server `node --check`、迁移 smoke、CSV 解析 smoke 和双仓 `git diff --check` 通过。
 - 下一步计划：部署后用圈主 owner/staff 上传真实资源表，确认高风险隔离、低/中风险转草稿、转完后“资源卡管理”可搜索到草稿。
 - 风险与回滚：如线上需止血，可隐藏 `/tenant/resource-library` 菜单；已转出的资源卡只是草稿，可在资源卡管理中删除，不影响小程序和 H5 既有资源卡交易链路。
+
+## 2026-06-06 AI 经营助手线上中转站协议兼容
+
+- 当前目标：优化 Admin 线上化体验，解释并修复 AI 经营助手线上生成失败；确认运营电脑不需要通过本地 VPN 才能使用线上 AI 助手。
+- 已改文件：`docs/CREATOR_COMMERCE_P5_AI_ASSISTANT_DESIGN.md`、`docs/ADMIN_USER_MANUAL.md`、`docs/GO_LIVE_ACCEPTANCE_CHECKLIST.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/lib/aiBusinessAssistant.js`、`.env.example`。
+- 已完成前端文档口径：Admin 页面只访问 Dou-Server，不直接访问 OpenAI；线上 AI 失败应从服务端环境变量、服务端出网和中转站协议排查，不要求运营浏览器开 VPN。
+- 协同后端能力：Dou-Server 新增 `OPENAI_API_PROTOCOL=responses|chat_completions|auto`，支持 Chat Completions 中转站和 `auto` 回退；服务端失败日志增加 `[ai-business] generation failed` 脱敏诊断。
+- 验证结果：Admin 本轮仅文档改动，未改页面代码；Dou-Server `node --check`、动态导入、全量迁移、mock Chat Completions/auto fallback smoke、双仓 `git diff --check` 和 UTF-8 扫描均通过，仅有 CRLF 转换提示。
+- 下一步计划：部署后在服务器 `.env` 按中转站能力配置协议；官方 OpenAI 保持 `responses`，第三方中转站不确定时用 `auto`，只支持 Chat Completions 时用 `chat_completions`。
+- 风险与回滚：Admin 本轮只改文档，不改页面代码；如后端协议兼容异常，可回退 Dou-Server 提交或把协议固定为 `responses`。

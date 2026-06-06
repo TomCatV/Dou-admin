@@ -36,7 +36,36 @@ const copyForm = reactive({
 const canGenerate = computed(() => hasPerms("tenant:ai:generate"));
 const usageText = computed(() => {
   if (!usage.value) return "0 / 0";
+  if (usage.value.unlimited) return `${usage.value.used} / 不限`;
   return `${usage.value.used} / ${usage.value.limit}`;
+});
+const remainingText = computed(() => {
+  if (!usage.value) return "剩余 0 次";
+  if (usage.value.unlimited) return "超级管理员不限次数";
+  return `剩余 ${usage.value.remaining ?? 0} 次`;
+});
+const canGenerateDaily = computed(
+  () =>
+    canGenerate.value &&
+    usage.value?.enabled !== false &&
+    usage.value?.daily_report_enabled !== false
+);
+const canGenerateCopy = computed(
+  () =>
+    canGenerate.value &&
+    usage.value?.enabled !== false &&
+    usage.value?.campaign_copy_enabled !== false
+);
+const canConfirmActiveReport = computed(
+  () => canGenerate.value && activeReport.value?.status !== "failed"
+);
+const unavailableTitle = computed(() => {
+  if (!usage.value) return "";
+  if (usage.value.enabled === false) return "平台已关闭 AI 经营助手生成能力，历史记录仍可查看。";
+  if (!usage.value.ai_available) {
+    return "服务端尚未配置 OPENAI_API_KEY，AI 生成会保存脱敏摘要并返回失败状态。";
+  }
+  return "";
 });
 
 function yuan(value?: number) {
@@ -71,6 +100,55 @@ function statusText(status: string) {
   );
 }
 
+function priorityText(value?: string) {
+  return (
+    {
+      high: "高优先级",
+      medium: "中优先级",
+      low: "低优先级"
+    }[String(value || "")] || "建议"
+  );
+}
+
+function riskText(value?: string) {
+  return (
+    {
+      high: "高风险",
+      medium: "中风险",
+      low: "低风险"
+    }[String(value || "")] || "风险"
+  );
+}
+
+function itemList(value: unknown): Array<Record<string, any>> {
+  return Array.isArray(value) ? value.filter(item => item && typeof item === "object") : [];
+}
+
+function textList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+}
+
+function reportBrief(row: TenantAiReport) {
+  return (
+    row.output?.summary ||
+    row.output?.theme ||
+    row.failure_reason ||
+    "暂无摘要"
+  );
+}
+
+function confidenceText(value: unknown) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "未给出";
+  return `${Math.round(number * 100)}%`;
+}
+
+function dataScopeText(row: TenantAiReport) {
+  const scope = row.input_digest?.data_scope || {};
+  if (row.scene === "daily_report") return `${scope.range_days || 1} 天经营数据`;
+  return "公开商品字段与聚合转化数据";
+}
+
 async function loadReports() {
   loading.value = true;
   try {
@@ -98,7 +176,7 @@ function openReport(row: TenantAiReport) {
 }
 
 async function generateDailyReport() {
-  if (!canGenerate.value) {
+  if (!canGenerateDaily.value) {
     ElMessage.warning("当前账号没有 AI 生成权限");
     return;
   }
@@ -121,7 +199,7 @@ async function generateDailyReport() {
 }
 
 async function generateCampaignCopy() {
-  if (!canGenerate.value) {
+  if (!canGenerateCopy.value) {
     ElMessage.warning("当前账号没有 AI 生成权限");
     return;
   }
@@ -185,12 +263,12 @@ onMounted(async () => {
     </div>
 
     <el-alert
-      v-if="usage && !usage.ai_available"
+      v-if="unavailableTitle"
       class="mb"
       type="warning"
       show-icon
       :closable="false"
-      title="服务端尚未配置 OPENAI_API_KEY，AI 生成会保存脱敏摘要并返回失败状态。"
+      :title="unavailableTitle"
     />
     <el-alert
       v-if="!canGenerate"
@@ -206,21 +284,21 @@ onMounted(async () => {
         <div class="metric">
           <span>今日用量</span>
           <strong>{{ usageText }}</strong>
-          <em>剩余 {{ usage?.remaining || 0 }} 次</em>
+          <em>{{ remainingText }}</em>
         </div>
       </el-col>
       <el-col :xs="24" :lg="8">
         <div class="metric">
           <span>默认模型</span>
           <strong>{{ usage?.model || "-" }}</strong>
-          <em>{{ usage?.ai_available ? "服务可用" : "等待配置" }}</em>
+          <em>{{ usage?.ai_available ? "服务可用" : "等待配置" }} · {{ usage?.protocol || "-" }}</em>
         </div>
       </el-col>
       <el-col :xs="24" :lg="8">
         <div class="metric">
           <span>套餐</span>
           <strong>{{ usage?.plan_code || "未识别" }}</strong>
-          <em>按套餐限制每日生成次数</em>
+          <em>{{ usage?.unlimited ? "超管演示不消耗套餐额度" : "失败报告不计入次数" }}</em>
         </div>
       </el-col>
     </el-row>
@@ -233,7 +311,7 @@ onMounted(async () => {
             <el-button
               type="primary"
               :icon="MagicStick"
-              :disabled="!canGenerate"
+              :disabled="!canGenerateDaily"
               :loading="generating === 'daily'"
               @click="generateDailyReport"
             >
@@ -251,6 +329,9 @@ onMounted(async () => {
               <span class="hint">天</span>
             </el-form-item>
           </el-form>
+          <p v-if="usage?.daily_report_enabled === false" class="hint-line">
+            平台已关闭经营日报生成。
+          </p>
         </div>
       </el-col>
       <el-col :xs="24" :lg="12">
@@ -260,7 +341,7 @@ onMounted(async () => {
             <el-button
               type="primary"
               :icon="MagicStick"
-              :disabled="!canGenerate"
+              :disabled="!canGenerateCopy"
               :loading="generating === 'copy'"
               @click="generateCampaignCopy"
             >
@@ -278,6 +359,9 @@ onMounted(async () => {
               <el-input v-model="copyForm.tone" maxlength="80" />
             </el-form-item>
           </el-form>
+          <p v-if="usage?.campaign_copy_enabled === false" class="hint-line">
+            平台已关闭活动文案生成。
+          </p>
         </div>
       </el-col>
     </el-row>
@@ -302,12 +386,7 @@ onMounted(async () => {
         </el-table-column>
         <el-table-column label="摘要" min-width="260">
           <template #default="{ row }">
-            <span>{{
-              row.output?.summary ||
-              row.output?.theme ||
-              row.failure_reason ||
-              "-"
-            }}</span>
+            <span>{{ reportBrief(row) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="110">
@@ -356,6 +435,12 @@ onMounted(async () => {
           <el-descriptions-item label="时间">
             {{ activeReport.created_at }}
           </el-descriptions-item>
+          <el-descriptions-item label="数据范围">
+            {{ dataScopeText(activeReport) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="置信度">
+            {{ confidenceText(activeReport.output?.confidence) }}
+          </el-descriptions-item>
           <el-descriptions-item
             v-if="activeReport.failure_reason"
             label="失败原因"
@@ -366,8 +451,11 @@ onMounted(async () => {
 
         <template v-if="activeReport.scene === 'daily_report'">
           <section class="result-block">
-            <h3>总结</h3>
-            <p>{{ activeReport.output?.summary || "-" }}</p>
+            <h3>经营摘要</h3>
+            <p>{{ activeReport.output?.summary || "暂无经营摘要" }}</p>
+            <p v-if="activeReport.status === 'failed'" class="fail-note">
+              本次生成失败只保留排障摘要，不计入今日可用次数。
+            </p>
           </section>
           <section class="result-block">
             <h3>关键指标</h3>
@@ -395,30 +483,36 @@ onMounted(async () => {
           <section class="result-block">
             <h3>风险提醒</h3>
             <el-empty
-              v-if="!(activeReport.output?.risks || []).length"
+              v-if="!itemList(activeReport.output?.risks).length"
               description="暂无风险"
             />
             <div
-              v-for="item in activeReport.output?.risks || []"
+              v-for="item in itemList(activeReport.output?.risks)"
               :key="item.title"
               class="result-item"
             >
-              <strong>{{ item.title }}</strong>
+              <div class="item-head">
+                <strong>{{ item.title || "未命名风险" }}</strong>
+                <el-tag size="small" type="warning">{{ riskText(item.level) }}</el-tag>
+              </div>
               <p>{{ item.reason }}</p>
             </div>
           </section>
           <section class="result-block">
             <h3>建议动作</h3>
             <el-empty
-              v-if="!(activeReport.output?.actions || []).length"
+              v-if="!itemList(activeReport.output?.actions).length"
               description="暂无建议"
             />
             <div
-              v-for="item in activeReport.output?.actions || []"
+              v-for="item in itemList(activeReport.output?.actions)"
               :key="item.title"
               class="result-item"
             >
-              <strong>{{ item.title }}</strong>
+              <div class="item-head">
+                <strong>{{ item.title || "未命名建议" }}</strong>
+                <el-tag size="small">{{ priorityText(item.priority) }}</el-tag>
+              </div>
               <p>{{ item.detail }}</p>
             </div>
           </section>
@@ -432,17 +526,21 @@ onMounted(async () => {
           <section class="result-block">
             <h3>卖点</h3>
             <el-tag
-              v-for="item in activeReport.output?.selling_points || []"
+              v-for="item in textList(activeReport.output?.selling_points)"
               :key="item"
               class="tag"
             >
               {{ item }}
             </el-tag>
+            <el-empty
+              v-if="!textList(activeReport.output?.selling_points).length"
+              description="暂无卖点"
+            />
           </section>
           <section class="result-block">
             <h3>候选文案</h3>
             <div
-              v-for="item in activeReport.output?.copy_candidates || []"
+              v-for="item in itemList(activeReport.output?.copy_candidates)"
               :key="`${item.channel}-${item.title}`"
               class="copy-card"
             >
@@ -460,19 +558,27 @@ onMounted(async () => {
               <p>{{ item.body }}</p>
               <em>{{ item.cta }}</em>
             </div>
+            <el-empty
+              v-if="!itemList(activeReport.output?.copy_candidates).length"
+              description="暂无候选文案"
+            />
           </section>
           <section class="result-block">
             <h3>合规提示</h3>
             <p
-              v-for="item in activeReport.output?.compliance_notes || []"
+              v-for="item in textList(activeReport.output?.compliance_notes)"
               :key="item"
             >
               {{ item }}
             </p>
+            <el-empty
+              v-if="!textList(activeReport.output?.compliance_notes).length"
+              description="暂无合规提示"
+            />
           </section>
         </template>
 
-        <div class="drawer-actions">
+        <div v-if="canConfirmActiveReport" class="drawer-actions">
           <el-button @click="confirmReport('dismissed')">忽略</el-button>
           <el-button type="primary" @click="confirmReport('accepted')">
             人工确认
@@ -526,8 +632,11 @@ onMounted(async () => {
 .metric strong {
   display: block;
   margin-top: 8px;
+  overflow: hidden;
   font-size: 24px;
   color: #111827;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel-head,
@@ -575,6 +684,13 @@ onMounted(async () => {
   color: #4b5563;
 }
 
+.hint-line,
+.fail-note {
+  margin: 8px 0 0;
+  line-height: 1.6;
+  color: #9a5b16;
+}
+
 .kv-grid {
   display: grid;
   grid-template-columns: 90px 1fr;
@@ -592,6 +708,13 @@ onMounted(async () => {
   background: #f9fafb;
   border: 1px solid #edf0f3;
   border-radius: 8px;
+}
+
+.item-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .copy-card em {

@@ -1,6 +1,6 @@
 # Dou 商用多租户后台上线前验收清单
 
-最后更新：2026-06-02
+最后更新：2026-06-06
 
 ## 必填配置
 
@@ -14,13 +14,13 @@
 | 平台费率    | `PLATFORM_TRADE_FEE_BPS`、`PLATFORM_CHANNEL_COST_BPS`                              | 费率策略上线后只影响新订单                                   |
 | 人工调账    | `PLATFORM_REVENUE_ADJUST_MAX_AMOUNT`                                               | 建议生产默认不超过 1000 元                                   |
 | 内容安全    | COS/CI 内容审核密钥、回调 URL、fail-open 策略                                      | 生产建议审核不可用时阻断高风险写入                           |
-| AI 经营助手 | `OPENAI_API_KEY`、`OPENAI_API_PROTOCOL`、`AI_DEFAULT_MODEL`、`AI_DAILY_LIMIT_BASIC`、`AI_DAILY_LIMIT_PRO` | Key 只放 Dou-Server 环境变量；Admin 浏览器 VPN 不影响线上生成 |
+| AI 经营助手 | `OPENAI_API_KEY`、`OPENAI_API_PROTOCOL`、`AI_DEFAULT_MODEL`、`AI_DAILY_LIMIT_BASIC`、`AI_DAILY_LIMIT_PRO` | Key 只放 Dou-Server 环境变量；模型、协议、额度可由超管在 `AI 经营 / AI 设置` 覆盖 |
 
 ## 角色验收
 
 | 角色           | 必验项目                                                                                    |
 | -------------- | ------------------------------------------------------------------------------------------- |
-| 超级管理员     | 创建 1-3 级管理员；创建圈主账号；配置账号分组；授权主房间聊天记录；配置套餐、费率、买家风控 |
+| 超级管理员     | 创建 1-3 级管理员；创建圈主账号；配置账号分组；授权主房间聊天记录；配置套餐、费率、买家风控、AI 设置 |
 | 1 级管理员     | 平台治理、售后、提现、平台营收、对账、费率可用；不能替代超级管理员唯一身份                  |
 | 2 级管理员     | 可处理运营和售后；无人工调账权限时应返回 403                                                |
 | 3 级管理员     | 只做低风险治理和查看；不可进入高危财务配置                                                  |
@@ -41,7 +41,8 @@
 9. 钱包余额、提现申请、平台审核、微信商家转账、同步状态。
 10. 平台营收列表、CSV 导出、人工调整、反向调整、审计日志。
 11. 对账中心列表、详情、标记处理，不改变资金终态。
-12. AI 经营助手生成日报和活动文案；未配置 Key 时失败可见且不影响交易；使用中转站时确认 `OPENAI_API_PROTOCOL` 与中转站协议匹配。
+12. AI 经营助手生成日报和活动文案；未配置 Key 时失败可见且不影响交易；失败报告不计入今日次数；使用中转站时确认 `OPENAI_API_PROTOCOL` 与中转站协议匹配。
+13. 超级管理员进入 `AI 经营 / AI 设置`，确认可控制总开关、场景开关、模型、协议、每日额度和超管不限次；保存必须填写原因并写入操作日志。
 
 ## 技术验收命令
 
@@ -49,6 +50,8 @@ Dou-Server：
 
 ```powershell
 node --check src/lib/aiBusinessAssistant.js
+node --check src/lib/aiPlatformSettings.js
+node --check src/routes/admin/aiSettings.routes.js
 node --check src/routes/admin/tenantAi.routes.js
 node --check src/routes/admin/index.js
 node --check src/lib/adminPermissions.js

@@ -1064,3 +1064,32 @@
   - Dou-Admin / Dou-Server / 外层续航文档 UTF-8 扫描无 U+FFFD。
   - Dou-Admin / Dou-Server `git diff --check` 通过，仅有 CRLF 转换提示。
 - 风险与回滚：文档变更不影响运行；如后端协议配置异常，固定回 `responses` 或临时关闭 AI Key 保留失败兜底。
+
+### AI 经营助手可读化与超管设置入口
+
+- 时间：2026-06-06 (Asia/Shanghai)
+- 任务目标：按用户反馈优化 AI 助手线上化：结果要让运营看得懂，失败不占次数，超级管理员不限次，并提供全局超管专用设置入口控制公共 AI 权限和参数。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/router/modules/home.ts`
+  - `src/views/tenant/ai.vue`
+  - `src/views/ai/settings.vue`
+  - `docs/CREATOR_COMMERCE_P5_AI_ASSISTANT_DESIGN.md`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/GO_LIVE_ACCEPTANCE_CHECKLIST.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `.env.example`
+  - Dou-Server `src/db/migrations/044_ai_platform_settings.sql`
+  - Dou-Server `src/lib/aiBusinessAssistant.js`
+  - Dou-Server `src/lib/aiPlatformSettings.js`
+  - Dou-Server `src/routes/admin/aiSettings.routes.js`
+  - Dou-Server `src/routes/admin/index.js`
+  - Dou-Server `src/routes/admin/tenantAi.routes.js`
+- 已完成前端能力：AI 报告抽屉拆成经营摘要、关键指标、风险、动作建议、候选文案和合规提示；失败报告明确“不计入今日可用次数”；超管用量显示 `已用 / 不限`；新增 `AI 经营 / AI 设置` 超管菜单。
+- 权限边界：前端只展示入口，后端 `/api/admin/ai/settings` 使用全局超级管理员兜底；设置页不展示、不保存 API Key，仅展示服务端是否已配置密钥。
+- 验证：`corepack pnpm typecheck`、`corepack pnpm build` 通过；协同 Dou-Server `node --check`、AI 模块动态导入、临时库全量迁移到 `044` 和 AI 用量逻辑 smoke 通过；双仓 `git diff --check` 与 UTF-8 扫描通过，仅有 CRLF 转换提示。
+- 下一步：验证通过后提交推送；部署时执行迁移 `044_ai_platform_settings.sql`，再用全局超级管理员回归 AI 设置保存、普通圈主额度和超管不限次。
+- 风险与回滚：新增设置页和设置接口独立于交易链路；如异常，可隐藏 `/ai/settings` 菜单或回滚后端设置路由，租户 AI 页仍可按环境变量默认配置运行。

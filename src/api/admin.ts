@@ -340,10 +340,16 @@ export type TenantConversionSummary = {
 export type TenantAiUsage = {
   used: number;
   limit: number;
-  remaining: number;
+  remaining: number | null;
   plan_code: string;
   ai_available: boolean;
   model: string;
+  unlimited?: boolean;
+  enabled?: boolean;
+  daily_report_enabled?: boolean;
+  campaign_copy_enabled?: boolean;
+  protocol?: string;
+  protocol_source?: string;
 };
 
 export type TenantAiReport = {
@@ -404,6 +410,44 @@ export type ProductCategory = {
   product_count: number;
   created_at: string;
   updated_at: string;
+};
+
+export type PlatformAiSettings = {
+  id: string;
+  enabled: boolean;
+  daily_report_enabled: boolean;
+  campaign_copy_enabled: boolean;
+  model: string;
+  protocol: "" | "responses" | "chat_completions" | "auto" | string;
+  base_url: string;
+  responses_url: string;
+  chat_completions_url: string;
+  chat_max_tokens_field: "max_tokens" | "max_completion_tokens" | string;
+  basic_daily_limit: number | null;
+  pro_daily_limit: number | null;
+  super_admin_unlimited: boolean;
+  request_timeout_ms: number | null;
+  max_output_tokens: number | null;
+  update_note: string;
+  updated_by_admin_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PlatformAiRuntime = {
+  api_key_configured: boolean;
+  effective_model: string;
+  protocol: string;
+  protocol_default: string;
+  protocol_source: string;
+  timeout_ms: number;
+  max_output_tokens: number;
+  chat_max_tokens_field: string;
+  responses_url: { host: string; path: string; has_query: boolean };
+  chat_completions_url: { host: string; path: string; has_query: boolean };
+  enabled: boolean;
+  scene_enabled: boolean;
+  super_admin_unlimited: boolean;
 };
 
 export type ResourceImportBatch = {
@@ -902,6 +946,27 @@ export const tenantAiApi = {
       http.request<
         ApiResult<{ confirmation_id: string; report: TenantAiReport }>
       >("post", `/tenant/ai/reports/${id}/confirm`, { data })
+    )
+};
+
+export const platformAiSettingsApi = {
+  detail: () =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          settings: PlatformAiSettings;
+          runtime: PlatformAiRuntime;
+        }>
+      >("get", "/ai/settings")
+    ),
+  save: (data: Record<string, any>) =>
+    unwrap(
+      http.request<
+        ApiResult<{
+          settings: PlatformAiSettings;
+          runtime: PlatformAiRuntime;
+        }>
+      >("put", "/ai/settings", { data })
     )
 };
 

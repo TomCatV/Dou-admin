@@ -405,3 +405,14 @@
 - 验证结果：Admin 本轮仅文档改动，未改页面代码；Dou-Server `node --check`、动态导入、全量迁移、mock Chat Completions/auto fallback smoke、双仓 `git diff --check` 和 UTF-8 扫描均通过，仅有 CRLF 转换提示。
 - 下一步计划：部署后在服务器 `.env` 按中转站能力配置协议；官方 OpenAI 保持 `responses`，第三方中转站不确定时用 `auto`，只支持 Chat Completions 时用 `chat_completions`。
 - 风险与回滚：Admin 本轮只改文档，不改页面代码；如后端协议兼容异常，可回退 Dou-Server 提交或把协议固定为 `responses`。
+
+## 2026-06-06 AI 经营助手可读化与超管设置入口
+
+- 当前目标：根据用户反馈，把 AI 助手结果从“像代码/JSON”改为可读经营报告；失败生成不计次数；超级管理员默认不限次；新增只有超管可用的平台 AI 设置入口。
+- 已改文件：`src/api/admin.ts`、`src/router/modules/home.ts`、`src/views/tenant/ai.vue`、`src/views/ai/settings.vue`、`docs/CREATOR_COMMERCE_P5_AI_ASSISTANT_DESIGN.md`、`docs/ADMIN_USER_MANUAL.md`、`docs/GO_LIVE_ACCEPTANCE_CHECKLIST.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server AI 设置接口、平台设置表和 AI 生成逻辑。
+- 已完成前端能力：`/tenant/ai` 抽屉按经营摘要、关键指标、风险提醒、建议动作、卖点、候选文案和合规提示展示；失败报告提示不计次数；用量卡片支持 `不限`；生成按钮按平台总开关和场景开关禁用；新增 `/ai/settings` 页面。
+- 超管设置入口：`AI 经营 / AI 设置` 仅 `super_admin` 可见，可调整总开关、经营日报/活动文案开关、模型、协议、中转站 URL、额度、超管不限次、超时和输出 Token；不展示也不保存 `OPENAI_API_KEY`。
+- 协同后端能力：Dou-Server 新增 `platform_ai_settings` 独立表与 `/api/admin/ai/settings`；设置写入要求全局超级管理员、调整原因和审计日志；租户 AI 生成服务端强制执行设置和超管不限次。
+- 验证结果：`corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；协同 Dou-Server `node --check`、AI 模块动态导入、临时库全量迁移到 `044` 和 AI 用量逻辑 smoke 通过；双仓 `git diff --check` 与 UTF-8 扫描通过，仅有 CRLF 转换提示。
+- 下一步计划：验证通过后双仓提交推送；线上部署后全局超管进入 `AI 经营 / AI 设置` 保存一次配置，再回归经营日报生成、失败不计数和普通圈主额度。
+- 风险与回滚：前端新增设置页和展示改造不改变 AI 报告表结构；如设置页异常，可临时隐藏 `/ai/settings` 菜单，AI 经营助手原租户页仍可按后端默认配置工作。

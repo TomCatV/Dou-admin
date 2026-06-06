@@ -393,6 +393,16 @@ export default [
           roles: allRoles,
           auths: ["tenant:ai:view"]
         }
+      },
+      {
+        path: "/ai/settings",
+        name: "PlatformAiSettings",
+        component: () => import("@/views/ai/settings.vue"),
+        meta: {
+          title: "AI 设置",
+          icon: "ep/setting",
+          roles: ["super_admin"]
+        }
       }
     ]
   },

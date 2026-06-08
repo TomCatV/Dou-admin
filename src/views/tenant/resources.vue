@@ -5,15 +5,18 @@ import {
   CopyDocument,
   Delete,
   Edit,
+  Picture,
   Plus,
   Refresh,
-  Search
+  Search,
+  Upload
 } from "@element-plus/icons-vue";
 import {
   ElMessage,
   ElMessageBox,
   type FormInstance,
-  type FormRules
+  type FormRules,
+  type UploadRequestOptions
 } from "element-plus";
 import { hasPerms } from "@/utils/auth";
 import {
@@ -30,10 +33,13 @@ import {
 defineOptions({ name: "TenantResources" });
 
 type DeliveryType = "resource" | "code";
+type UploadError = Error & { status: number; method: string; url: string };
 
 const router = useRouter();
 const loading = ref(false);
 const saving = ref(false);
+const uploadingCover = ref(false);
+const uploadingPreview = ref(false);
 const actionLoading = ref("");
 const rows = ref<ManagedResourceCard[]>([]);
 const categories = ref<ProductCategory[]>([]);
@@ -65,7 +71,7 @@ const form = reactive({
   delivery_type: "resource" as DeliveryType,
   cover_url: "",
   preview_text: "",
-  preview_images_text: "",
+  preview_images: [] as string[],
   resource_url: "",
   resource_access_code: "",
   doc_content: "",
@@ -80,6 +86,9 @@ const dialogTitle = computed(() => (form.id ? "编辑资源卡" : "发布资源�
 const currentCircle = computed(() => tenantContext.value?.current_circle || null);
 const activeCategories = computed(() =>
   categories.value.filter(item => item.status === "active")
+);
+const isUploadingImage = computed(
+  () => uploadingCover.value || uploadingPreview.value
 );
 
 const rules: FormRules = {
@@ -122,6 +131,30 @@ function splitLines(value: string) {
     .filter(Boolean);
 }
 
+function normalizePreviewImages(value: unknown) {
+  const raw = Array.isArray(value) ? value : [];
+  const seen = new Set<string>();
+  const next: string[] = [];
+  for (const item of raw) {
+    const url = String(item || "").trim();
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    next.push(url);
+    if (next.length >= 5) break;
+  }
+  return next;
+}
+
+function toUploadError(error: unknown): UploadError {
+  const uploadError =
+    error instanceof Error ? error : new Error(String(error || "上传失败"));
+  return Object.assign(uploadError, {
+    status: 0,
+    method: "POST",
+    url: "/tenant/upload-asset"
+  });
+}
+
 function resetForm() {
   Object.assign(form, {
     id: "",
@@ -133,7 +166,7 @@ function resetForm() {
     delivery_type: "resource",
     cover_url: "",
     preview_text: "",
-    preview_images_text: "",
+    preview_images: [],
     resource_url: "",
     resource_access_code: "",
     doc_content: "",
@@ -247,6 +280,7 @@ function search() {
 function openCategoryDialog() {
   Object.assign(categoryForm, { name: "", sort_order: 0 });
   categoryDialogVisible.value = true;
+  loadCategories();
 }
 
 async function createCategory() {
@@ -257,13 +291,16 @@ async function createCategory() {
   }
   saving.value = true;
   try {
-    await tenantApi.createProductCategory({
+    const data = await tenantApi.createProductCategory({
       name,
       sort_order: Number(categoryForm.sort_order) || 0
     });
     Object.assign(categoryForm, { name: "", sort_order: 0 });
     ElMessage.success("分类已创建");
     await loadCategories();
+    if (dialogVisible.value && !form.category_id && data.category?.id) {
+      form.category_id = data.category.id;
+    }
   } finally {
     saving.value = false;
   }
@@ -282,11 +319,13 @@ async function hideCategory(item: ProductCategory) {
     filters.category_id = "";
     await loadList();
   }
+  if (form.category_id === item.id) form.category_id = "";
 }
 
 function openCreate() {
   resetForm();
   dialogVisible.value = true;
+  if (!categories.value.length) loadCategories();
 }
 
 async function openEdit(row: ManagedResourceCard) {
@@ -303,7 +342,7 @@ async function openEdit(row: ManagedResourceCard) {
     delivery_type: (item.delivery_type || "resource") as DeliveryType,
     cover_url: item.cover_url || "",
     preview_text: item.preview_text || "",
-    preview_images_text: (item.preview_images || []).join("\n"),
+    preview_images: normalizePreviewImages(item.preview_images),
     resource_url: item.resource_url || "",
     resource_access_code: item.resource_access_code || "",
     doc_content: item.doc_content || "",
@@ -327,7 +366,7 @@ function buildPayload() {
     delivery_type: form.delivery_type,
     cover_url: form.cover_url.trim(),
     preview_text: form.preview_text.trim(),
-    preview_images: splitLines(form.preview_images_text),
+    preview_images: normalizePreviewImages(form.preview_images),
     remark: form.remark.trim(),
     is_pinned: form.is_pinned
   };
@@ -348,7 +387,77 @@ function buildPayload() {
   return payload;
 }
 
+async function uploadResourceImage(
+  file: File,
+  scene: "resource_card.cover" | "resource_card.preview_image"
+) {
+  const data = await tenantApi.uploadAsset(file, {
+    kind: "square",
+    scene
+  });
+  if (!data.url) throw new Error("上传成功但未返回图片地址");
+  return data.url;
+}
+
+async function uploadCover(options: UploadRequestOptions) {
+  uploadingCover.value = true;
+  try {
+    const url = await uploadResourceImage(
+      options.file as File,
+      "resource_card.cover"
+    );
+    form.cover_url = url;
+    options.onSuccess?.({ url });
+    ElMessage.success("封面已上传");
+  } catch (error) {
+    options.onError?.(toUploadError(error));
+    ElMessage.error(error instanceof Error ? error.message : "封面上传失败");
+  } finally {
+    uploadingCover.value = false;
+  }
+}
+
+async function uploadPreviewImage(options: UploadRequestOptions) {
+  if (form.preview_images.length >= 5) {
+    const error = new Error("最多上传 5 张预览图");
+    options.onError?.(toUploadError(error));
+    ElMessage.warning(error.message);
+    return;
+  }
+  uploadingPreview.value = true;
+  try {
+    const url = await uploadResourceImage(
+      options.file as File,
+      "resource_card.preview_image"
+    );
+    form.preview_images = normalizePreviewImages([...form.preview_images, url]);
+    options.onSuccess?.({ url });
+    ElMessage.success("预览图已上传");
+  } catch (error) {
+    options.onError?.(toUploadError(error));
+    ElMessage.error(error instanceof Error ? error.message : "预览图上传失败");
+  } finally {
+    uploadingPreview.value = false;
+  }
+}
+
+function beforePreviewUpload() {
+  if (form.preview_images.length >= 5) {
+    ElMessage.warning("最多上传 5 张预览图");
+    return false;
+  }
+  return true;
+}
+
+function removePreviewImage(index: number) {
+  form.preview_images = form.preview_images.filter((_, idx) => idx !== index);
+}
+
 async function saveResource() {
+  if (isUploadingImage.value) {
+    ElMessage.warning("图片还在上传中，请稍后保存");
+    return;
+  }
   await formRef.value?.validate();
   saving.value = true;
   try {
@@ -506,6 +615,9 @@ onMounted(loadPageData);
           :label="item.name"
           :value="item.id"
         />
+        <template #empty>
+          <div class="select-empty">当前圈子还没有分类</div>
+        </template>
       </el-select>
       <el-select v-model="filters.status" class="filter-item" clearable placeholder="状态">
         <el-option label="草稿" value="draft" />
@@ -628,14 +740,20 @@ onMounted(loadPageData);
           <el-input v-model="form.summary" type="textarea" :rows="3" maxlength="200" show-word-limit />
         </el-form-item>
         <el-form-item label="资源卡分类">
-          <el-select v-model="form.category_id" clearable placeholder="选择分类">
-            <el-option
-              v-for="item in activeCategories"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
+          <div class="category-field">
+            <el-select v-model="form.category_id" clearable placeholder="选择分类">
+              <el-option
+                v-for="item in activeCategories"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id"
+              />
+              <template #empty>
+                <div class="select-empty">当前圈子还没有分类</div>
+              </template>
+            </el-select>
+            <el-button :icon="Plus" @click="openCategoryDialog">分类管理</el-button>
+          </div>
         </el-form-item>
         <el-form-item label="H5 展示">
           <el-radio-group v-model="form.h5_status">
@@ -652,19 +770,80 @@ onMounted(loadPageData);
             <el-radio-button label="code">卡密交付</el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="封面地址">
-          <el-input v-model="form.cover_url" placeholder="建议使用已上传到 COS 的图片地址" />
+        <el-form-item label="封面图">
+          <div class="cover-upload-field">
+            <el-image
+              v-if="form.cover_url"
+              class="form-cover-preview"
+              :src="form.cover_url"
+              fit="cover"
+            />
+            <div v-else class="form-cover-empty">
+              <el-icon><Picture /></el-icon>
+              <span>封面</span>
+            </div>
+            <div class="image-actions">
+              <el-upload
+                action="#"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                :disabled="uploadingCover"
+                :http-request="uploadCover"
+                :show-file-list="false"
+              >
+                <el-button type="primary" :icon="Upload" :loading="uploadingCover">
+                  {{ form.cover_url ? "替换封面" : "上传封面" }}
+                </el-button>
+              </el-upload>
+              <el-button
+                v-if="form.cover_url"
+                :icon="Delete"
+                :disabled="uploadingCover"
+                @click="form.cover_url = ''"
+              >
+                移除
+              </el-button>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="预览文案">
           <el-input v-model="form.preview_text" type="textarea" :rows="3" maxlength="1000" show-word-limit />
         </el-form-item>
         <el-form-item label="预览图片">
-          <el-input
-            v-model="form.preview_images_text"
-            type="textarea"
-            :rows="3"
-            placeholder="一行一个图片地址，最多 5 张"
-          />
+          <div class="preview-upload-field">
+            <div class="preview-grid">
+              <div
+                v-for="(url, index) in form.preview_images"
+                :key="`${url}-${index}`"
+                class="preview-thumb"
+              >
+                <el-image class="preview-thumb-image" :src="url" fit="cover" />
+                <el-button
+                  circle
+                  size="small"
+                  type="danger"
+                  :icon="Delete"
+                  class="preview-remove"
+                  @click="removePreviewImage(index)"
+                />
+              </div>
+              <el-upload
+                v-if="form.preview_images.length < 5"
+                action="#"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                :before-upload="beforePreviewUpload"
+                :disabled="uploadingPreview"
+                :http-request="uploadPreviewImage"
+                :show-file-list="false"
+              >
+                <div class="preview-add">
+                  <el-icon><Upload /></el-icon>
+                  <span>{{ uploadingPreview ? "上传中" : "上传预览图" }}</span>
+                </div>
+              </el-upload>
+            </div>
+            <div class="upload-tip">已上传 {{ form.preview_images.length }}/5 张，购买前展示。</div>
+          </div>
         </el-form-item>
         <template v-if="form.delivery_type === 'resource'">
           <el-form-item label="资源链接">
@@ -699,11 +878,18 @@ onMounted(loadPageData);
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveResource">保存</el-button>
+        <el-button
+          type="primary"
+          :disabled="isUploadingImage"
+          :loading="saving"
+          @click="saveResource"
+        >
+          保存
+        </el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="categoryDialogVisible" title="分类管理" width="520px">
+    <el-dialog v-model="categoryDialogVisible" title="分类管理" width="520px" append-to-body>
       <div class="category-create">
         <el-input
           v-model="categoryForm.name"
@@ -794,6 +980,20 @@ onMounted(loadPageData);
   width: 220px;
 }
 
+.select-empty {
+  padding: 10px 12px;
+  color: #8f8276;
+  font-size: 13px;
+  text-align: center;
+}
+
+.category-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  width: 100%;
+}
+
 .product-cell {
   display: flex;
   align-items: center;
@@ -848,6 +1048,92 @@ onMounted(loadPageData);
   margin-bottom: 12px;
 }
 
+.cover-upload-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.form-cover-preview,
+.form-cover-empty {
+  width: 104px;
+  height: 104px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid #efe6db;
+  border-radius: 6px;
+  background: #f7f2ea;
+}
+
+.form-cover-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  color: #8f8276;
+  font-size: 12px;
+}
+
+.image-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.preview-upload-field {
+  width: 100%;
+}
+
+.preview-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.preview-thumb,
+.preview-add {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  overflow: hidden;
+  border: 1px solid #efe6db;
+  border-radius: 6px;
+  background: #f7f2ea;
+}
+
+.preview-thumb-image {
+  width: 100%;
+  height: 100%;
+}
+
+.preview-remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+}
+
+.preview-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  color: #8a4b23;
+  cursor: pointer;
+  border-style: dashed;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.upload-tip {
+  margin-top: 8px;
+  color: #8f8276;
+  font-size: 12px;
+}
+
 @media (max-width: 768px) {
   .page-head {
     align-items: flex-start;
@@ -856,6 +1142,16 @@ onMounted(loadPageData);
 
   .keyword {
     width: 100%;
+  }
+
+  .category-field,
+  .category-create {
+    grid-template-columns: 1fr;
+  }
+
+  .cover-upload-field {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

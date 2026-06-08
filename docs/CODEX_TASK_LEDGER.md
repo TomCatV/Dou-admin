@@ -1177,3 +1177,30 @@
 - 验证：`corepack pnpm typecheck`、`corepack pnpm build` 通过；协同 Dou-Server `node --check` 覆盖用户、圈子和资源卡治理路由；双仓 `git diff --check` 仅有 CRLF 转换提示；UTF-8 扫描无 U+FFFD。
 - 下一步：部署后回归平台超管全量圈子选择、圈主主账号本人圈子选择、单圈子账号只看到授权圈子，以及从圈子管理跳转后的默认筛选。
 - 风险与回滚：无迁移；异常时可先回滚 Admin 跳转和下拉页面改动，后端过滤参数保持向后兼容。
+
+### 资源卡发布分类与图片上传优化
+
+- 时间：2026-06-08 (Asia/Shanghai)
+- 任务目标：优化圈主后台发布资源卡表单，修复分类下拉空白体验，把封面和预览图改为后台上传组件，并对齐小程序资源卡字段契约。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `docs/RESOURCE_CARD_PUBLISH_UPLOAD_OPTIMIZATION_DESIGN.md`
+  - `src/api/admin.ts`
+  - `src/views/tenant/resources.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `docs/RESOURCE_CARD_ADMIN_UPLOAD_DESIGN.md`
+  - Dou-Server `src/routes/admin/tenant.routes.js`
+  - Dou-Server `src/lib/contentSafety.js`
+- 已完成前端能力：资源卡分类下拉增加空态和弹窗内分类管理入口；新增分类后刷新列表并可自动选中新分类；封面图支持上传、替换、移除；预览图支持最多 5 张上传、缩略图展示和单张删除；保存时提交 `preview_images` 数组。
+- 字段结论：不做富文本改造，后台直接对齐小程序已有 `cover_url`、`preview_text`、`preview_images`、`resource_url`、`resource_access_code`、`doc_content`、`doc_url`、`code_items` 字段。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck`
+  - Dou-Admin `corepack pnpm build`
+  - Dou-Admin `git diff --check` 通过，仅有 CRLF 转换提示
+  - 协同 Dou-Server `node --check src/routes/admin/tenant.routes.js`
+  - 协同 Dou-Server `node --check src/lib/contentSafety.js`
+  - 协同 Dou-Server `git diff --check` 通过，仅有 CRLF 转换提示
+- 下一步：提交推送后部署双仓，用圈主账号回归无分类空态、新建分类、上传封面、上传预览图、保存资源卡和小程序购买前详情展示。
+- 风险与回滚：不新增迁移；异常时可先回滚 Admin 上传控件，恢复手填 URL；Server 上传接口是新增接口，回滚不影响小程序既有上传链路。

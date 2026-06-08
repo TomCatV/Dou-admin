@@ -412,6 +412,15 @@ export type ProductCategory = {
   updated_at: string;
 };
 
+export type TenantUploadAssetResult = {
+  url: string;
+  key: string | null;
+  provider: "cos" | "local" | string;
+  size: number;
+  mimetype: string;
+  originalname: string;
+};
+
 export type PlatformAiSettings = {
   id: string;
   enabled: boolean;
@@ -587,6 +596,26 @@ export const tenantApi = {
         `/tenant/product-categories/${id}`
       )
     ),
+  uploadAsset: (
+    file: File,
+    options: { kind?: string; scene?: string } = {}
+  ) => {
+    const data = new FormData();
+    data.append("file", file);
+    data.append("kind", options.kind || "square");
+    data.append("scene", options.scene || "resource_card.image");
+    return unwrap(
+      http.request<ApiResult<TenantUploadAssetResult>>(
+        "post",
+        "/tenant/upload-asset",
+        {
+          data,
+          headers: { "Content-Type": "multipart/form-data" },
+          timeout: 30000
+        }
+      )
+    );
+  },
   resourceImportBatches: (params: Record<string, any>) =>
     unwrap(
       http.request<ApiResult<PageResult<ResourceImportBatch>>>(

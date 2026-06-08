@@ -447,3 +447,13 @@
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；协同 Dou-Server `node --check` 覆盖用户、圈子和资源卡治理路由通过；双仓 `git diff --check` 仅有 CRLF 转换提示；改动文件 UTF-8 扫描无 U+FFFD。
 - 下一步计划：部署双仓后，用平台超管和圈主主账号分别回归圈子下拉可见范围、用户管理圈内成员筛选、资源卡治理圈内资源筛选，以及圈子管理跳转后自动带入圈子筛选。
 - 风险与回滚：本轮不新增迁移；如圈子下拉异常，可临时隐藏前端下拉，后端 `circle_id` 过滤保持兼容；如权限边界异常，优先回滚 `/circles/options` 或 `/users?circle_id` 后端改动。
+
+## 2026-06-08 资源卡发布分类与图片上传优化
+
+- 当前目标：优化 `圈主后台 / 资源卡管理 / 发布资源卡` 表单，修复分类下拉空白体验，并把封面图、预览图从手填 URL 升级为后台上传，字段契约对齐小程序现有 `cover_url + preview_text + preview_images`。
+- 已改文件：`docs/RESOURCE_CARD_PUBLISH_UPLOAD_OPTIMIZATION_DESIGN.md`、`src/api/admin.ts`、`src/views/tenant/resources.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`；协同 Dou-Server 新增管理端图片上传接口。
+- 已完成前端能力：发布/编辑弹窗内分类选择器增加空态与“分类管理”入口；新增分类后自动刷新并可回填当前表单；封面图支持上传、替换、移除和缩略图展示；预览图支持最多 5 张上传、缩略图和单张删除；保存时提交 `preview_images` 数组。
+- 字段边界：本轮不引入富文本编辑器，不新增数据库字段；购买前仍展示 `preview_text + preview_images`，购买后交付仍使用 `resource_url / resource_access_code / doc_content / doc_url / code_items`。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过，构建仅有 Browserslist/baseline 数据陈旧提示；`git diff --check` 通过，仅有 CRLF 转换提示。
+- 下一步计划：部署 Dou-Server 后端接口与 Dou-Admin 前端后，用圈主账号回归分类为空、新增分类、上传封面、上传 1-5 张预览图、保存草稿和上架后小程序详情展示。
+- 风险与回滚：前端上传控件可单独回滚为手填 URL；后端新增接口不改变小程序 `/api/v0.9/me/upload-asset` 和既有资源卡创建/编辑接口。

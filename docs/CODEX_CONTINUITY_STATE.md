@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-06-06 (Asia/Shanghai)
+最后更新时间：2026-06-08 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -416,3 +416,15 @@
 - 验证结果：`corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；协同 Dou-Server `node --check`、AI 模块动态导入、临时库全量迁移到 `044` 和 AI 用量逻辑 smoke 通过；双仓 `git diff --check` 与 UTF-8 扫描通过，仅有 CRLF 转换提示。
 - 下一步计划：验证通过后双仓提交推送；线上部署后全局超管进入 `AI 经营 / AI 设置` 保存一次配置，再回归经营日报生成、失败不计数和普通圈主额度。
 - 风险与回滚：前端新增设置页和展示改造不改变 AI 报告表结构；如设置页异常，可临时隐藏 `/ai/settings` 菜单，AI 经营助手原租户页仍可按后端默认配置工作。
+
+## 2026-06-08 圈主后台账号派发与多圈子经营
+
+- 当前目标：优化 `账号权限 / 后台账号` 的圈主开通流程，把圈主主账号从“手填账号名 + 单圈子授权”改为“远程搜索小程序用户 + 自动使用 `dxq_id` + 默认经营本人全部活跃圈子”，并补齐后台右上角昵称头像、举报动作权限收口和圈主经营页切圈体验。
+- 已改文件：`src/api/admin.ts`、`src/api/user.ts`、`src/views/admin-users/index.vue`、`src/views/reports/index.vue`、`src/views/tenant/dashboard.vue`、`src/views/tenant/orders.vue`、`src/views/tenant/wallet.vue`、`docs/ADMIN_USER_MANUAL.md`、`docs/COMMERCIAL_MULTI_TENANT_ADMIN.md`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`。
+- 已完成前端能力：新建/编辑 `tenant_owner` 时改为远程搜索已在微信小程序注册的一键登录用户，下拉展示 `dxq_id / 昵称 / 活跃圈子数`；账号名自动只读显示 `dxq_id`；圈主主账号不再展示“授权圈子/绑定圈主/显示名手填”；列表中对这类账号展示“圈主全部圈子”和活跃圈子数；右上角头像与昵称改为使用后端返回的当前小程序资料。
+- 经营页体验：`圈主后台 / 工作台`、`交易资金 / 订单售后`、`交易资金 / 钱包提现` 已统一接入当前经营圈子上下文，支持切换本人名下活跃圈子；当账号暂无可经营圈子时，页面展示 warning 提示而不是空白报错。
+- 权限边界联动：举报处理动作下拉按真实权限收口；圈主即便拥有 `report:process`，前端也不会再展示 `ban_user`、圈子关闭、资源卡禁用等超出自身权限的动作入口。
+- 协同后端：Dou-Server 已支持 `tenant_owner + bound_user_id + 空 scope_circle_id` 的多圈子模型，并把工作台、成员、圈子、资源卡、售后、通知、举报、人工复核等接口都收口到本人范围。
+- 验证结果：`corepack pnpm typecheck`、`corepack pnpm build` 通过；协同 Dou-Server `node --check` 覆盖 `adminPermissions.js`、`tenant.routes.js`、`dashboard.routes.js`、`reports.routes.js` 通过；双仓 `git diff --check` 通过，仅有 CRLF 转换提示；改动文件 UTF-8 扫描无 `U+FFFD`。
+- 下一步计划：提交推送后，用平台超管账号回归后台账号开通/编辑页、圈主主账号登录后的右上角昵称头像、圈主工作台/订单/钱包切圈，以及圈主举报处理动作可见性；本地联调优先使用指向 `http://localhost:3001/api/admin` 的 Admin `8849` 端口。
+- 风险与回滚：本轮不新增迁移；如多圈子经营范围出现异常，可先回滚 Dou-Admin 圈主主账号表单与切圈页面改动，后端仍兼容旧单圈子模型；如举报动作收口影响平台账号体验，可单独回滚前端动作过滤而不放松后端权限校验。

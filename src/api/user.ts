@@ -44,6 +44,7 @@ type DouAdminLoginResult = {
         id: string;
         username: string;
         display_name: string;
+        avatar?: string;
         role: string;
         account_type?: string;
         status: string;
@@ -65,7 +66,7 @@ export const getLogin = (data?: object) => {
       return {
         success: res?.code === 0 && !!token,
         data: {
-          avatar: "",
+          avatar: admin?.avatar || "",
           username: admin?.username || "",
           nickname: admin?.display_name || admin?.username || "",
           roles:

@@ -6,6 +6,7 @@ import {
   tenantApi,
   type AfterSaleAction,
   type AfterSaleMessage,
+  type TenantContext,
   type TenantAfterSale,
   type TenantOrder
 } from "@/api/admin";
@@ -15,6 +16,10 @@ import {
   complaintTypeLabels,
   refundStatusMap
 } from "@/utils/labels";
+import {
+  getSelectedTenantCircleId,
+  setSelectedTenantCircleId
+} from "@/utils/tenantContext";
 
 defineOptions({ name: "TenantOrders" });
 
@@ -24,6 +29,8 @@ const orders = ref<TenantOrder[]>([]);
 const afterSales = ref<TenantAfterSale[]>([]);
 const total = ref(0);
 const route = useRoute();
+const tenantContext = ref<TenantContext | null>(null);
+const selectedCircleId = ref(getSelectedTenantCircleId());
 const filters = reactive({ keyword: "", status: "", page: 1, page_size: 20 });
 const detailVisible = ref(false);
 const detailLoading = ref(false);
@@ -67,8 +74,50 @@ const canReplaceCode = computed(
 );
 
 const canHandleCurrent = computed(() => current.value?.status === "open");
+const currentCircle = computed(() => tenantContext.value?.current_circle || null);
+
+async function loadTenantContext() {
+  try {
+    const context = await tenantApi.context();
+    const circles = context.circles || [];
+    let nextSelected = selectedCircleId.value || context.selected_circle_id;
+    if (!circles.some(item => item.id === nextSelected)) {
+      nextSelected = context.selected_circle_id || circles[0]?.id || "";
+    }
+    if (nextSelected) {
+      setSelectedTenantCircleId(nextSelected);
+      selectedCircleId.value = nextSelected;
+    }
+    const nextCircle =
+      circles.find(item => item.id === nextSelected) ||
+      context.current_circle ||
+      null;
+    tenantContext.value = {
+      ...context,
+      can_enter: Boolean(nextCircle),
+      selected_circle_id: nextSelected,
+      current_circle: nextCircle
+    };
+    return Boolean(nextCircle);
+  } catch (error) {
+    tenantContext.value = {
+      can_enter: false,
+      message: error instanceof Error ? error.message : "当前账号暂无可经营圈子",
+      selected_circle_id: "",
+      current_circle: null,
+      circles: []
+    };
+    return false;
+  }
+}
 
 async function loadList() {
+  if (tenantContext.value && !tenantContext.value.can_enter) {
+    orders.value = [];
+    afterSales.value = [];
+    total.value = 0;
+    return;
+  }
   loading.value = true;
   try {
     if (activeTab.value === "orders") {
@@ -87,6 +136,21 @@ async function loadList() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadPageData() {
+  const canEnter = await loadTenantContext();
+  if (!canEnter) {
+    orders.value = [];
+    afterSales.value = [];
+    total.value = 0;
+    detailVisible.value = false;
+    current.value = null;
+    messages.value = [];
+    actions.value = [];
+    return;
+  }
+  await loadList();
 }
 
 function applyDetail(data: {
@@ -222,7 +286,16 @@ async function syncRefundCurrent() {
 function switchTab() {
   filters.page = 1;
   filters.status = "";
-  loadList();
+  loadPageData();
+}
+
+async function switchTenantCircle(value: string) {
+  setSelectedTenantCircleId(value);
+  selectedCircleId.value = value;
+  filters.page = 1;
+  detailVisible.value = false;
+  current.value = null;
+  await loadPageData();
 }
 
 onMounted(() => {
@@ -230,12 +303,56 @@ onMounted(() => {
   const status = String(route.query.status || "");
   if (tab === "after-sales") activeTab.value = tab;
   if (status) filters.status = status;
-  loadList();
+  loadPageData();
 });
 </script>
 
 <template>
   <div class="tenant-list-page">
+    <div class="page-head">
+      <div>
+        <h1>订单与售后</h1>
+        <p>查看当前经营圈子的成交订单、售后协商、补发和退款处理进度。</p>
+      </div>
+      <div class="head-actions">
+        <el-select
+          v-if="tenantContext?.circles?.length"
+          v-model="selectedCircleId"
+          class="circle-switch"
+          placeholder="选择经营圈子"
+          @change="switchTenantCircle"
+        >
+          <el-option
+            v-for="item in tenantContext.circles"
+            :key="item.id"
+            :label="item.name || item.circle_code || item.id"
+            :value="item.id"
+          />
+        </el-select>
+        <el-button type="primary" @click="loadPageData">刷新</el-button>
+      </div>
+    </div>
+
+    <el-alert
+      v-if="tenantContext && !tenantContext.can_enter"
+      class="mb"
+      type="warning"
+      show-icon
+      :closable="false"
+      :title="tenantContext.message || '当前账号还没有可经营的圈子上下文。'"
+      description="请先确认后台账号已绑定到微信小程序注册的圈主用户，并且该用户名下至少有一个活跃圈子。"
+    />
+
+    <el-alert
+      v-else-if="currentCircle"
+      class="mb"
+      type="info"
+      show-icon
+      :closable="false"
+      :title="`当前经营圈子：${currentCircle.name || currentCircle.circle_code || currentCircle.id}`"
+      description="订单列表、售后协商和退款动作都会作用于当前选中的圈子。"
+    />
+
     <el-tabs v-model="activeTab" @tab-change="switchTab">
       <el-tab-pane label="订单" name="orders" />
       <el-tab-pane label="售后" name="after-sales" />
@@ -493,10 +610,43 @@ onMounted(() => {
   padding: 16px;
 }
 
+.page-head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.page-head h1 {
+  margin: 0;
+  font-size: 22px;
+  color: #221a14;
+}
+
+.page-head p {
+  margin: 6px 0 0;
+  color: #766b61;
+}
+
+.head-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.circle-switch {
+  width: 220px;
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mb {
   margin-bottom: 12px;
 }
 
@@ -540,5 +690,18 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+@media (width <= 768px) {
+  .page-head,
+  .head-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .circle-switch,
+  .keyword {
+    width: 100%;
+  }
 }
 </style>

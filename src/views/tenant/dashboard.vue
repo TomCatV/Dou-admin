@@ -13,7 +13,11 @@ import {
   TrendCharts,
   User
 } from "@element-plus/icons-vue";
-import { tenantApi, type TenantDashboard } from "@/api/admin";
+import { tenantApi, type TenantContext, type TenantDashboard } from "@/api/admin";
+import {
+  getSelectedTenantCircleId,
+  setSelectedTenantCircleId
+} from "@/utils/tenantContext";
 
 defineOptions({ name: "TenantDashboard" });
 
@@ -21,12 +25,15 @@ const router = useRouter();
 const loading = ref(false);
 const keyword = ref("");
 const data = ref<TenantDashboard | null>(null);
+const tenantContext = ref<TenantContext | null>(null);
+const selectedCircleId = ref(getSelectedTenantCircleId());
 
 const owner = computed(() => data.value?.owner_overview || null);
 const ownerMetrics = computed(() => owner.value?.metrics || data.value?.metrics || {});
 const query = computed(() => keyword.value.trim().toLowerCase());
 const feePolicy = computed(() => data.value?.fee_policy || null);
 const feeUpgrade = computed(() => data.value?.fee_policy_upgrade || null);
+const currentCircle = computed(() => tenantContext.value?.current_circle || null);
 
 const usageRows = computed(() => [
   {
@@ -208,13 +215,59 @@ function go(path = "") {
   router.push(path);
 }
 
+async function loadTenantContext() {
+  try {
+    const context = await tenantApi.context();
+    const circles = context.circles || [];
+    let nextSelected = selectedCircleId.value || context.selected_circle_id;
+    if (!circles.some(item => item.id === nextSelected)) {
+      nextSelected = context.selected_circle_id || circles[0]?.id || "";
+    }
+    if (nextSelected) {
+      setSelectedTenantCircleId(nextSelected);
+      selectedCircleId.value = nextSelected;
+    }
+    const nextCircle =
+      circles.find(item => item.id === nextSelected) ||
+      context.current_circle ||
+      null;
+    tenantContext.value = {
+      ...context,
+      can_enter: Boolean(nextCircle),
+      selected_circle_id: nextSelected,
+      current_circle: nextCircle
+    };
+    return Boolean(nextCircle);
+  } catch (error) {
+    tenantContext.value = {
+      can_enter: false,
+      message: error instanceof Error ? error.message : "当前账号暂无可经营圈子",
+      selected_circle_id: "",
+      current_circle: null,
+      circles: []
+    };
+    return false;
+  }
+}
+
 async function loadData() {
   loading.value = true;
   try {
+    const canEnter = await loadTenantContext();
+    if (!canEnter) {
+      data.value = null;
+      return;
+    }
     data.value = await tenantApi.dashboard();
   } finally {
     loading.value = false;
   }
+}
+
+async function switchTenantCircle(value: string) {
+  setSelectedTenantCircleId(value);
+  selectedCircleId.value = value;
+  await loadData();
 }
 
 onMounted(loadData);
@@ -224,10 +277,24 @@ onMounted(loadData);
   <div v-loading="loading" class="tenant-page">
     <div class="page-head">
       <div>
-        <h1>{{ data?.circle?.name || "经营总览" }}</h1>
+        <h1>{{ currentCircle?.name || data?.circle?.name || "经营总览" }}</h1>
         <p>{{ data?.circle?.description || "查看全圈资源、成交、收益和运营入口。" }}</p>
       </div>
       <div class="head-actions">
+        <el-select
+          v-if="tenantContext?.circles?.length"
+          v-model="selectedCircleId"
+          class="circle-switch"
+          placeholder="选择经营圈子"
+          @change="switchTenantCircle"
+        >
+          <el-option
+            v-for="item in tenantContext.circles"
+            :key="item.id"
+            :label="item.name || item.circle_code || item.id"
+            :value="item.id"
+          />
+        </el-select>
         <el-input
           v-model="keyword"
           class="search-input"
@@ -238,6 +305,26 @@ onMounted(loadData);
         <el-button type="primary" :icon="Refresh" @click="loadData">刷新</el-button>
       </div>
     </div>
+
+    <el-alert
+      v-if="tenantContext && !tenantContext.can_enter"
+      class="mb"
+      type="warning"
+      show-icon
+      :closable="false"
+      :title="tenantContext.message || '当前账号还没有可经营的圈子上下文。'"
+      description="请先确认后台账号已绑定到微信小程序注册的圈主用户，并且该用户名下至少有一个活跃圈子。"
+    />
+
+    <el-alert
+      v-else-if="currentCircle"
+      class="mb"
+      type="info"
+      show-icon
+      :closable="false"
+      :title="`当前经营圈子：${currentCircle.name || currentCircle.circle_code || currentCircle.id}`"
+      description="工作台中的订单、售后、钱包和商品明细都会按当前选中的圈子上下文加载。"
+    />
 
     <el-alert
       v-if="data && !data.writable"
@@ -566,6 +653,10 @@ onMounted(loadData);
   align-items: center;
 }
 
+.circle-switch {
+  width: 220px;
+}
+
 .search-input {
   width: min(420px, 44vw);
 }
@@ -862,6 +953,7 @@ onMounted(loadData);
     flex-direction: column;
   }
 
+  .circle-switch,
   .search-input {
     width: 100%;
   }

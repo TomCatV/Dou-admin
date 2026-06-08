@@ -2,17 +2,24 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { hasPerms } from "@/utils/auth";
-import { tenantApi } from "@/api/admin";
+import { tenantApi, type TenantContext } from "@/api/admin";
+import {
+  getSelectedTenantCircleId,
+  setSelectedTenantCircleId
+} from "@/utils/tenantContext";
 
 defineOptions({ name: "TenantWallet" });
 
 const loading = ref(false);
 const submitting = ref(false);
 const data = ref<Record<string, any>>({});
+const tenantContext = ref<TenantContext | null>(null);
+const selectedCircleId = ref(getSelectedTenantCircleId());
 const form = reactive({ amount_yuan: "", remark: "" });
 const canWithdraw = computed(() => hasPerms("tenant:wallet:withdraw"));
 const feePolicy = computed(() => data.value.fee_policy || null);
 const feeUpgrade = computed(() => data.value.fee_policy_upgrade || null);
+const currentCircle = computed(() => tenantContext.value?.current_circle || null);
 
 function yuan(value?: number) {
   return `¥${((Number(value) || 0) / 100).toFixed(2)}`;
@@ -37,13 +44,59 @@ function savingPerHundred(value?: number) {
   return yuan(Math.floor((10000 * (Number(value) || 0)) / 10000));
 }
 
+async function loadTenantContext() {
+  try {
+    const context = await tenantApi.context();
+    const circles = context.circles || [];
+    let nextSelected = selectedCircleId.value || context.selected_circle_id;
+    if (!circles.some(item => item.id === nextSelected)) {
+      nextSelected = context.selected_circle_id || circles[0]?.id || "";
+    }
+    if (nextSelected) {
+      setSelectedTenantCircleId(nextSelected);
+      selectedCircleId.value = nextSelected;
+    }
+    const nextCircle =
+      circles.find(item => item.id === nextSelected) ||
+      context.current_circle ||
+      null;
+    tenantContext.value = {
+      ...context,
+      can_enter: Boolean(nextCircle),
+      selected_circle_id: nextSelected,
+      current_circle: nextCircle
+    };
+    return Boolean(nextCircle);
+  } catch (error) {
+    tenantContext.value = {
+      can_enter: false,
+      message: error instanceof Error ? error.message : "当前账号暂无可经营圈子",
+      selected_circle_id: "",
+      current_circle: null,
+      circles: []
+    };
+    return false;
+  }
+}
+
 async function loadData() {
   loading.value = true;
   try {
+    const canEnter = await loadTenantContext();
+    if (!canEnter) {
+      data.value = {};
+      return;
+    }
     data.value = await tenantApi.wallet();
   } finally {
     loading.value = false;
   }
+}
+
+async function switchTenantCircle(value: string) {
+  setSelectedTenantCircleId(value);
+  selectedCircleId.value = value;
+  await loadData();
 }
 
 async function submitWithdrawal() {
@@ -74,9 +127,48 @@ onMounted(loadData);
 <template>
   <div v-loading="loading" class="tenant-page">
     <div class="page-head">
-      <h1>钱包与提现</h1>
-      <el-button type="primary" @click="loadData">刷新</el-button>
+      <div>
+        <h1>钱包与提现</h1>
+        <p>查看当前经营圈子的可提现余额、结算进度和最近提现申请。</p>
+      </div>
+      <div class="head-actions">
+        <el-select
+          v-if="tenantContext?.circles?.length"
+          v-model="selectedCircleId"
+          class="circle-switch"
+          placeholder="选择经营圈子"
+          @change="switchTenantCircle"
+        >
+          <el-option
+            v-for="item in tenantContext.circles"
+            :key="item.id"
+            :label="item.name || item.circle_code || item.id"
+            :value="item.id"
+          />
+        </el-select>
+        <el-button type="primary" @click="loadData">刷新</el-button>
+      </div>
     </div>
+
+    <el-alert
+      v-if="tenantContext && !tenantContext.can_enter"
+      class="mb"
+      type="warning"
+      show-icon
+      :closable="false"
+      :title="tenantContext.message || '当前账号还没有可经营的圈子上下文。'"
+      description="请先确认后台账号已绑定到微信小程序注册的圈主用户，并且该用户名下至少有一个活跃圈子。"
+    />
+
+    <el-alert
+      v-else-if="currentCircle"
+      class="mb"
+      type="info"
+      show-icon
+      :closable="false"
+      :title="`当前经营圈子：${currentCircle.name || currentCircle.circle_code || currentCircle.id}`"
+      description="余额、提现和结算明细都会按当前选中的圈子上下文展示。"
+    />
 
     <el-row :gutter="16">
       <el-col :xs="24" :sm="12" :lg="6">
@@ -192,6 +284,7 @@ onMounted(loadData);
 
 .page-head {
   display: flex;
+  gap: 16px;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 16px;
@@ -201,6 +294,21 @@ onMounted(loadData);
 .panel h2 {
   margin: 0 0 12px;
   color: #221a14;
+}
+
+.page-head p {
+  margin: 6px 0 0;
+  color: #766b61;
+}
+
+.head-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.circle-switch {
+  width: 220px;
 }
 
 .metric,
@@ -279,9 +387,15 @@ onMounted(loadData);
 }
 
 @media (width <= 768px) {
+  .page-head,
+  .head-actions,
   .fee-main {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .circle-switch {
+    width: 100%;
   }
 }
 </style>

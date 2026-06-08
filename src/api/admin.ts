@@ -1085,6 +1085,7 @@ export type AdminUser = {
   id: string;
   username: string;
   display_name: string;
+  avatar?: string;
   role: AdminRole;
   legacy_role?: string;
   account_type: AdminRole;
@@ -1094,6 +1095,11 @@ export type AdminUser = {
   scope_circle_name: string;
   bound_user_id: string;
   bound_user_nickname: string;
+  bound_user_dxq_id?: string;
+  bound_user_avatar?: string;
+  managed_circle_count?: number;
+  active_managed_circle_count?: number;
+  dxq_id_snapshot?: string;
   permissions: string[];
   permissions_json?: string[];
   must_change_password?: boolean;
@@ -1141,6 +1147,9 @@ export type AdminUserOption = {
   nickname: string;
   avatar: string;
   status: string;
+  wechat_bound?: boolean;
+  owned_circle_count?: number;
+  active_owned_circle_count?: number;
 };
 
 export type AdminAccountGroup = {

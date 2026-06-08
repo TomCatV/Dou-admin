@@ -22,6 +22,54 @@
 - 验证：前端类型检查和构建已通过。
 - 风险与回滚：如前端部署异常，可回滚到上一个构建产物或上一个 Git 提交。
 
+## 2026-06-08
+
+### 圈主后台账号派发与多圈子经营
+
+- 时间：2026-06-08 (Asia/Shanghai)
+- 任务目标：优化平台给圈主开通后台账号的流程，把圈主主账号从“手填账号名 + 指定单圈子授权”改为“远程搜索小程序注册用户 + 自动使用 `dxq_id` + 默认经营本人全部活跃圈子”，并同步修正右上角昵称头像、圈主经营页切圈和举报动作权限可见性。
+- 改动仓库：Dou-Admin、Dou-Server
+- Dou-Admin 改动文件：
+  - `src/api/admin.ts`
+  - `src/api/user.ts`
+  - `src/views/admin-users/index.vue`
+  - `src/views/reports/index.vue`
+  - `src/views/tenant/dashboard.vue`
+  - `src/views/tenant/orders.vue`
+  - `src/views/tenant/wallet.vue`
+  - `docs/ADMIN_USER_MANUAL.md`
+  - `docs/COMMERCIAL_MULTI_TENANT_ADMIN.md`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `src/lib/adminAuth.js`
+  - Dou-Server `src/lib/adminPermissions.js`
+  - Dou-Server `src/middleware/requireAdminAuth.js`
+  - Dou-Server `src/middleware/requireTenantScope.js`
+  - Dou-Server `src/routes/admin/adminUsers.routes.js`
+  - Dou-Server `src/routes/admin/auth.routes.js`
+  - Dou-Server `src/routes/admin/dashboard.routes.js`
+  - Dou-Server `src/routes/admin/tenant.routes.js`
+  - Dou-Server `src/routes/admin/reports.routes.js`
+  - Dou-Server `src/routes/admin/users.routes.js`
+  - Dou-Server `src/routes/admin/circles.routes.js`
+  - Dou-Server `src/routes/admin/resourceCards.routes.js`
+  - Dou-Server `src/routes/admin/afterSales.routes.js`
+  - Dou-Server `src/routes/admin/manualReviews.routes.js`
+  - Dou-Server `src/routes/admin/notifications.routes.js`
+- 已完成前端能力：`tenant_owner` 模式改为远程搜索微信小程序注册用户，下拉显示 `dxq_id / 昵称 / 活跃圈子数`；自动只读展示账号名；隐藏主账号无意义的“授权圈子/绑定圈主/显示名”输入；列表中主账号显示“圈主全部圈子”；圈主工作台、订单售后、钱包提现统一支持切圈；举报动作下拉按真实权限收口。
+- 验证：
+  - Dou-Admin `corepack pnpm typecheck`
+  - Dou-Admin `corepack pnpm build`
+  - 协同 Dou-Server `node --check src/lib/adminPermissions.js`
+  - 协同 Dou-Server `node --check src/routes/admin/tenant.routes.js`
+  - 协同 Dou-Server `node --check src/routes/admin/dashboard.routes.js`
+  - 协同 Dou-Server `node --check src/routes/admin/reports.routes.js`
+  - Dou-Admin / Dou-Server `git diff --check` 通过，仅有 CRLF 转换提示
+  - 改动文件 UTF-8 扫描无 `U+FFFD`
+- 下一步：提交推送后，用平台超管账号回归后台账号开通/编辑页、圈主主账号登录右上角昵称头像、圈主工作台/订单/钱包切圈，以及圈主举报处理动作可见性；本地联调优先使用指向 `3001` 后端的 Admin `8849` 端口。
+- 风险与回滚：不新增迁移；如圈主主账号多圈子范围体验异常，可先回滚 Admin 表单和切圈页面改动；举报动作收口如有误伤，仍由后端权限校验兜底。
+
 ### 宝塔部署脚本与构建修复
 
 - 时间：2026-05-21 18:57 (Asia/Shanghai)

@@ -38,6 +38,9 @@ const actionForm = reactive({
   note: ""
 });
 const canProcessReport = computed(() => hasPerms("report:process"));
+const canManageUsers = computed(() => hasPerms("user:manage"));
+const canManageCircles = computed(() => hasPerms("circle:manage"));
+const canManageResourceCards = computed(() => hasPerms("resource_card:manage"));
 const targetRows = computed(() => readableRows(detail.value?.report?.target));
 
 const targetActions = computed(() => {
@@ -48,31 +51,45 @@ const targetActions = computed(() => {
       label: targetActionLabels.hide_message,
       value: "hide_message"
     });
-    base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    if (canManageUsers.value) {
+      base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    }
   } else if (type === "circle") {
-    base.push({
-      label: targetActionLabels.hide_circle_from_square,
-      value: "hide_circle_from_square"
-    });
-    base.push({
-      label: targetActionLabels.dismiss_circle,
-      value: "dismiss_circle"
-    });
-    base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    if (canManageCircles.value) {
+      base.push({
+        label: targetActionLabels.hide_circle_from_square,
+        value: "hide_circle_from_square"
+      });
+      base.push({
+        label: targetActionLabels.dismiss_circle,
+        value: "dismiss_circle"
+      });
+    }
+    if (canManageUsers.value) {
+      base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    }
   } else if (type === "room") {
-    base.push({ label: targetActionLabels.close_room, value: "close_room" });
+    if (canManageCircles.value) {
+      base.push({ label: targetActionLabels.close_room, value: "close_room" });
+    }
   } else if (type === "user") {
-    base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    if (canManageUsers.value) {
+      base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    }
   } else if (type === "resource_card") {
-    base.push({
-      label: targetActionLabels.unpublish_resource_card,
-      value: "unpublish_resource_card"
-    });
-    base.push({
-      label: targetActionLabels.disable_resource_card,
-      value: "disable_resource_card"
-    });
-    base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    if (canManageResourceCards.value) {
+      base.push({
+        label: targetActionLabels.unpublish_resource_card,
+        value: "unpublish_resource_card"
+      });
+      base.push({
+        label: targetActionLabels.disable_resource_card,
+        value: "disable_resource_card"
+      });
+    }
+    if (canManageUsers.value) {
+      base.push({ label: targetActionLabels.ban_user, value: "ban_user" });
+    }
   }
   return base;
 });

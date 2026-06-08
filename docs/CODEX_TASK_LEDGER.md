@@ -1141,3 +1141,17 @@
 - 验证：`corepack pnpm typecheck`、`corepack pnpm build` 通过；协同 Dou-Server `node --check`、AI 模块动态导入、临时库全量迁移到 `044` 和 AI 用量逻辑 smoke 通过；双仓 `git diff --check` 与 UTF-8 扫描通过，仅有 CRLF 转换提示。
 - 下一步：验证通过后提交推送；部署时执行迁移 `044_ai_platform_settings.sql`，再用全局超级管理员回归 AI 设置保存、普通圈主额度和超管不限次。
 - 风险与回滚：新增设置页和设置接口独立于交易链路；如异常，可隐藏 `/ai/settings` 菜单或回滚后端设置路由，租户 AI 页仍可按环境变量默认配置运行。
+
+### Dou-Circle 父级文档归档到 Admin
+
+- 时间：2026-06-08 (Asia/Shanghai)
+- 任务目标：把父级 `Dou-Circle/docs` 中应由 Admin 承接的文档加入本仓并准备提交远程。
+- 改动仓库：Dou-Admin、Dou-Server、Dou-uniapp。
+- 本仓新增文件：
+  - `docs/DOU_CIRCLE_CODEX_CONTINUITY_STATE.md`
+  - `docs/DOU_CIRCLE_CODEX_TASK_LEDGER.md`
+  - `docs/CREATOR_ADMIN_ACCOUNT_DISPATCH_OPTIMIZATION.md`
+- 归档说明：全局续航和全局台账以 `DOU_CIRCLE_*` 文件名保存，避免覆盖本仓自己的 `CODEX_CONTINUITY_STATE.md` 与 `CODEX_TASK_LEDGER.md`；圈主后台账号派发设计涉及 Admin 后台账号页和切圈体验，纳入本仓。
+- 验证：待执行 checksum 复核、`git diff --check` 与 UTF-8 扫描。
+- 下一步：验证通过后与 Server、uniapp 对应文档归档一起分仓提交推送。
+- 风险与回滚：仅文档新增；如后续确认某份文档不应归属 Admin，可单独移除副本。

@@ -428,3 +428,12 @@
 - 验证结果：`corepack pnpm typecheck`、`corepack pnpm build` 通过；协同 Dou-Server `node --check` 覆盖 `adminPermissions.js`、`tenant.routes.js`、`dashboard.routes.js`、`reports.routes.js` 通过；双仓 `git diff --check` 通过，仅有 CRLF 转换提示；改动文件 UTF-8 扫描无 `U+FFFD`。
 - 下一步计划：提交推送后，用平台超管账号回归后台账号开通/编辑页、圈主主账号登录后的右上角昵称头像、圈主工作台/订单/钱包切圈，以及圈主举报处理动作可见性；本地联调优先使用指向 `http://localhost:3001/api/admin` 的 Admin `8849` 端口。
 - 风险与回滚：本轮不新增迁移；如多圈子经营范围出现异常，可先回滚 Dou-Admin 圈主主账号表单与切圈页面改动，后端仍兼容旧单圈子模型；如举报动作收口影响平台账号体验，可单独回滚前端动作过滤而不放松后端权限校验。
+
+## 2026-06-08 Dou-Circle 父级文档归档到 Admin
+
+- 当前目标：按用户要求把 `Dou-Circle/docs` 下与管理后台相关的父级文档纳入具体项目仓库，避免父级目录不是 Git 仓库导致方案和续航记录无法随远程提交同步。
+- 已新增文件：`docs/DOU_CIRCLE_CODEX_CONTINUITY_STATE.md`、`docs/DOU_CIRCLE_CODEX_TASK_LEDGER.md`、`docs/CREATOR_ADMIN_ACCOUNT_DISPATCH_OPTIMIZATION.md`。
+- 归档口径：父级 `CODEX_CONTINUITY_STATE.md` 与 `CODEX_TASK_LEDGER.md` 作为 Dou-Circle 全局快照改名归档，不覆盖本仓已有续航与台账；圈主后台账号派发设计与 Admin 表单、登录态展示、权限动作和切圈体验直接相关，因此归档到本仓。
+- 验证计划：提交前复核源文件与归档文件 checksum 一致，执行 `git diff --check` 与 UTF-8 扫描。
+- 下一步计划：同一批父级文档还需归档到 Dou-Server 与 Dou-uniapp 对应 docs，并分别提交推送。
+- 风险与回滚：仅新增文档，不影响运行时代码；如后续发现文档归属不合理，可移动或删除对应副本后重新提交。

@@ -1098,3 +1098,43 @@
 - 验证：Dou-Server AI 设置库、AI helper、AI 设置路由、租户 AI 路由和 Admin index `node --check` 通过；AI 模块动态导入通过；临时库全量迁移到 `044` 成功；逻辑 smoke 覆盖普通圈主 failed 不计数、全局超管不限次、failed 报告拒绝确认/忽略和设置保存；Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；双仓 `git diff --check` 与 UTF-8 扫描通过，仅有 CRLF 转换提示。
 - 下一步：验证通过后提交推送双仓；部署时先执行迁移 `044_ai_platform_settings.sql`，再用全局超级管理员回归设置保存、场景关闭、超管不限次和普通圈主额度。
 - 风险与回滚：新增设置表独立，AI 设置异常时可回滚 `/api/admin/ai/settings` 路由或隐藏菜单；关闭 AI 总开关只影响 AI 生成，不影响交易主链路。
+
+---
+## 2026-06-08 补充
+- 时间：2026-06-08 (Asia/Shanghai)
+- 会话ID/深链：用户未提供
+- 任务目标：资源卡治理和用户管理支持下拉选择圈子查看圈内数据，并在圈子管理中跳转到对应圈子的用户管理和资源卡治理。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：`docs/CIRCLE_CONTEXT_GOVERNANCE_NAVIGATION_DESIGN.md`、`src/api/admin.ts`、`src/views/users/index.vue`、`src/views/resource-cards/index.vue`、`src/views/circles/index.vue`、仓库续航文档。
+- Dou-Server 改动文件：`src/routes/admin/users.routes.js`、`src/routes/admin/circles.routes.js`、仓库续航文档。
+- 已完成：新增 `/api/admin/circles/options` 通用圈子下拉；`/api/admin/users` 支持 `circle_id/circleId` 并从 `circle_members` 返回圈内用户；Admin 用户管理和资源卡治理均支持远程圈子下拉、query 自动带入；圈子管理列表和详情新增“看用户 / 看资源”跳转。
+- 验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check` 覆盖用户、圈子和资源卡治理路由通过；双仓 `git diff --check` 仅有 CRLF 转换提示；UTF-8 扫描无 U+FFFD。
+- 下一步：提交推送后部署双仓，用平台超管、圈主主账号和单圈子账号分别回归圈子下拉范围与跳转带参筛选。
+- 风险与回滚：无迁移；异常时回滚本次双仓提交即可恢复旧路径。
+
+---
+## 2026-06-08 补充 2
+- 时间：2026-06-08 (Asia/Shanghai)
+- 会话ID/深链：用户未提供
+- 任务目标：优化后台发布资源卡体验，修复分类下拉空白体验，并把封面图、预览图改为上传组件；字段契约对齐小程序，不做富文本改造。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：`docs/RESOURCE_CARD_PUBLISH_UPLOAD_OPTIMIZATION_DESIGN.md`、`src/api/admin.ts`、`src/views/tenant/resources.vue`、仓库续航文档。
+- Dou-Server 改动文件：`docs/RESOURCE_CARD_ADMIN_UPLOAD_DESIGN.md`、`src/routes/admin/tenant.routes.js`、`src/lib/contentSafety.js`、仓库续航文档。
+- 已完成：Admin 发布/编辑弹窗分类下拉增加空态和分类管理入口；新增分类后刷新并可自动选中；封面图支持上传、替换、移除；预览图支持最多 5 张上传、缩略图和单张删除；Server 新增 `/api/admin/tenant/upload-asset`，走后台权限、租户范围、只读保护、内容安全、COS/本地回退和审计日志。
+- 验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/tenant.routes.js`、`node --check src/lib/contentSafety.js` 通过；双仓 `git diff --check` 仅有 CRLF 转换提示。
+- 下一步：提交推送后部署双仓，用圈主账号回归无分类空态、新建分类、上传封面、上传预览图、保存资源卡和小程序购买前详情展示。
+- 风险与回滚：无迁移；异常时可回滚 Admin 上传控件恢复手填 URL；新增 Server 上传接口不影响小程序既有上传和资源卡交易链路。
+
+---
+## 2026-06-09
+- 时间：2026-06-09 (Asia/Shanghai)
+- 会话ID/深链：用户未提供
+- 任务目标：优化 H5 站内扫码支付体验，解决自动刷新闪烁、取消支付无反馈、重新生成微信二维码后提示订单不可支付、支付宝默认顺序和立即购买防重复问题。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：`docs/H5_SCAN_PAY_REFRESH_CANCEL_FIX_DESIGN.md`、`docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`、`src/views/shop/product.vue`、`src/views/shop/checkout.vue`。
+- Dou-Server 改动文件：`docs/H5_SCAN_PAY_REFRESH_CANCEL_FIX_DESIGN.md`、`src/lib/commercePayments.js`、`src/routes/shop/payments.routes.js`。
+- 已完成：前端自动轮询改为静默刷新，手动刷新单独 loading；取消支付会关闭当前支付意图并解锁渠道选择；重新生成二维码会新建支付意图；支付宝默认排在微信前并作为默认通道；支付宝立即购买和二维码生成路径都有防重复/加载态。
+- 已完成后端状态机：`closePaymentIntent()` 只关闭支付意图，不再关闭本地 H5 订单；对历史被误关的未支付未履约 H5 订单增加安全重开；默认支付渠道按可用性优先支付宝；第三方关单已关闭/不存在时按幂等关闭处理。
+- 验证：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/lib/commercePayments.js`、`node --check src/routes/shop/payments.routes.js` 通过；本地临时库 smoke 覆盖关闭支付意图后订单仍可支付、重新生成微信二维码、历史 `closed` 错单重开后生成支付宝二维码；双仓 `git diff --check` 通过，仅有 CRLF 转换提示；UTF-8 扫描无 `U+FFFD`。
+- 下一步：部署后用真实 H5 商品回归支付宝默认选中、防重复点击、静默自动刷新、取消支付、重新生成微信/支付宝二维码和支付成功跳订单页。
+- 风险与回滚：无迁移；异常时回滚本次双仓提交；可用 `ALIPAY_PAY_ENABLED=false` 或 `WECHAT_NATIVE_PAY_ENABLED=false` 分别暂停通道；历史订单重开只覆盖未支付未履约的 H5 草稿订单。

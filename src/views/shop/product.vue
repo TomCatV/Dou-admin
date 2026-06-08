@@ -26,7 +26,7 @@ const inviteCode = ref("");
 const quoteLoading = ref(false);
 const quote = ref<PromotionQuote | null>(null);
 const paymentChannels = ref<Record<string, { enabled: boolean }>>({});
-const selectedChannel = ref<PaymentChannel>("wechat_native");
+const selectedChannel = ref<PaymentChannel>("alipay_precreate");
 
 const productKey = computed(() =>
   String(route.params.productKey || route.query.id || "").trim()
@@ -41,7 +41,7 @@ const payableAmount = computed(
 );
 const discountAmount = computed(() => quote.value?.discount_amount || 0);
 const hasEnabledChannels = computed(() =>
-  ["wechat_native", "alipay_precreate"].some(item =>
+  ["alipay_precreate", "wechat_native"].some(item =>
     isChannelEnabled(item as PaymentChannel)
   )
 );
@@ -50,7 +50,7 @@ const buyButtonText = computed(() => {
   if (buying.value) {
     return selectedChannel.value === "wechat_native"
       ? "正在生成微信二维码"
-      : "正在打开支付宝";
+      : "正在生成支付宝二维码";
   }
   return "立即购买";
 });
@@ -81,13 +81,13 @@ function chooseDefaultChannel(channels = paymentChannels.value) {
   }
   if (
     !Object.keys(channels).length ||
-    channels.wechat_native?.enabled === true
+    channels.alipay_precreate?.enabled === true
   ) {
-    selectedChannel.value = "wechat_native";
+    selectedChannel.value = "alipay_precreate";
     return;
   }
-  if (channels.alipay_precreate?.enabled === true) {
-    selectedChannel.value = "alipay_precreate";
+  if (channels.wechat_native?.enabled === true) {
+    selectedChannel.value = "wechat_native";
   }
 }
 
@@ -205,10 +205,7 @@ async function createDraft() {
     const order = orderData.order;
     window.sessionStorage?.setItem(`shop_order_contact_${order.id}`, contact);
     const paymentData = await shopApi.createPaymentIntent(order.id, {
-      channel: selectedChannel.value,
-      ...(selectedChannel.value === "alipay_precreate"
-        ? { mode: "cashier" }
-        : {})
+      channel: selectedChannel.value
     });
     const intent = paymentData.payment_intent;
     if (paymentData.already_paid || paymentData.order.status === "paid") {
@@ -218,18 +215,16 @@ async function createDraft() {
       });
       return;
     }
-    if (selectedChannel.value === "alipay_precreate") {
-      if (intent.cashier_url) {
-        window.location.assign(intent.cashier_url);
-        return;
-      }
-      throw new Error(
-        intent.last_error_message || "支付宝官方支付页创建失败，请稍后重试"
-      );
+    if (intent.cashier_url && !intent.qr_code_url) {
+      window.location.assign(intent.cashier_url);
+      return;
     }
     if (!intent.qr_code_url) {
       throw new Error(
-        intent.last_error_message || "微信支付二维码创建失败，请稍后重试"
+        intent.last_error_message ||
+          (selectedChannel.value === "alipay_precreate"
+            ? "支付宝支付二维码创建失败，请稍后重试"
+            : "微信支付二维码创建失败，请稍后重试")
       );
     }
     await openCheckoutPayment(createdDraftId, contact, intent.id);
@@ -354,14 +349,6 @@ onMounted(loadProduct);
           <span class="payment-title">支付方式</span>
           <div class="channel-tabs">
             <button
-              :class="{ active: selectedChannel === 'wechat_native' }"
-              :disabled="!isChannelEnabled('wechat_native') || buying"
-              type="button"
-              @click="selectedChannel = 'wechat_native'"
-            >
-              微信扫码
-            </button>
-            <button
               :class="{ active: selectedChannel === 'alipay_precreate' }"
               :disabled="!isChannelEnabled('alipay_precreate') || buying"
               type="button"
@@ -369,13 +356,21 @@ onMounted(loadProduct);
             >
               支付宝
             </button>
+            <button
+              :class="{ active: selectedChannel === 'wechat_native' }"
+              :disabled="!isChannelEnabled('wechat_native') || buying"
+              type="button"
+              @click="selectedChannel = 'wechat_native'"
+            >
+              微信扫码
+            </button>
           </div>
           <p class="muted">
             {{
               hasEnabledChannels
                 ? selectedChannel === "wechat_native"
                   ? "点击立即购买后直接生成微信支付二维码。"
-                  : "点击立即购买后直接打开支付宝官方支付页。"
+                  : "点击立即购买后直接生成支付宝支付二维码。"
                 : "当前暂无可用支付渠道，请联系商家。"
             }}
           </p>

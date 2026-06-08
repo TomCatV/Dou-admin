@@ -1,6 +1,6 @@
 ﻿# CODEX 续航状态（Dou 双仓）
 
-最后更新时间：2026-06-08 (Asia/Shanghai)
+最后更新时间：2026-06-09 (Asia/Shanghai)
 
 ## 当前任务
 - 圈主后台账号派发优化：超管新建圈主后台账号时改为远程搜索已在微信小程序注册的一键登录用户，账号名自动使用 `dxq_id`，登录后右上角昵称/头像跟随当前小程序资料；圈主主账号默认经营绑定用户自己名下全部活跃圈子，不再强制单圈子授权；平台治理、售后、通知、工作台统计与圈主经营页已按多圈子范围收口，并在工作台、订单售后、钱包页补齐切圈入口。
@@ -481,3 +481,38 @@
 - 验证结果：Dou-Server `node --check` 覆盖 AI 设置库、AI helper、AI 设置路由、租户 AI 路由和 Admin index；AI 模块动态导入通过；临时库全量迁移到 `044_ai_platform_settings.sql` 成功；逻辑 smoke 覆盖普通圈主 failed 不计数、全局超管不限次、failed 报告拒绝确认/忽略和设置保存。Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；双仓 `git diff --check` 和 UTF-8 扫描通过，仅有 CRLF 转换提示。
 - 下一步：验证通过后提交推送双仓；服务器拉取后执行迁移 `044_ai_platform_settings.sql` 并重启，再用全局超级管理员回归 `AI 经营 / AI 设置` 和经营日报生成。
 - 风险与回滚：新增 `platform_ai_settings` 独立表，不影响订单、支付、售后、钱包和资源卡链路；如线上 AI 设置异常，可隐藏 `/ai/settings` 菜单或回滚新设置路由，保留原 AI 生成主链路；如需临时停用 AI，可在设置页关闭总开关或清空服务端 `OPENAI_API_KEY`。
+
+## 2026-06-08 圈子上下文治理筛选与跳转
+
+- 当前目标：优化平台治理后台，支持 `用户管理` 和 `资源卡治理` 下拉选择圈子查看圈内数据，并在 `圈子管理` 中跳转到指定圈子的用户和资源卡治理视图。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动：新增 `docs/CIRCLE_CONTEXT_GOVERNANCE_NAVIGATION_DESIGN.md`，更新 `src/api/admin.ts`、`src/views/users/index.vue`、`src/views/resource-cards/index.vue`、`src/views/circles/index.vue`、仓库续航文档。
+- Dou-Server 改动：`src/routes/admin/users.routes.js`、`src/routes/admin/circles.routes.js`、仓库续航文档。
+- 已完成能力：用户管理和资源卡治理都支持远程搜索圈子并按 `circle_id` 查询；圈子管理列表与详情抽屉新增“看用户 / 看资源”入口；后端新增 `/api/admin/circles/options` 并让 `/api/admin/users` 支持 `circle_id/circleId`，所有指定圈子访问均由 `adminCanAccessCircleId()` 兜底。
+- 权限边界：平台全局账号可看全量圈子，圈主主账号只看本人名下圈子，单圈子账号只看授权圈子；圈子选项接口可供用户、圈成员、圈子、资源卡查看权限页面复用。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check` 覆盖用户、圈子和资源卡治理路由通过；双仓 `git diff --check` 仅有 CRLF 转换提示；UTF-8 扫描无 U+FFFD。
+- 下一步：提交推送后部署双仓，回归三类账号的圈子下拉可见范围、用户管理圈内成员筛选、资源卡治理圈内资源筛选和圈子管理跳转带参。
+- 风险与回滚：本轮不新增迁移；异常时回滚双仓本次提交即可恢复旧的手填/无圈子筛选路径。
+
+## 2026-06-08 资源卡发布分类与图片上传优化
+
+- 当前目标：优化后台发布资源卡体验，修复分类下拉空白体验，并把封面图、预览图改为上传组件；字段契约对齐小程序，不做富文本改造。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动：`docs/RESOURCE_CARD_PUBLISH_UPLOAD_OPTIMIZATION_DESIGN.md`、`src/api/admin.ts`、`src/views/tenant/resources.vue`、仓库续航文档。
+- Dou-Server 改动：`docs/RESOURCE_CARD_ADMIN_UPLOAD_DESIGN.md`、`src/routes/admin/tenant.routes.js`、`src/lib/contentSafety.js`、仓库续航文档。
+- 已完成能力：Admin 发布/编辑弹窗分类下拉增加空态和分类管理入口；新增分类后刷新并可自动选中；封面图支持上传、替换、移除；预览图支持最多 5 张上传、缩略图和单张删除；Server 新增 `/api/admin/tenant/upload-asset`，走后台权限、租户范围、只读保护、内容安全、COS/本地回退和审计日志。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/routes/admin/tenant.routes.js`、`node --check src/lib/contentSafety.js` 通过；双仓 `git diff --check` 仅有 CRLF 转换提示。
+- 下一步：提交推送后部署双仓，用圈主账号回归无分类空态、新建分类、上传封面、上传预览图、保存资源卡和小程序购买前详情展示。
+- 风险与回滚：无迁移；异常时可回滚 Admin 上传控件恢复手填 URL；新增 Server 上传接口不影响小程序既有上传和资源卡交易链路。
+
+## 2026-06-09 H5 扫码支付刷新、取消与默认渠道优化
+
+- 当前目标：修复 H5 站内扫码支付页自动刷新闪烁、取消支付无反馈、重新生成微信二维码后订单不可支付、支付方式默认顺序和支付宝立即购买防重复问题。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动：新增 `docs/H5_SCAN_PAY_REFRESH_CANCEL_FIX_DESIGN.md`，更新 `docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`、`src/views/shop/product.vue`、`src/views/shop/checkout.vue`。
+- Dou-Server 改动：新增 `docs/H5_SCAN_PAY_REFRESH_CANCEL_FIX_DESIGN.md`，更新 `src/lib/commercePayments.js`、`src/routes/shop/payments.routes.js`。
+- 已完成前端能力：商品页支付方式默认支付宝并排在微信前；支付宝立即购买和生成二维码按钮加入 loading/防重复；确认页自动轮询改为静默刷新，手动刷新才显示按钮 loading；取消支付仅关闭当前支付意图；重新生成二维码会真实创建新支付意图；关闭后允许重新选择支付宝或微信。
+- 已完成后端能力：关闭支付意图不再把 H5 本地订单改成 `closed`；新增旧错单安全重开逻辑，仅允许存在 H5 草稿、未支付、未履约且商品仍可售且金额未变的 `closed` 订单恢复为 `created`；支付渠道默认值改为优先支付宝，关单接口兼容第三方已关闭/不存在类幂等错误。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过；Dou-Server `node --check src/lib/commercePayments.js`、`node --check src/routes/shop/payments.routes.js` 通过；本地临时库支付 smoke 覆盖微信出码、关单后订单仍 `created`、重新生成微信二维码、历史 `closed` 错单重开后生成支付宝二维码；双仓 `git diff --check` 通过，仅有 CRLF 转换提示；改动文件 UTF-8 扫描无 `U+FFFD`。
+- 下一步：部署 Dou-Server 并重启、部署 Dou-Admin 后，用真实 H5 商品回归支付宝默认选中、支付宝防重复点击、自动轮询不闪屏、取消支付、微信/支付宝重新生成二维码、扫码成功跳转订单页。
+- 风险与回滚：本轮无迁移；如线上异常，可回滚双仓本次提交；支付宝通道异常时可设置 `ALIPAY_PAY_ENABLED=false` 暂停，微信异常时可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 暂停；旧 `closed` 错单重开逻辑只针对未支付未履约 H5 草稿订单，不会重开已支付或已交付订单。

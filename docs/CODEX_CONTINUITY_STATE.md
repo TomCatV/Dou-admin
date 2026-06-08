@@ -1,6 +1,6 @@
 # CODEX 续航状态（Dou-Admin）
 
-最后更新时间：2026-06-08 (Asia/Shanghai)
+最后更新时间：2026-06-09 (Asia/Shanghai)
 
 ## 仓库定位
 
@@ -457,3 +457,13 @@
 - 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过，构建仅有 Browserslist/baseline 数据陈旧提示；`git diff --check` 通过，仅有 CRLF 转换提示。
 - 下一步计划：部署 Dou-Server 后端接口与 Dou-Admin 前端后，用圈主账号回归分类为空、新增分类、上传封面、上传 1-5 张预览图、保存草稿和上架后小程序详情展示。
 - 风险与回滚：前端上传控件可单独回滚为手填 URL；后端新增接口不改变小程序 `/api/v0.9/me/upload-asset` 和既有资源卡创建/编辑接口。
+
+## 2026-06-09 H5 扫码支付刷新、取消与默认渠道优化
+
+- 当前目标：修复 H5 商品购买站内扫码支付体验问题，包括自动轮询刷新闪烁、取消支付点击后无实际效果、重新生成微信二维码后提示“订单当前不可支付”、支付宝默认顺序和立即购买防重复。
+- 已改文件：`docs/H5_SCAN_PAY_REFRESH_CANCEL_FIX_DESIGN.md`、`docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`、`src/views/shop/product.vue`、`src/views/shop/checkout.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`；协同 Dou-Server 修复支付意图关闭和订单重开状态机。
+- 已完成前端能力：商品页默认选择 `alipay_precreate`，支付方式展示顺序改为支付宝在前、微信在后；支付宝立即购买和生成二维码按钮使用 loading/防重复；商品页不再默认传 `mode=cashier`，优先走站内支付宝二维码，后端返回 `cashier_url` 时保留兼容跳转；确认页自动轮询使用内部静默刷新，手动刷新单独显示 `manualSyncing`；取消支付只在可关闭状态显示，关闭后解锁渠道选择；重新生成二维码会直接创建新支付意图。
+- 协同后端能力：Dou-Server 关闭支付意图不再关闭本地订单；历史误关闭 H5 草稿订单在未支付、未履约、商品仍可售且金额未变时可安全重开；支付渠道默认优先支付宝，第三方关单已关闭/不存在类错误按幂等关闭处理。
+- 验证结果：`corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；协同 Dou-Server `node --check src/lib/commercePayments.js`、`node --check src/routes/shop/payments.routes.js` 通过；本地支付 smoke 覆盖关单后订单仍可支付、重新生成微信二维码、历史 `closed` 错单重开后生成支付宝二维码；双仓 `git diff --check` 通过，仅有 CRLF 转换提示；改动文件 UTF-8 扫描无 `U+FFFD`。
+- 下一步计划：部署双仓后用真实 H5 商品回归支付宝默认选中、支付宝立即购买防重复、自动轮询不闪屏、取消支付、重新生成微信/支付宝二维码和扫码成功跳订单页。
+- 风险与回滚：本轮不新增迁移；异常时可回滚本次 Admin/Server 提交；支付宝异常可设置 `ALIPAY_PAY_ENABLED=false` 暂停，微信异常可设置 `WECHAT_NATIVE_PAY_ENABLED=false` 暂停；前端关闭/重生成入口可单独隐藏，后端支付意图状态机保持兼容。

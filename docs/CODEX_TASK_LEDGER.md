@@ -1204,3 +1204,25 @@
   - 协同 Dou-Server `git diff --check` 通过，仅有 CRLF 转换提示
 - 下一步：提交推送后部署双仓，用圈主账号回归无分类空态、新建分类、上传封面、上传预览图、保存资源卡和小程序购买前详情展示。
 - 风险与回滚：不新增迁移；异常时可先回滚 Admin 上传控件，恢复手填 URL；Server 上传接口是新增接口，回滚不影响小程序既有上传链路。
+
+### H5 扫码支付刷新、取消与默认渠道优化
+
+- 任务目标：解决 H5 扫码支付自动刷新闪烁、取消支付无反馈、重新生成微信二维码后订单不可支付、支付宝默认顺序和立即购买防重复问题。
+- 改动文件：
+  - `docs/H5_SCAN_PAY_REFRESH_CANCEL_FIX_DESIGN.md`
+  - `docs/CREATOR_COMMERCE_P2_SCAN_PAY_DESIGN.md`
+  - `src/views/shop/product.vue`
+  - `src/views/shop/checkout.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：Dou-Server `docs/H5_SCAN_PAY_REFRESH_CANCEL_FIX_DESIGN.md`、`src/lib/commercePayments.js`、`src/routes/shop/payments.routes.js`。
+- 已完成前端能力：商品页默认支付宝并排在微信前，立即购买和生成二维码都有 loading/防重复；确认页自动轮询静默刷新，手动刷新单独 loading；取消支付会关闭当前意图并允许切换渠道；重新生成二维码会直接创建新的支付意图。
+- 验证：
+  - `corepack pnpm typecheck` 通过。
+  - `corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示。
+  - 协同 Dou-Server 支付关键文件 `node --check` 通过。
+  - 本地临时库支付 smoke 覆盖取消后重生成微信二维码和历史错关订单重开。
+  - 双仓 `git diff --check` 通过，仅有 CRLF 转换提示。
+  - 改动文件 UTF-8 扫描无 `U+FFFD`。
+- 下一步：部署后用真实 H5 商品回归支付宝默认选中、防重复点击、静默轮询、取消支付、重新生成二维码和支付成功跳订单页。
+- 风险与回滚：无迁移；异常时回滚本次前端提交，或临时隐藏取消/重新生成入口；支付通道仍可由后端环境变量单独关闭。

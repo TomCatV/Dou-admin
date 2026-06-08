@@ -18,6 +18,7 @@ const router = useRouter();
 const loading = ref(true);
 const creating = ref(false);
 const syncing = ref(false);
+const manualSyncing = ref(false);
 const closing = ref(false);
 const error = ref("");
 const draft = ref<OrderDraft | null>(null);
@@ -37,10 +38,15 @@ const paymentReady = computed(
     Boolean(paymentIntent.value?.qr_code_url) &&
     ["created", "qr_issued"].includes(String(paymentIntent.value?.status))
 );
+const channelLocked = computed(
+  () => Boolean(paymentIntent.value) && !canRegeneratePayment.value
+);
 const canRegeneratePayment = computed(() =>
-  ["closed", "failed", "expired"].includes(
-    String(paymentIntent.value?.status || "")
-  )
+  ["closed", "failed", "expired"].includes(paymentStatus.value) &&
+  !["paid", "refunded"].includes(String(order.value?.status || ""))
+);
+const canClosePayment = computed(() =>
+  ["created", "qr_issued", "unknown"].includes(paymentStatus.value)
 );
 const hasEnabledChannels = computed(() =>
   ["alipay_precreate", "wechat_native"].some(item =>
@@ -53,14 +59,15 @@ const channelLabel = computed(() =>
 const payStartButtonText = computed(() => {
   if (!creating.value) {
     return channel.value === "alipay_precreate"
-      ? "打开支付宝官方支付页"
+      ? "生成支付宝支付二维码"
       : "生成微信支付二维码";
   }
   if (!order.value) return "正在创建订单";
   return channel.value === "alipay_precreate"
-    ? "正在打开支付宝"
+    ? "正在生成支付宝二维码"
     : `正在生成${channelLabel.value}二维码`;
 });
+const paymentStatus = computed(() => String(paymentIntent.value?.status || ""));
 
 function draftId() {
   return String(route.params.draftId || "").trim();
@@ -118,6 +125,18 @@ function chooseDefaultChannel(channels = paymentChannels.value) {
   if (channels.wechat_native?.enabled === true) {
     channel.value = "wechat_native";
   }
+}
+
+function applyIntentChannel(intent: PaymentIntent | null | undefined) {
+  if (intent?.channel === "wechat_native") {
+    channel.value = "wechat_native";
+  } else if (intent?.channel === "alipay_precreate") {
+    channel.value = "alipay_precreate";
+  }
+}
+
+function isTerminalPaymentStatus(status?: string) {
+  return ["paid", "closed", "failed", "expired"].includes(String(status || ""));
 }
 
 function applyPaymentChannels(channels?: Record<string, { enabled: boolean }>) {
@@ -199,11 +218,7 @@ async function loadPaymentIntentFromQuery() {
   try {
     const data = await shopApi.paymentIntent(intentId);
     paymentIntent.value = data.payment_intent;
-    if (data.payment_intent.channel === "wechat_native") {
-      channel.value = "wechat_native";
-    } else if (data.payment_intent.channel === "alipay_precreate") {
-      channel.value = "alipay_precreate";
-    }
+    applyIntentChannel(data.payment_intent);
     if (openCashierIfNeeded(data.payment_intent)) return true;
     await renderQr();
     startPolling();
@@ -273,17 +288,17 @@ async function createPaymentIntent(options: { nested?: boolean } = {}) {
   resetPaymentView();
   try {
     const data = await shopApi.createPaymentIntent(order.value.id, {
-      channel: channel.value,
-      ...(channel.value === "alipay_precreate" ? { mode: "cashier" } : {})
+      channel: channel.value
     });
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
+    applyIntentChannel(data.payment_intent);
     if (openCashierIfNeeded(data.payment_intent)) return;
     if (!data.payment_intent?.qr_code_url) {
       throw new Error(
         data.payment_intent?.last_error_message ||
           (channel.value === "alipay_precreate"
-            ? "支付宝官方支付页创建失败，请检查支付配置"
+            ? "支付宝支付二维码创建失败，请检查支付配置"
             : "支付二维码创建失败，请检查支付配置")
       );
     }
@@ -308,6 +323,7 @@ async function syncPaymentStatus() {
     );
     order.value = data.order;
     paymentIntent.value = data.payment_intent;
+    applyIntentChannel(data.payment_intent);
     if (data.order.status === "paid" || data.payment_intent.status === "paid") {
       stopTimers();
       router.push({
@@ -316,11 +332,25 @@ async function syncPaymentStatus() {
           ? { contact: draft.value.buyer_contact }
           : undefined
       });
+      return;
+    }
+    if (isTerminalPaymentStatus(data.payment_intent.status)) {
+      stopTimers();
     }
   } catch {
     // Polling failure should not interrupt the payment page.
   } finally {
     syncing.value = false;
+  }
+}
+
+async function manualRefreshPaymentStatus() {
+  if (manualSyncing.value) return;
+  manualSyncing.value = true;
+  try {
+    await syncPaymentStatus();
+  } finally {
+    manualSyncing.value = false;
   }
 }
 
@@ -332,11 +362,17 @@ async function closeIntent() {
     order.value = data.order;
     stopTimers();
     paymentIntent.value = data.payment_intent;
+    applyIntentChannel(data.payment_intent);
   } catch (err) {
     error.value = err instanceof Error ? err.message : "关闭支付单失败";
   } finally {
     closing.value = false;
   }
+}
+
+async function regeneratePaymentIntent() {
+  if (creating.value || closing.value) return;
+  await createPaymentIntent();
 }
 
 function backToProduct() {
@@ -427,26 +463,26 @@ onBeforeUnmount(stopTimers);
         <h2>扫码支付</h2>
         <div class="channel-tabs">
           <button
-            :class="{ active: channel === 'wechat_native' }"
-            :disabled="
-              creating ||
-              Boolean(paymentIntent) ||
-              !isChannelEnabled('wechat_native')
-            "
-            @click="channel = 'wechat_native'"
-          >
-            微信
-          </button>
-          <button
             :class="{ active: channel === 'alipay_precreate' }"
             :disabled="
               creating ||
-              Boolean(paymentIntent) ||
+              channelLocked ||
               !isChannelEnabled('alipay_precreate')
             "
             @click="channel = 'alipay_precreate'"
           >
             支付宝
+          </button>
+          <button
+            :class="{ active: channel === 'wechat_native' }"
+            :disabled="
+              creating ||
+              channelLocked ||
+              !isChannelEnabled('wechat_native')
+            "
+            @click="channel = 'wechat_native'"
+          >
+            微信
           </button>
         </div>
 
@@ -455,7 +491,7 @@ onBeforeUnmount(stopTimers);
             {{
               hasEnabledChannels
                 ? channel === "alipay_precreate"
-                  ? "点击后将打开支付宝官方支付页。"
+                  ? "点击生成二维码后，请用支付宝扫码付款。"
                   : "点击生成二维码后，请用微信扫码付款。"
                 : "当前暂无可用支付渠道，请联系商家。"
             }}
@@ -492,20 +528,24 @@ onBeforeUnmount(stopTimers);
               {{ paymentIntent.last_error_message }}
             </p>
             <div class="actions">
-              <button :disabled="syncing" @click="syncPaymentStatus">
-                {{ syncing ? "正在刷新" : "刷新支付状态" }}
+              <button
+                :disabled="manualSyncing"
+                @click="manualRefreshPaymentStatus"
+              >
+                {{ manualSyncing ? "正在刷新" : "刷新支付状态" }}
               </button>
               <button
                 v-if="canRegeneratePayment"
                 class="secondary"
                 :disabled="creating"
-                @click="resetPaymentView"
+                @click="regeneratePaymentIntent"
               >
-                重新生成二维码
+                {{ creating ? "正在生成" : "重新生成二维码" }}
               </button>
               <button
+                v-if="canClosePayment"
                 class="secondary"
-                :disabled="closing || paymentIntent.status === 'paid'"
+                :disabled="closing"
                 @click="closeIntent"
               >
                 {{ closing ? "正在关闭" : "取消支付" }}

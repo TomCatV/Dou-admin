@@ -437,3 +437,13 @@
 - 验证计划：提交前复核源文件与归档文件 checksum 一致，执行 `git diff --check` 与 UTF-8 扫描。
 - 下一步计划：同一批父级文档还需归档到 Dou-Server 与 Dou-uniapp 对应 docs，并分别提交推送。
 - 风险与回滚：仅新增文档，不影响运行时代码；如后续发现文档归属不合理，可移动或删除对应副本后重新提交。
+
+## 2026-06-08 圈子上下文治理筛选与跳转
+
+- 当前目标：优化平台治理后台查看效率，让 `用户管理` 和 `资源卡治理` 都能下拉选择圈子查看圈内数据，并在 `圈子管理` 中直接跳转到对应圈子的用户与资源卡治理页。
+- 已改文件：`docs/CIRCLE_CONTEXT_GOVERNANCE_NAVIGATION_DESIGN.md`、`src/api/admin.ts`、`src/views/users/index.vue`、`src/views/resource-cards/index.vue`、`src/views/circles/index.vue`、`docs/CODEX_CONTINUITY_STATE.md`、`docs/CODEX_TASK_LEDGER.md`，并协同 Dou-Server `src/routes/admin/users.routes.js`、`src/routes/admin/circles.routes.js`。
+- 已完成前端能力：用户管理新增远程圈子下拉，资源卡治理从手填圈子 ID 改为远程圈子下拉；两个页面都支持读取路由 `circle_id` 并自动查询；圈子管理列表和详情抽屉新增“看用户 / 看资源”入口，跳转到 `/users?circle_id=...` 和 `/resource-cards?circle_id=...`。
+- 协同后端能力：Dou-Server `GET /api/admin/users` 支持 `circle_id/circleId`，按 `circle_members` 返回圈内用户并做 `adminCanAccessCircleId()` 权限兜底；新增 `GET /api/admin/circles/options` 作为治理页通用圈子下拉，按管理员 scope 返回可访问圈子。
+- 验证结果：Dou-Admin `corepack pnpm typecheck`、`corepack pnpm build` 通过，仅有 Browserslist/baseline 数据陈旧提示；协同 Dou-Server `node --check` 覆盖用户、圈子和资源卡治理路由通过；双仓 `git diff --check` 仅有 CRLF 转换提示；改动文件 UTF-8 扫描无 U+FFFD。
+- 下一步计划：部署双仓后，用平台超管和圈主主账号分别回归圈子下拉可见范围、用户管理圈内成员筛选、资源卡治理圈内资源筛选，以及圈子管理跳转后自动带入圈子筛选。
+- 风险与回滚：本轮不新增迁移；如圈子下拉异常，可临时隐藏前端下拉，后端 `circle_id` 过滤保持兼容；如权限边界异常，优先回滚 `/circles/options` 或 `/users?circle_id` 后端改动。

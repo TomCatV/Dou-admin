@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
+import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   managedCirclesApi,
@@ -18,6 +19,7 @@ defineOptions({
 
 type TagType = "primary" | "success" | "warning" | "danger" | "info";
 
+const router = useRouter();
 const loading = ref(false);
 const detailLoading = ref(false);
 const actionLoading = ref(false);
@@ -131,6 +133,14 @@ async function toggleSquare(row: ManagedCircle) {
   await loadList();
 }
 
+function goCircleUsers(row: ManagedCircle) {
+  router.push({ path: "/users", query: { circle_id: row.id } });
+}
+
+function goCircleResources(row: ManagedCircle) {
+  router.push({ path: "/resource-cards", query: { circle_id: row.id } });
+}
+
 onMounted(loadList);
 </script>
 
@@ -215,9 +225,11 @@ onMounted(loadList);
         </template>
       </el-table-column>
       <el-table-column prop="updated_at" label="更新时间" width="170" />
-      <el-table-column label="操作" fixed="right" width="170">
+      <el-table-column label="操作" fixed="right" width="260">
         <template #default="{ row }">
           <el-button link type="primary" @click="openDetail(row)">查看</el-button>
+          <el-button link type="primary" @click="goCircleUsers(row)">看用户</el-button>
+          <el-button link type="success" @click="goCircleResources(row)">看资源</el-button>
           <el-button
             v-if="canManage"
             link
@@ -270,6 +282,15 @@ onMounted(loadList);
             <span v-if="!rooms.length">-</span>
           </el-descriptions-item>
         </el-descriptions>
+
+        <div class="detail-actions">
+          <el-button type="primary" plain @click="goCircleUsers(current)">
+            查看圈内用户
+          </el-button>
+          <el-button type="success" plain @click="goCircleResources(current)">
+            查看圈内资源卡
+          </el-button>
+        </div>
 
         <div v-if="canManage" class="action-box">
           <h3>治理操作</h3>
@@ -354,6 +375,13 @@ onMounted(loadList);
   display: flex;
   justify-content: flex-end;
   margin-top: 12px;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 .action-box {

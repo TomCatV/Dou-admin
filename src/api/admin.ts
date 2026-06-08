@@ -1134,6 +1134,7 @@ export type PermissionCatalog = {
 export type AdminCircleOption = {
   id: string;
   name: string;
+  circle_code?: string;
   owner_user_id: string;
   owner_nickname: string;
   owner_dxq_id: string;
@@ -1866,6 +1867,14 @@ export const managedCirclesApi = {
       http.request<ApiResult<PageResult<ManagedCircle>>>("get", "/circles", {
         params
       })
+    ),
+  options: (params: Record<string, any>) =>
+    unwrap(
+      http.request<ApiResult<{ items: AdminCircleOption[] }>>(
+        "get",
+        "/circles/options",
+        { params }
+      )
     ),
   detail: (id: string) =>
     unwrap(

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { CopyDocument, Link, Operation, View } from "@element-plus/icons-vue";
 import {
+  managedCirclesApi,
   managedResourceCardsApi,
   tenantApi,
+  type AdminCircleOption,
   type ManagedResourceCard,
   type TenantContext
 } from "@/api/admin";
@@ -24,11 +26,14 @@ defineOptions({
 
 type TagType = "primary" | "success" | "warning" | "danger" | "info";
 
+const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
+const circleLoading = ref(false);
 const detailLoading = ref(false);
 const actionLoading = ref(false);
 const rows = ref<ManagedResourceCard[]>([]);
+const circleOptions = ref<AdminCircleOption[]>([]);
 const tenantContext = ref<TenantContext | null>(null);
 const total = ref(0);
 const detailVisible = ref(false);
@@ -66,6 +71,34 @@ function metaOf<T extends Record<string, { label: string; type: string }>>(
     label: string;
     type: TagType;
   };
+}
+
+function routeCircleId() {
+  const value = route.query.circle_id;
+  if (Array.isArray(value)) return String(value[0] || "");
+  return String(value || "");
+}
+
+function circleOptionLabel(item: AdminCircleOption) {
+  return `${item.name || item.id} / ${item.circle_code || item.id}`;
+}
+
+async function loadCircleOptions(keyword = "") {
+  circleLoading.value = true;
+  try {
+    const data = await managedCirclesApi.options({
+      keyword,
+      page_size: 30
+    });
+    circleOptions.value = data.items;
+  } finally {
+    circleLoading.value = false;
+  }
+}
+
+async function handleCircleChange() {
+  filters.page = 1;
+  await loadList();
 }
 
 function moneyText(value: number) {
@@ -235,8 +268,25 @@ async function setStatus(row: ManagedResourceCard, status: string) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadList(), loadTenantContext()]);
+  filters.circle_id = routeCircleId();
+  await Promise.all([
+    loadCircleOptions(filters.circle_id),
+    loadList(),
+    loadTenantContext()
+  ]);
 });
+
+watch(
+  () => route.query.circle_id,
+  async () => {
+    const next = routeCircleId();
+    if (next === filters.circle_id) return;
+    filters.circle_id = next;
+    filters.page = 1;
+    await loadCircleOptions(next);
+    await loadList();
+  }
+);
 </script>
 
 <template>
@@ -258,13 +308,31 @@ onMounted(async () => {
         placeholder="搜索标题、简介、圈子、创作者或ID"
         @keyup.enter="loadList"
       />
-      <el-input
+      <el-select
         v-model="filters.circle_id"
-        class="circle-input"
+        class="circle-select"
         clearable
-        placeholder="圈子ID"
-        @keyup.enter="loadList"
-      />
+        filterable
+        remote
+        reserve-keyword
+        :loading="circleLoading"
+        placeholder="选择圈子"
+        :remote-method="loadCircleOptions"
+        @change="handleCircleChange"
+        @clear="handleCircleChange"
+      >
+        <el-option
+          v-for="item in circleOptions"
+          :key="item.id"
+          :label="circleOptionLabel(item)"
+          :value="item.id"
+        >
+          <div class="option-main">{{ item.name || item.id }}</div>
+          <div class="option-sub">
+            {{ item.circle_code || item.id }} / {{ item.owner_nickname || item.owner_dxq_id || "未设置圈主" }}
+          </div>
+        </el-option>
+      </el-select>
       <el-select
         v-model="filters.status"
         class="filter-item"
@@ -595,12 +663,23 @@ onMounted(async () => {
   width: 300px;
 }
 
-.circle-input {
-  width: 220px;
+.circle-select {
+  width: 260px;
 }
 
 .filter-item {
   width: 130px;
+}
+
+.option-main {
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.option-sub {
+  font-size: 12px;
+  line-height: 18px;
+  color: #8f8276;
 }
 
 .resource-cell {

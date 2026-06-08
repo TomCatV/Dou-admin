@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
+  managedCirclesApi,
   managedUsersApi,
+  type AdminCircleOption,
   type ManagedUser
 } from "@/api/admin";
 import {
@@ -18,10 +21,13 @@ defineOptions({
 
 type TagType = "primary" | "success" | "warning" | "danger" | "info";
 
+const route = useRoute();
 const loading = ref(false);
+const circleLoading = ref(false);
 const detailLoading = ref(false);
 const actionLoading = ref(false);
 const rows = ref<ManagedUser[]>([]);
+const circleOptions = ref<AdminCircleOption[]>([]);
 const total = ref(0);
 const detailVisible = ref(false);
 const current = ref<ManagedUser | null>(null);
@@ -31,6 +37,7 @@ const filters = reactive({
   keyword: "",
   status: "",
   audit_status: "",
+  circle_id: "",
   page: 1,
   page_size: 20
 });
@@ -53,6 +60,34 @@ function metaOf<T extends Record<string, { label: string; type: string }>>(
   };
 }
 
+function routeCircleId() {
+  const value = route.query.circle_id;
+  if (Array.isArray(value)) return String(value[0] || "");
+  return String(value || "");
+}
+
+function circleOptionLabel(item: AdminCircleOption) {
+  return `${item.name || item.id} / ${item.circle_code || item.id}`;
+}
+
+async function loadCircleOptions(keyword = "") {
+  circleLoading.value = true;
+  try {
+    const data = await managedCirclesApi.options({
+      keyword,
+      page_size: 30
+    });
+    circleOptions.value = data.items;
+  } finally {
+    circleLoading.value = false;
+  }
+}
+
+async function handleCircleChange() {
+  filters.page = 1;
+  await loadList();
+}
+
 async function loadList() {
   loading.value = true;
   try {
@@ -68,6 +103,7 @@ function resetSearch() {
   filters.keyword = "";
   filters.status = "";
   filters.audit_status = "";
+  filters.circle_id = "";
   filters.page = 1;
   loadList();
 }
@@ -128,7 +164,22 @@ async function toggleBan(row: ManagedUser) {
   await loadList();
 }
 
-onMounted(loadList);
+onMounted(async () => {
+  filters.circle_id = routeCircleId();
+  await Promise.all([loadCircleOptions(filters.circle_id), loadList()]);
+});
+
+watch(
+  () => route.query.circle_id,
+  async () => {
+    const next = routeCircleId();
+    if (next === filters.circle_id) return;
+    filters.circle_id = next;
+    filters.page = 1;
+    await loadCircleOptions(next);
+    await loadList();
+  }
+);
 </script>
 
 <template>
@@ -141,6 +192,31 @@ onMounted(loadList);
         placeholder="搜索昵称、抖小圈号、手机号或ID"
         @keyup.enter="loadList"
       />
+      <el-select
+        v-model="filters.circle_id"
+        class="circle-select"
+        clearable
+        filterable
+        remote
+        reserve-keyword
+        :loading="circleLoading"
+        placeholder="选择圈子"
+        :remote-method="loadCircleOptions"
+        @change="handleCircleChange"
+        @clear="handleCircleChange"
+      >
+        <el-option
+          v-for="item in circleOptions"
+          :key="item.id"
+          :label="circleOptionLabel(item)"
+          :value="item.id"
+        >
+          <div class="option-main">{{ item.name || item.id }}</div>
+          <div class="option-sub">
+            {{ item.circle_code || item.id }} / {{ item.owner_nickname || item.owner_dxq_id || "未设置圈主" }}
+          </div>
+        </el-option>
+      </el-select>
       <el-select v-model="filters.status" class="filter-item" placeholder="状态" clearable>
         <el-option label="正常" value="active" />
         <el-option label="已封禁" value="banned" />
@@ -306,6 +382,21 @@ onMounted(loadList);
 
 .filter-item {
   width: 140px;
+}
+
+.circle-select {
+  width: 260px;
+}
+
+.option-main {
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.option-sub {
+  font-size: 12px;
+  line-height: 18px;
+  color: #8f8276;
 }
 
 .user-cell {

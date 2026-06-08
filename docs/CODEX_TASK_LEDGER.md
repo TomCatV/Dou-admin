@@ -1155,3 +1155,25 @@
 - 验证：待执行 checksum 复核、`git diff --check` 与 UTF-8 扫描。
 - 下一步：验证通过后与 Server、uniapp 对应文档归档一起分仓提交推送。
 - 风险与回滚：仅文档新增；如后续确认某份文档不应归属 Admin，可单独移除副本。
+
+### 圈子上下文治理筛选与跳转
+
+- 时间：2026-06-08 (Asia/Shanghai)
+- 任务目标：让资源卡治理和用户管理都可以下拉选择圈子查看圈内数据，并从圈子管理直接跳转到指定圈子的用户管理和资源卡治理。
+- 改动仓库：Dou-Admin、Dou-Server；Dou-uniapp 未改动。
+- Dou-Admin 改动文件：
+  - `docs/CIRCLE_CONTEXT_GOVERNANCE_NAVIGATION_DESIGN.md`
+  - `src/api/admin.ts`
+  - `src/views/users/index.vue`
+  - `src/views/resource-cards/index.vue`
+  - `src/views/circles/index.vue`
+  - `docs/CODEX_CONTINUITY_STATE.md`
+  - `docs/CODEX_TASK_LEDGER.md`
+- 协同改动：
+  - Dou-Server `src/routes/admin/users.routes.js`
+  - Dou-Server `src/routes/admin/circles.routes.js`
+- 已完成前端能力：用户管理和资源卡治理均支持远程搜索圈子、选择圈子后重置页码并查询；路由 query 带 `circle_id` 时自动带入；圈子管理列表和详情抽屉提供“看用户 / 看资源”跳转。
+- 权限边界：前端只负责体验和带参跳转；圈子选项、用户列表和资源卡列表都由 Dou-Server 按当前管理员 scope 过滤并兜底。
+- 验证：`corepack pnpm typecheck`、`corepack pnpm build` 通过；协同 Dou-Server `node --check` 覆盖用户、圈子和资源卡治理路由；双仓 `git diff --check` 仅有 CRLF 转换提示；UTF-8 扫描无 U+FFFD。
+- 下一步：部署后回归平台超管全量圈子选择、圈主主账号本人圈子选择、单圈子账号只看到授权圈子，以及从圈子管理跳转后的默认筛选。
+- 风险与回滚：无迁移；异常时可先回滚 Admin 跳转和下拉页面改动，后端过滤参数保持向后兼容。
